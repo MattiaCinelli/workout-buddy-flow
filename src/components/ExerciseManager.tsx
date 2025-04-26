@@ -1,13 +1,22 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Exercise, createExercise, updateExercise, deleteExercise, getAllExercises } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import ExerciseForm from './ExerciseForm';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Pencil, Edit } from 'lucide-react';
+import { Plus, Search, FileImage, Trash } from 'lucide-react';
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
@@ -15,6 +24,7 @@ const ExerciseManager: React.FC = () => {
   const [exercises, setExercises] = useState<Exercise[]>(getAllExercises());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   const filteredExercises = exercises.filter(exercise => 
     exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -25,6 +35,19 @@ const ExerciseManager: React.FC = () => {
   );
   
   const handleCreateExercise = (exerciseData: Omit<Exercise, 'id'>) => {
+    const existingExercise = exercises.find(
+      ex => ex.name.toLowerCase() === exerciseData.name.toLowerCase()
+    );
+    
+    if (existingExercise) {
+      toast({
+        title: "Error",
+        description: `An exercise named "${exerciseData.name}" already exists.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newExercise = createExercise(exerciseData);
     setExercises([...exercises, newExercise]);
     toast({
@@ -36,6 +59,20 @@ const ExerciseManager: React.FC = () => {
   
   const handleUpdateExercise = (exerciseData: Omit<Exercise, 'id'>) => {
     if (currentExercise) {
+      const existingExercise = exercises.find(
+        ex => ex.id !== currentExercise.id && 
+             ex.name.toLowerCase() === exerciseData.name.toLowerCase()
+      );
+      
+      if (existingExercise) {
+        toast({
+          title: "Error",
+          description: `An exercise named "${exerciseData.name}" already exists.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const updated = updateExercise(currentExercise.id, exerciseData);
       if (updated) {
         setExercises(exercises.map(ex => ex.id === updated.id ? updated : ex));
@@ -52,6 +89,22 @@ const ExerciseManager: React.FC = () => {
   const handleEdit = (exercise: Exercise) => {
     setCurrentExercise(exercise);
     setIsFormOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (currentExercise) {
+      const deleted = deleteExercise(currentExercise.id);
+      if (deleted) {
+        setExercises(prev => prev.filter(ex => ex.id !== deleted.id));
+        toast({
+          title: "Exercise deleted",
+          description: `${deleted.name} has been deleted successfully.`,
+        });
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setIsFormOpen(false);
+    setCurrentExercise(undefined);
   };
 
   const handleCancel = () => {
@@ -113,7 +166,6 @@ const ExerciseManager: React.FC = () => {
         )}
       </div>
       
-      {/* Floating Action Button for mobile */}
       <div className="fixed bottom-6 right-6 md:hidden">
         <Button
           onClick={() => setIsFormOpen(true)}
@@ -139,9 +191,28 @@ const ExerciseManager: React.FC = () => {
             exercise={currentExercise} 
             onSubmit={currentExercise ? handleUpdateExercise : handleCreateExercise}
             onCancel={handleCancel}
+            onDelete={currentExercise ? () => setIsDeleteDialogOpen(true) : undefined}
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the exercise
+              "{currentExercise?.name}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
