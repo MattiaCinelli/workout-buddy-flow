@@ -1,13 +1,21 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Exercise } from '@/data/exercises';
 import { Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -63,34 +71,78 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             Exercise Name
           </label>
           <Input id="name" placeholder="Exercise Name" {...form.register("name")} />
+          {form.formState.errors.name && (
+            <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
+          )}
         </div>
-        <div className="grid gap-2">
-          <label htmlFor="category" className="text-right inline-block w-32 pr-2">
-            Category
-          </label>
-          <Select {...form.register("category")} id="category">
-            <option value="strength">Strength</option>
-            <option value="cardio">Cardio</option>
-            <option value="flexibility">Flexibility</option>
-            <option value="balance">Balance</option>
-          </Select>
-        </div>
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem className="grid gap-2">
+              <FormLabel className="text-right inline-block w-32 pr-2">
+                Category
+              </FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="strength">Strength</SelectItem>
+                  <SelectItem value="cardio">Cardio</SelectItem>
+                  <SelectItem value="flexibility">Flexibility</SelectItem>
+                  <SelectItem value="balance">Balance</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid gap-2">
           <label htmlFor="muscleGroups" className="text-right inline-block w-32 pr-2">
             Muscle Groups
           </label>
           <Input id="muscleGroups" placeholder="Muscle Groups (comma separated)" {...form.register("muscleGroups")} />
+          {form.formState.errors.muscleGroups && (
+            <p className="text-sm text-red-500">{form.formState.errors.muscleGroups.message}</p>
+          )}
         </div>
-        <div className="grid gap-2">
-          <label htmlFor="difficulty" className="text-right inline-block w-32 pr-2">
-            Difficulty
-          </label>
-          <Select {...form.register("difficulty")} id="difficulty">
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-          </Select>
-        </div>
+
+        <FormField
+          control={form.control}
+          name="difficulty"
+          render={({ field }) => (
+            <FormItem className="grid gap-2">
+              <FormLabel className="text-right inline-block w-32 pr-2">
+                Difficulty
+              </FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="beginner">Beginner</SelectItem>
+                  <SelectItem value="intermediate">Intermediate</SelectItem>
+                  <SelectItem value="advanced">Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid gap-2">
           <label htmlFor="imageUrl" className="text-right inline-block w-32 pr-2">
             Image URL
