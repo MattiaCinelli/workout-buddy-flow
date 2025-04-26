@@ -2,13 +2,15 @@
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Exercise } from '@/data/exercises';
+import { Image } from 'lucide-react';
 
 interface ExerciseItemProps {
   exercise: Exercise;
   onSelect?: (exercise: Exercise) => void;
+  onEdit?: (exercise: Exercise) => void;
 }
 
-const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect }) => {
+const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit }) => {
   const getCategoryColor = () => {
     switch (exercise.category) {
       case 'strength': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
@@ -28,18 +30,43 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect }) => {
     }
   };
 
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEdit) onEdit(exercise);
+  };
+
   return (
     <div 
       className={`exercise-item p-4 border rounded-lg ${onSelect ? 'cursor-pointer' : ''}`}
       onClick={() => onSelect && onSelect(exercise)}
     >
       <div className="flex justify-between items-start">
-        <div>
-          <h3 className="font-medium">{exercise.name}</h3>
-          <div className="text-sm text-muted-foreground mt-1">
-            {exercise.muscleGroups.join(', ')}
+        <div className="flex gap-3">
+          {exercise.imageUrl ? (
+            <div className="w-16 h-16 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+              <img 
+                src={exercise.imageUrl} 
+                alt={exercise.name} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder.svg';
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-16 h-16 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <Image className="h-8 w-8 text-gray-400" />
+            </div>
+          )}
+          
+          <div>
+            <h3 className="font-medium">{exercise.name}</h3>
+            <div className="text-sm text-muted-foreground mt-1">
+              {exercise.muscleGroups.join(', ')}
+            </div>
           </div>
         </div>
+        
         <div className="flex flex-col gap-2 items-end">
           <Badge className={getCategoryColor()}>
             {exercise.category}
@@ -47,6 +74,14 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect }) => {
           <Badge variant="outline" className={getDifficultyColor()}>
             {exercise.difficulty}
           </Badge>
+          {onEdit && (
+            <button 
+              onClick={handleEdit} 
+              className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+            >
+              Edit
+            </button>
+          )}
         </div>
       </div>
     </div>

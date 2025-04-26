@@ -1,10 +1,10 @@
-
 export interface Exercise {
   id: string;
   name: string;
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
   muscleGroups: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
+  imageUrl?: string; // URL to the local image
 }
 
 export const exerciseList: Exercise[] = [
@@ -14,6 +14,7 @@ export const exerciseList: Exercise[] = [
     category: 'strength',
     muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings', 'Lower Back'],
     difficulty: 'intermediate',
+    imageUrl: '/exercises/squat.jpg'
   },
   {
     id: '2',
@@ -21,6 +22,7 @@ export const exerciseList: Exercise[] = [
     category: 'strength',
     muscleGroups: ['Chest', 'Triceps', 'Shoulders'],
     difficulty: 'intermediate',
+    imageUrl: '/exercises/bench-press.jpg'
   },
   {
     id: '3',
@@ -93,3 +95,42 @@ export const exerciseList: Exercise[] = [
     difficulty: 'intermediate',
   }
 ];
+
+// Local database helper functions (to be replaced with actual PostgreSQL implementation)
+let localExercises = [...exerciseList];
+
+export const getAllExercises = () => {
+  return localExercises;
+};
+
+export const getExerciseById = (id: string) => {
+  return localExercises.find(exercise => exercise.id === id);
+};
+
+export const createExercise = (exercise: Omit<Exercise, 'id'>) => {
+  const newExercise = {
+    ...exercise,
+    id: Math.random().toString(36).substring(2, 9)
+  };
+  localExercises.push(newExercise);
+  return newExercise;
+};
+
+export const updateExercise = (id: string, exercise: Partial<Exercise>) => {
+  const index = localExercises.findIndex(ex => ex.id === id);
+  if (index !== -1) {
+    localExercises[index] = { ...localExercises[index], ...exercise };
+    return localExercises[index];
+  }
+  return null;
+};
+
+export const deleteExercise = (id: string) => {
+  const index = localExercises.findIndex(ex => ex.id === id);
+  if (index !== -1) {
+    const deleted = localExercises[index];
+    localExercises = localExercises.filter(ex => ex.id !== id);
+    return deleted;
+  }
+  return null;
+};

@@ -6,10 +6,14 @@ import { CalendarDays } from 'lucide-react';
 
 interface WorkoutHistoryProps {
   workouts: WorkoutEntry[];
+  showEmpty?: boolean;
 }
 
-const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ workouts }) => {
-  if (workouts.length === 0) {
+const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({ 
+  workouts, 
+  showEmpty = true 
+}) => {
+  if (workouts.length === 0 && showEmpty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <div className="bg-gray-100 rounded-full p-4 mb-4">
