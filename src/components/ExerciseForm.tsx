@@ -1,10 +1,9 @@
-
-import React from 'react';
+import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Exercise } from '@/data/exercises';
-import { Trash } from 'lucide-react';
+import { Trash, FileImage } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,9 +21,7 @@ const formSchema = z.object({
     message: "Exercise name must be at least 2 characters.",
   }),
   category: z.enum(['strength', 'cardio', 'flexibility', 'balance']),
-  muscleGroups: z.string().min(2, {
-    message: "Muscle groups must be at least 2 characters.",
-  }),
+  muscleGroups: z.string().optional(),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   imageUrl: z.string().optional(),
 });
@@ -42,6 +39,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   onCancel,
   onDelete
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -57,10 +56,21 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     onSubmit({
       name: values.name,
       category: values.category,
-      muscleGroups: values.muscleGroups.split(',').map(group => group.trim()),
+      muscleGroups: values.muscleGroups ? values.muscleGroups.split(',').map(group => group.trim()) : [],
       difficulty: values.difficulty,
       imageUrl: values.imageUrl,
     });
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        form.setValue('imageUrl', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -107,12 +117,9 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
         <div className="grid gap-2">
           <label htmlFor="muscleGroups" className="text-right inline-block w-32 pr-2">
-            Muscle Groups
+            Muscle Groups (optional)
           </label>
           <Input id="muscleGroups" placeholder="Muscle Groups (comma separated)" {...form.register("muscleGroups")} />
-          {form.formState.errors.muscleGroups && (
-            <p className="text-sm text-red-500">{form.formState.errors.muscleGroups.message}</p>
-          )}
         </div>
 
         <FormField
@@ -145,9 +152,33 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
         <div className="grid gap-2">
           <label htmlFor="imageUrl" className="text-right inline-block w-32 pr-2">
-            Image URL
+            Image
           </label>
-          <Input id="imageUrl" placeholder="Image URL" {...form.register("imageUrl")} />
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+            >
+              <FileImage className="h-4 w-4 mr-2" />
+              Choose Image
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageChange}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
+          {form.watch('imageUrl') && (
+            <img
+              src={form.watch('imageUrl')}
+              alt="Selected exercise"
+              className="mt-2 max-h-40 object-contain rounded-md"
+            />
+          )}
         </div>
         
         <div className="flex justify-between items-center mt-6">
