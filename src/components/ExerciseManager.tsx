@@ -7,7 +7,7 @@ import { Exercise, createExercise, updateExercise, deleteExercise, getAllExercis
 import ExerciseItem from './ExerciseItem';
 import ExerciseForm from './ExerciseForm';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Pencil } from 'lucide-react';
+import { Plus, Search, FileImage, Pencil, Edit } from 'lucide-react';
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
@@ -60,7 +60,7 @@ const ExerciseManager: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative pb-20">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Exercise Library</h2>
         <Button 
@@ -111,6 +111,17 @@ const ExerciseManager: React.FC = () => {
             )}
           </div>
         )}
+      </div>
+      
+      {/* Floating Action Button for mobile */}
+      <div className="fixed bottom-6 right-6 md:hidden">
+        <Button
+          onClick={() => setIsFormOpen(true)}
+          size="icon"
+          className="h-14 w-14 rounded-full shadow-lg bg-workout-blue hover:bg-blue-600"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
       
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

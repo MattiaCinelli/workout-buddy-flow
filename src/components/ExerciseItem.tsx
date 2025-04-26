@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Exercise } from '@/data/exercises';
-import { Image } from 'lucide-react';
+import { Image, Edit } from 'lucide-react';
 
 interface ExerciseItemProps {
   exercise: Exercise;
@@ -37,7 +38,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
 
   return (
     <div 
-      className={`exercise-item p-4 border rounded-lg ${onSelect ? 'cursor-pointer' : ''}`}
+      className={`exercise-item p-4 border rounded-lg hover:shadow-md transition-shadow ${onSelect ? 'cursor-pointer' : ''}`}
       onClick={() => onSelect && onSelect(exercise)}
     >
       <div className="flex justify-between items-start">
@@ -59,7 +60,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
             </div>
           )}
           
-          <div>
+          <div className="flex-grow">
             <h3 className="font-medium">{exercise.name}</h3>
             <div className="text-sm text-muted-foreground mt-1">
               {exercise.muscleGroups.join(', ')}
@@ -75,12 +76,15 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
             {exercise.difficulty}
           </Badge>
           {onEdit && (
-            <button 
-              onClick={handleEdit} 
-              className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+            <Button 
+              onClick={handleEdit}
+              variant="outline"
+              size="sm"
+              className="mt-1"
             >
+              <Edit className="h-3 w-3 mr-1" />
               Edit
-            </button>
+            </Button>
           )}
         </div>
       </div>
