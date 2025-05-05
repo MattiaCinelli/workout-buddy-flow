@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Play, Edit } from 'lucide-react';
+import { ArrowLeft, Play, Edit, Calendar, Clock } from 'lucide-react';
 import { workoutHistory, WorkoutSet } from '@/data/workoutHistory';
 import { exerciseList } from '@/data/exercises';
 import Navbar from '@/components/Navbar';
