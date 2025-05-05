@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +55,11 @@ const WorkoutDetail = () => {
       default: return 'bg-gray-200 text-gray-800';
     }
   };
+
+  // Start workout handler
+  const handleStartWorkout = () => {
+    navigate(`/workout/${id}/start`);
+  };
   
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -86,6 +91,7 @@ const WorkoutDetail = () => {
               <Button 
                 size="sm" 
                 className="bg-workout-green hover:bg-green-600 text-white flex items-center gap-1"
+                onClick={handleStartWorkout}
               >
                 <Play className="h-4 w-4" />
                 <span>Start Workout</span>
