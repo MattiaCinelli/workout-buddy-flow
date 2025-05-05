@@ -1,16 +1,18 @@
-
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, ChevronRight, Activity } from "lucide-react";
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { exerciseList } from '@/data/exercises';
+import { useNavigate } from 'react-router-dom';
 
 interface WorkoutCardProps {
   workout: WorkoutEntry;
 }
 
 const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
+  const navigate = useNavigate();
+  
   // Get unique exercises
   const uniqueExercises = [...new Set(workout.sets.map(set => set.exerciseId))];
   const exerciseCount = uniqueExercises.length;
@@ -45,12 +47,20 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
   const exercisePreview = getExercisePreview();
   const hasMoreExercises = uniqueExercises.length > 2;
 
+  // Handle click to navigate to workout detail page
+  const handleCardClick = () => {
+    navigate(`/workout/${workout.id}`);
+  };
+
   return (
-    <Card className="workout-card overflow-hidden border-l-4 hover:shadow-lg" 
-          style={{ borderLeftColor: workout.category === 'strength' ? '#3B82F6' : 
-                                   workout.category === 'cardio' ? '#EF4444' :
-                                   workout.category === 'flexibility' ? '#8B5CF6' :
-                                   workout.category === 'balance' ? '#F59E0B' : '#10B981' }}>
+    <Card 
+      className="workout-card overflow-hidden border-l-4 hover:shadow-lg cursor-pointer transition-all" 
+      style={{ borderLeftColor: workout.category === 'strength' ? '#3B82F6' : 
+                               workout.category === 'cardio' ? '#EF4444' :
+                               workout.category === 'flexibility' ? '#8B5CF6' :
+                               workout.category === 'balance' ? '#F59E0B' : '#10B981' }}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg font-bold">{workout.title}</CardTitle>

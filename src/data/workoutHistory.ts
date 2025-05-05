@@ -1,10 +1,10 @@
-
 export interface WorkoutSet {
   exerciseId: string;
   reps?: number;
   weight?: number;
   duration?: number; // in seconds
   distance?: number; // in meters
+  restAfter?: number; // in seconds, rest period after this set
 }
 
 export interface WorkoutEntry {
@@ -14,6 +14,7 @@ export interface WorkoutEntry {
   duration: number; // in minutes
   category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
   sets: WorkoutSet[];
+  restBetweenExercises?: number; // in seconds, default rest between different exercises
 }
 
 export const workoutHistory: WorkoutEntry[] = [
