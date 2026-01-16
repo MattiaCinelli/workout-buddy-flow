@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Play, Pause, SkipForward, Timer, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { workoutHistory, WorkoutSet } from '@/data/workoutHistory';
-import { exerciseList } from '@/data/exercises';
+import { WorkoutSet } from '@/data/workoutHistory';
+import { useData } from '@/contexts/DataContext';
 
 type WorkoutStep = {
   type: 'exercise' | 'rest';
@@ -23,6 +23,7 @@ const WorkoutPresentation = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  const { workouts, exercises } = useData();
   const [activeStep, setActiveStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -30,7 +31,7 @@ const WorkoutPresentation = () => {
   const [workoutProgress, setWorkoutProgress] = useState(0);
   
   // Find the workout by ID
-  const workout = workoutHistory.find(w => w.id === id);
+  const workout = workouts.find(w => w.id === id);
   
   // If workout not found, redirect to details page
   if (!workout) {
@@ -190,7 +191,7 @@ const WorkoutPresentation = () => {
   
   // Get exercise details if current step is an exercise
   const exercise = currentStep.exerciseId 
-    ? exerciseList.find(ex => ex.id === currentStep.exerciseId)
+    ? exercises.find(ex => ex.id === currentStep.exerciseId)
     : null;
   
   // Format time for display
@@ -229,6 +230,20 @@ const WorkoutPresentation = () => {
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         {currentStep.type === 'exercise' && exercise ? (
           <>
+            {/* Exercise Image */}
+            {exercise.imageUrl && (
+              <div className="mb-6 max-w-xs mx-auto">
+                <img 
+                  src={exercise.imageUrl} 
+                  alt={exercise.name}
+                  className="w-full h-48 object-contain rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+            
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold mb-2">{exercise.name}</h2>
               <p className="text-xl text-gray-400 mb-1">Set {(currentStep.setIndex || 0) + 1}</p>

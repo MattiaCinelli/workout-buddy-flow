@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Exercise } from '@/data/exercises';
-import { Trash, FileImage } from 'lucide-react';
+import { Trash, FileImage, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,13 +31,15 @@ interface ExerciseFormProps {
   onSubmit: (data: Omit<Exercise, 'id'>) => void;
   onCancel: () => void;
   onDelete?: () => void;
+  isSubmitting?: boolean;
 }
 
 const ExerciseForm: React.FC<ExerciseFormProps> = ({
   exercise,
   onSubmit,
   onCancel,
-  onDelete
+  onDelete,
+  isSubmitting = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,11 +67,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (max 5MB for IndexedDB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         form.setValue('imageUrl', reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    form.setValue('imageUrl', '');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -80,7 +95,12 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           <label htmlFor="name" className="text-right inline-block w-32 pr-2">
             Exercise Name
           </label>
-          <Input id="name" placeholder="Exercise Name" {...form.register("name")} />
+          <Input 
+            id="name" 
+            placeholder="Exercise Name" 
+            {...form.register("name")} 
+            disabled={isSubmitting}
+          />
           {form.formState.errors.name && (
             <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
           )}
@@ -97,6 +117,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
+                disabled={isSubmitting}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -119,7 +140,12 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           <label htmlFor="muscleGroups" className="text-right inline-block w-32 pr-2">
             Muscle Groups (optional)
           </label>
-          <Input id="muscleGroups" placeholder="Muscle Groups (comma separated)" {...form.register("muscleGroups")} />
+          <Input 
+            id="muscleGroups" 
+            placeholder="Muscle Groups (comma separated)" 
+            {...form.register("muscleGroups")} 
+            disabled={isSubmitting}
+          />
         </div>
 
         <FormField
@@ -133,6 +159,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
+                disabled={isSubmitting}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -152,7 +179,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
         <div className="grid gap-2">
           <label htmlFor="imageUrl" className="text-right inline-block w-32 pr-2">
-            Image
+            Image / GIF
           </label>
           <div className="flex gap-2">
             <Button
@@ -160,6 +187,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="w-full"
+              disabled={isSubmitting}
             >
               <FileImage className="h-4 w-4 mr-2" />
               Choose Image
@@ -168,17 +196,32 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               type="file"
               ref={fileInputRef}
               onChange={handleImageChange}
-              accept="image/*"
+              accept="image/*,.gif"
               className="hidden"
             />
           </div>
           {form.watch('imageUrl') && (
-            <img
-              src={form.watch('imageUrl')}
-              alt="Selected exercise"
-              className="mt-2 max-h-40 object-contain rounded-md"
-            />
+            <div className="relative mt-2">
+              <img
+                src={form.watch('imageUrl')}
+                alt="Selected exercise"
+                className="max-h-40 object-contain rounded-md"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="absolute top-1 right-1"
+                onClick={handleRemoveImage}
+                disabled={isSubmitting}
+              >
+                Remove
+              </Button>
+            </div>
           )}
+          <p className="text-xs text-muted-foreground">
+            Supports images and GIFs (max 5MB). Images are stored locally on your device.
+          </p>
         </div>
         
         <div className="flex justify-between items-center mt-6">
@@ -189,6 +232,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                 variant="destructive"
                 onClick={onDelete}
                 className="mr-2"
+                disabled={isSubmitting}
               >
                 <Trash className="h-4 w-4 mr-1" />
                 Delete Exercise
@@ -196,10 +240,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit">{exercise ? 'Update' : 'Create'}</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {exercise ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                exercise ? 'Update' : 'Create'
+              )}
+            </Button>
           </div>
         </div>
       </form>
