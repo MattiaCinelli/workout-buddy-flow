@@ -12,11 +12,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Exercise, exerciseList } from '@/data/exercises';
+import { Exercise } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Minus, Plus, Clock, Check } from 'lucide-react';
-import { WorkoutSet } from '@/data/workoutHistory';
+import { Search, Minus, Plus, Loader2 } from 'lucide-react';
+import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
+import { useData } from '@/contexts/DataContext';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -34,9 +35,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('exercises');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { exercises, createWorkout } = useData();
   
-  const filteredExercises = exerciseList.filter(exercise => 
+  const filteredExercises = exercises.filter(exercise => 
     exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exercise.muscleGroups.some(group => 
@@ -44,22 +47,60 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     )
   );
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Here we would normally save the workout
-    // For now we'll just show a toast
-    toast({
-      title: "Workout created!",
-      description: `"${title}" has been created with ${selectedExercises.length} exercises.`,
-    });
+    if (!title || !category || selectedExercises.length === 0) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields and add at least one exercise.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    // Reset form and close modal
-    setTitle('');
-    setCategory('');
-    setSearchQuery('');
-    setSelectedExercises([]);
-    onClose();
+    setIsSubmitting(true);
+    
+    try {
+      // Flatten all sets from selected exercises
+      const allSets: WorkoutSet[] = selectedExercises.flatMap(se => se.sets);
+      
+      // Calculate estimated duration (rough estimate: 2min per set + rest)
+      const estimatedDuration = Math.ceil(allSets.length * 2.5);
+      
+      const workoutData: Omit<WorkoutEntry, 'id'> = {
+        title,
+        category: category as WorkoutEntry['category'],
+        date: new Date().toISOString().split('T')[0],
+        duration: estimatedDuration,
+        sets: allSets,
+        restBetweenExercises: 90
+      };
+      
+      await createWorkout(workoutData);
+      
+      toast({
+        title: "Workout created!",
+        description: `"${title}" has been created with ${selectedExercises.length} exercises.`,
+      });
+      
+      // Reset form and close modal
+      setTitle('');
+      setCategory('');
+      setSearchQuery('');
+      setSelectedExercises([]);
+      setActiveTab('exercises');
+      onClose();
+    } catch (error) {
+      console.error('Failed to create workout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create workout. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const handleSelectExercise = (exercise: Exercise) => {
@@ -81,8 +122,9 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       exerciseId: exercise.id,
       reps: isTimeBasedExercise ? undefined : 12,
       weight: exercise.category === 'strength' ? 50 : undefined,
-      duration: isTimeBasedExercise ? 60 : undefined, // 60 seconds default
-      distance: exercise.category === 'cardio' ? 1000 : undefined, // 1000m default for cardio
+      duration: isTimeBasedExercise ? 60 : undefined,
+      distance: exercise.category === 'cardio' ? 1000 : undefined,
+      restAfter: 60
     });
     
     // Add exercise with default sets
@@ -123,7 +165,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       reps: lastSet.reps,
       weight: lastSet.weight,
       duration: lastSet.duration,
-      distance: lastSet.distance
+      distance: lastSet.distance,
+      restAfter: 60
     };
     
     updatedExercises[exerciseIndex].sets.push(newSet);
@@ -160,8 +203,19 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     setSelectedExercises(updatedExercises);
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) {
+      setTitle('');
+      setCategory('');
+      setSearchQuery('');
+      setSelectedExercises([]);
+      setActiveTab('exercises');
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Workout</DialogTitle>
@@ -183,6 +237,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                 className="col-span-3"
                 placeholder="Leg Day"
                 required
+                disabled={isSubmitting}
               />
             </div>
             
@@ -193,6 +248,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
               <Select 
                 value={category}
                 onValueChange={setCategory}
+                disabled={isSubmitting}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select workout type" />
@@ -210,8 +266,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
             <div className="mt-2">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="exercises">Exercise Library</TabsTrigger>
-                  <TabsTrigger value="selected">Selected Exercises ({selectedExercises.length})</TabsTrigger>
+                  <TabsTrigger value="exercises" disabled={isSubmitting}>Exercise Library</TabsTrigger>
+                  <TabsTrigger value="selected" disabled={isSubmitting}>
+                    Selected Exercises ({selectedExercises.length})
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="exercises" className="mt-4">
                   <div className="relative mb-4">
@@ -221,6 +279,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                       className="pl-8"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -254,8 +313,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                             <Button 
                               variant="outline" 
                               size="sm"
+                              type="button"
                               onClick={() => handleRemoveExercise(selectedEx.exercise.id)}
                               className="h-8 px-2"
+                              disabled={isSubmitting}
                             >
                               Remove
                             </Button>
@@ -284,6 +345,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                           'reps', 
                                           e.target.value ? Number(e.target.value) : undefined
                                         )}
+                                        disabled={isSubmitting}
                                       />
                                     </div>
                                     <div className="flex items-center">
@@ -303,6 +365,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                           'weight', 
                                           e.target.value ? Number(e.target.value) : undefined
                                         )}
+                                        disabled={isSubmitting}
                                       />
                                     </div>
                                   </>
@@ -327,6 +390,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                         'duration', 
                                         e.target.value ? Number(e.target.value) : undefined
                                       )}
+                                      disabled={isSubmitting}
                                     />
                                   </div>
                                 )}
@@ -349,6 +413,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                         'distance', 
                                         e.target.value ? Number(e.target.value) : undefined
                                       )}
+                                      disabled={isSubmitting}
                                     />
                                   </div>
                                 )}
@@ -359,6 +424,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                   size="icon"
                                   className="h-8 w-8 ml-auto"
                                   onClick={() => handleRemoveSet(exIndex, setIndex)}
+                                  disabled={isSubmitting}
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>
@@ -371,6 +437,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                               size="sm"
                               className="w-full flex items-center justify-center gap-1 mt-2"
                               onClick={() => handleAddSet(exIndex)}
+                              disabled={isSubmitting}
                             >
                               <Plus className="h-4 w-4" /> Add Set
                             </Button>
@@ -384,15 +451,22 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" type="button" onClick={onClose}>
+            <Button variant="outline" type="button" onClick={handleClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button 
               type="submit" 
               className="bg-workout-blue hover:bg-blue-600"
-              disabled={!title || !category || selectedExercises.length === 0}
+              disabled={!title || !category || selectedExercises.length === 0 || isSubmitting}
             >
-              Create Workout
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Workout'
+              )}
             </Button>
           </DialogFooter>
         </form>

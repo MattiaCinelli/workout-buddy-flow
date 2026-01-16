@@ -12,19 +12,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Exercise, createExercise, updateExercise, deleteExercise, getAllExercises } from '@/data/exercises';
+import { Exercise } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import ExerciseForm from './ExerciseForm';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Trash } from 'lucide-react';
+import { Plus, Search, FileImage, Loader2 } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
+  const { 
+    exercises, 
+    exercisesLoading, 
+    createExercise, 
+    updateExercise, 
+    deleteExercise 
+  } = useData();
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [exercises, setExercises] = useState<Exercise[]>(getAllExercises());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const filteredExercises = exercises.filter(exercise => 
     exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -34,7 +43,7 @@ const ExerciseManager: React.FC = () => {
     )
   );
   
-  const handleCreateExercise = (exerciseData: Omit<Exercise, 'id'>) => {
+  const handleCreateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const existingExercise = exercises.find(
       ex => ex.name.toLowerCase() === exerciseData.name.toLowerCase()
     );
@@ -48,16 +57,27 @@ const ExerciseManager: React.FC = () => {
       return;
     }
     
-    const newExercise = createExercise(exerciseData);
-    setExercises([...exercises, newExercise]);
-    toast({
-      title: "Exercise created",
-      description: `${newExercise.name} has been created successfully.`,
-    });
-    setIsFormOpen(false);
+    setIsSubmitting(true);
+    try {
+      const newExercise = await createExercise(exerciseData);
+      toast({
+        title: "Exercise created",
+        description: `${newExercise.name} has been created successfully.`,
+      });
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error('Failed to create exercise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create exercise. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
-  const handleUpdateExercise = (exerciseData: Omit<Exercise, 'id'>) => {
+  const handleUpdateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     if (currentExercise) {
       const existingExercise = exercises.find(
         ex => ex.id !== currentExercise.id && 
@@ -73,17 +93,28 @@ const ExerciseManager: React.FC = () => {
         return;
       }
       
-      const updated = updateExercise(currentExercise.id, exerciseData);
-      if (updated) {
-        setExercises(exercises.map(ex => ex.id === updated.id ? updated : ex));
+      setIsSubmitting(true);
+      try {
+        const updated = await updateExercise(currentExercise.id, exerciseData);
+        if (updated) {
+          toast({
+            title: "Exercise updated",
+            description: `${updated.name} has been updated successfully.`,
+          });
+        }
+        setIsFormOpen(false);
+        setCurrentExercise(undefined);
+      } catch (error) {
+        console.error('Failed to update exercise:', error);
         toast({
-          title: "Exercise updated",
-          description: `${updated.name} has been updated successfully.`,
+          title: "Error",
+          description: "Failed to update exercise. Please try again.",
+          variant: "destructive",
         });
+      } finally {
+        setIsSubmitting(false);
       }
     }
-    setIsFormOpen(false);
-    setCurrentExercise(undefined);
   };
   
   const handleEdit = (exercise: Exercise) => {
@@ -91,26 +122,50 @@ const ExerciseManager: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (currentExercise) {
-      const deleted = deleteExercise(currentExercise.id);
-      if (deleted) {
-        setExercises(prev => prev.filter(ex => ex.id !== deleted.id));
+      setIsSubmitting(true);
+      try {
+        const deleted = await deleteExercise(currentExercise.id);
+        if (deleted) {
+          toast({
+            title: "Exercise deleted",
+            description: `${deleted.name} has been deleted successfully.`,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to delete exercise:', error);
         toast({
-          title: "Exercise deleted",
-          description: `${deleted.name} has been deleted successfully.`,
+          title: "Error",
+          description: "Failed to delete exercise. Please try again.",
+          variant: "destructive",
         });
+      } finally {
+        setIsSubmitting(false);
+        setIsDeleteDialogOpen(false);
+        setIsFormOpen(false);
+        setCurrentExercise(undefined);
       }
     }
-    setIsDeleteDialogOpen(false);
-    setIsFormOpen(false);
-    setCurrentExercise(undefined);
   };
 
   const handleCancel = () => {
-    setIsFormOpen(false);
-    setCurrentExercise(undefined);
+    if (!isSubmitting) {
+      setIsFormOpen(false);
+      setCurrentExercise(undefined);
+    }
   };
+
+  if (exercisesLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-workout-blue" />
+          <p className="text-muted-foreground">Loading exercises...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 relative pb-20">
@@ -176,7 +231,7 @@ const ExerciseManager: React.FC = () => {
         </Button>
       </div>
       
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Dialog open={isFormOpen} onOpenChange={(open) => !isSubmitting && !open && handleCancel()}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{currentExercise ? 'Edit Exercise' : 'Create Exercise'}</DialogTitle>
@@ -192,11 +247,12 @@ const ExerciseManager: React.FC = () => {
             onSubmit={currentExercise ? handleUpdateExercise : handleCreateExercise}
             onCancel={handleCancel}
             onDelete={currentExercise ? () => setIsDeleteDialogOpen(true) : undefined}
+            isSubmitting={isSubmitting}
           />
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDeleteDialogOpen(open)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -206,9 +262,20 @@ const ExerciseManager: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

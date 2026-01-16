@@ -3,34 +3,50 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, ArrowUpRight, Calendar, Clock, Dumbbell, LineChart, Plus, TrendingUp } from "lucide-react";
+import { Activity, ArrowUpRight, Calendar, Clock, Dumbbell, Plus, TrendingUp, Loader2 } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import WorkoutHistory from '@/components/WorkoutHistory';
 import ExerciseItem from '@/components/ExerciseItem';
 import CreateWorkoutModal from '@/components/CreateWorkoutModal';
-import { workoutHistory } from '@/data/workoutHistory';
-import { exerciseList } from '@/data/exercises';
+import { useData } from '@/contexts/DataContext';
 
 const Index = () => {
   const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
+  const navigate = useNavigate();
+  const { workouts, exercises, isLoading } = useData();
   
   // Get recent workouts (last 5)
-  const recentWorkouts = [...workoutHistory].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  ).slice(0, 5);
+  const recentWorkouts = [...workouts]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5);
   
   // Get popular exercises (just a few for demo)
-  const popularExercises = exerciseList.slice(0, 4);
+  const popularExercises = exercises.slice(0, 4);
   
   // Calculate some statistics
-  const totalWorkouts = workoutHistory.length;
-  const totalMinutes = workoutHistory.reduce((acc, workout) => acc + workout.duration, 0);
-  const workoutsByCategory = workoutHistory.reduce((acc, workout) => {
+  const totalWorkouts = workouts.length;
+  const totalMinutes = workouts.reduce((acc, workout) => acc + workout.duration, 0);
+  const workoutsByCategory = workouts.reduce((acc, workout) => {
     acc[workout.category] = (acc[workout.category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
   
   const mostFrequentCategory = Object.entries(workoutsByCategory).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-workout-blue" />
+            <p className="text-muted-foreground">Loading your workout data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -124,7 +140,12 @@ const Index = () => {
           <TabsContent value="workouts" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Recent Workouts</h2>
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => {/* TODO: Navigate to full history */}}
+              >
                 <Calendar className="h-4 w-4" />
                 <span>View All</span>
                 <ArrowUpRight className="h-3 w-3 ml-1" />
@@ -137,7 +158,12 @@ const Index = () => {
           <TabsContent value="exercises" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Popular Exercises</h2>
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+                onClick={() => navigate('/exercises')}
+              >
                 <Dumbbell className="h-4 w-4" />
                 <span>Exercise Library</span>
                 <ArrowUpRight className="h-3 w-3 ml-1" />
