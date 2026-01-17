@@ -1,23 +1,33 @@
-
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Play, Edit, Calendar, Clock } from 'lucide-react';
-import { workoutHistory, WorkoutSet } from '@/data/workoutHistory';
-import { exerciseList } from '@/data/exercises';
+import { ArrowLeft, Play, Edit, Calendar, Clock, Loader2 } from 'lucide-react';
+import { WorkoutSet } from '@/data/workoutHistory';
+import { useData } from '@/contexts/DataContext';
 import Navbar from '@/components/Navbar';
 
 const WorkoutDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { workouts, exercises, workoutsLoading } = useData();
   
-  // Find the workout by ID
-  const workout = workoutHistory.find(w => w.id === id);
+  // Find the workout by ID from context (includes newly created workouts)
+  const workout = workouts.find(w => w.id === id);
   
-  // If workout not found, redirect to 404
+  // Show loading state while data is being fetched
+  if (workoutsLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-2 text-muted-foreground">Loading workout...</p>
+      </div>
+    );
+  }
+  
+  // If workout not found after loading, show error
   if (!workout) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
@@ -36,7 +46,7 @@ const WorkoutDetail = () => {
   });
   
   // Group sets by exercise
-  const exercises = workout.sets.reduce((acc, set) => {
+  const groupedExercises = workout.sets.reduce((acc, set) => {
     if (!acc[set.exerciseId]) {
       acc[set.exerciseId] = [];
     }
@@ -120,8 +130,8 @@ const WorkoutDetail = () => {
         </div>
         
         <div className="space-y-6">
-          {Object.entries(exercises).map(([exerciseId, sets]) => {
-            const exercise = exerciseList.find(ex => ex.id === exerciseId);
+          {Object.entries(groupedExercises).map(([exerciseId, sets]) => {
+            const exercise = exercises.find(ex => ex.id === exerciseId);
             if (!exercise) return null;
             
             return (
