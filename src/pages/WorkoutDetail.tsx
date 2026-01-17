@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,11 +8,13 @@ import { ArrowLeft, Play, Edit, Calendar, Clock, Loader2 } from 'lucide-react';
 import { WorkoutSet } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 import Navbar from '@/components/Navbar';
+import EditWorkoutModal from '@/components/EditWorkoutModal';
 
 const WorkoutDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { workouts, exercises, workoutsLoading } = useData();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   // Find the workout by ID from context (includes newly created workouts)
   const workout = workouts.find(w => w.id === id);
@@ -93,6 +95,7 @@ const WorkoutDetail = () => {
                 variant="outline" 
                 size="sm" 
                 className="flex items-center gap-1"
+                onClick={() => setIsEditModalOpen(true)}
               >
                 <Edit className="h-4 w-4" />
                 <span>Edit</span>
@@ -197,6 +200,12 @@ const WorkoutDetail = () => {
           })}
         </div>
       </main>
+      
+      <EditWorkoutModal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        workout={workout} 
+      />
     </div>
   );
 };
