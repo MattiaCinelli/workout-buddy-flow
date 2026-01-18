@@ -1,8 +1,10 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkouts } from '@/hooks/useWorkouts';
+import { useScheduledWorkouts, ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
+import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 
 interface DataContextType {
   // Exercises
@@ -25,6 +27,17 @@ interface DataContextType {
   getWorkoutById: (id: string) => WorkoutEntry | undefined;
   fetchWorkoutById: (id: string) => Promise<WorkoutEntry | undefined>;
   refreshWorkouts: () => Promise<void>;
+  
+  // Scheduled Workouts
+  scheduledWorkouts: ScheduledWorkout[];
+  scheduledWorkoutsLoading: boolean;
+  scheduledWorkoutsError: string | null;
+  createScheduledWorkout: (data: Omit<ScheduledWorkout, 'id' | 'createdAt'>) => Promise<ScheduledWorkout>;
+  updateScheduledWorkout: (id: string, updates: Partial<ScheduledWorkout>) => Promise<ScheduledWorkout | null>;
+  deleteScheduledWorkout: (id: string) => Promise<ScheduledWorkout | null>;
+  getScheduledWorkoutsForRange: (startDate: Date, endDate: Date) => ExpandedScheduledWorkout[];
+  getScheduledWorkoutsForDate: (date: Date) => ExpandedScheduledWorkout[];
+  refreshScheduledWorkouts: () => Promise<void>;
   
   // Combined loading state
   isLoading: boolean;
@@ -56,6 +69,18 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshWorkouts
   } = useWorkouts();
 
+  const {
+    scheduledWorkouts,
+    isLoading: scheduledWorkoutsLoading,
+    error: scheduledWorkoutsError,
+    createScheduledWorkout,
+    updateScheduledWorkout,
+    deleteScheduledWorkout,
+    getScheduledWorkoutsForRange,
+    getScheduledWorkoutsForDate,
+    refreshScheduledWorkouts
+  } = useScheduledWorkouts();
+
   const value: DataContextType = {
     exercises,
     exercisesLoading,
@@ -76,7 +101,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchWorkoutById,
     refreshWorkouts,
     
-    isLoading: exercisesLoading || workoutsLoading
+    scheduledWorkouts,
+    scheduledWorkoutsLoading,
+    scheduledWorkoutsError,
+    createScheduledWorkout,
+    updateScheduledWorkout,
+    deleteScheduledWorkout,
+    getScheduledWorkoutsForRange,
+    getScheduledWorkoutsForDate,
+    refreshScheduledWorkouts,
+    
+    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading
   };
 
   return (
