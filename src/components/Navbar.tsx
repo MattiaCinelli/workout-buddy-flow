@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Plus, Home, Menu, X, Library } from "lucide-react";
+import { Dumbbell, Plus, Home, Menu, X, Library, Calendar } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface NavbarProps {
@@ -44,6 +44,15 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           >
             <Library className="h-4 w-4" />
             <span>Exercises</span>
+          </Button>
+          
+          <Button 
+            variant={isActive('/calendar') ? "default" : "ghost"} 
+            className={`flex items-center gap-2 ${isActive('/calendar') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            onClick={() => navigate('/calendar')}
+          >
+            <Calendar className="h-4 w-4" />
+            <span>Calendar</span>
           </Button>
           
           <Button 
@@ -96,6 +105,18 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           >
             <Library className="h-4 w-4" />
             <span>Exercises</span>
+          </Button>
+          
+          <Button 
+            variant={isActive('/calendar') ? "default" : "outline"} 
+            className={`flex items-center gap-2 w-full justify-start ${isActive('/calendar') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            onClick={() => {
+              navigate('/calendar');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <Calendar className="h-4 w-4" />
+            <span>Calendar</span>
           </Button>
           
           <Button 
