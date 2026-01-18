@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +25,7 @@ import {
 import { Exercise } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Minus, Plus, Loader2 } from 'lucide-react';
+import { Search, Minus, Plus, Loader2, Trash2 } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 
@@ -36,8 +47,11 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('selected');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { toast } = useToast();
-  const { exercises, updateWorkout } = useData();
+  const { exercises, updateWorkout, deleteWorkout } = useData();
+  const navigate = useNavigate();
   
   // Initialize form with workout data when modal opens
   useEffect(() => {
@@ -222,9 +236,33 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
   };
 
   const handleClose = () => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !isDeleting) {
       setSearchQuery('');
+      setShowDeleteConfirm(false);
       onClose();
+    }
+  };
+
+  const handleDeleteWorkout = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteWorkout(workout.id);
+      toast({
+        title: "Workout deleted",
+        description: `"${workout.title}" has been deleted.`,
+      });
+      onClose();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to delete workout:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete workout. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -464,27 +502,67 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
               </Tabs>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={handleClose} disabled={isSubmitting}>
-              Cancel
-            </Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button 
-              type="submit" 
-              className="bg-workout-blue hover:bg-blue-600"
-              disabled={!title || !category || selectedExercises.length === 0 || isSubmitting}
+              variant="destructive" 
+              type="button" 
+              onClick={() => setShowDeleteConfirm(true)} 
+              disabled={isSubmitting || isDeleting}
+              className="sm:mr-auto"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Workout
             </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" type="button" onClick={handleClose} disabled={isSubmitting || isDeleting}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-workout-blue hover:bg-blue-600"
+                disabled={!title || !category || selectedExercises.length === 0 || isSubmitting || isDeleting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Workout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{workout.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteWorkout}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
