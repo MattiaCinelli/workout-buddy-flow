@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Plus, Home, Menu, X, Library, Calendar, History } from "lucide-react";
+import { Dumbbell, Plus, Home, Menu, X, Library, Calendar, History, ListChecks, TrendingUp } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface NavbarProps {
   onOpenCreateWorkout: () => void;
@@ -16,21 +16,21 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
   const isActive = (path: string) => location.pathname === path;
   
   return (
-    <nav className="bg-white shadow-sm py-4 px-6">
+    <nav className="bg-card shadow-sm py-4 px-6 border-b">
       <div className="container mx-auto flex justify-between items-center">
         <div 
           className="flex items-center gap-2 cursor-pointer"
           onClick={() => navigate('/')}
         >
-          <Dumbbell className="h-6 w-6 text-workout-blue" />
-          <span className="text-xl font-bold text-workout-blue">WorkoutBuddy</span>
+          <Dumbbell className="h-6 w-6 text-primary" />
+          <span className="text-xl font-bold text-primary">WorkoutBuddy</span>
         </div>
         
         {/* Desktop navigation */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-2">
           <Button 
             variant={isActive('/') ? "default" : "ghost"} 
-            className={`flex items-center gap-2 ${isActive('/') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2"
             onClick={() => navigate('/')}
           >
             <Home className="h-4 w-4" />
@@ -38,8 +38,17 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           </Button>
           
           <Button 
+            variant={isActive('/workouts') ? "default" : "ghost"} 
+            className="flex items-center gap-2"
+            onClick={() => navigate('/workouts')}
+          >
+            <ListChecks className="h-4 w-4" />
+            <span>Workouts</span>
+          </Button>
+          
+          <Button 
             variant={isActive('/exercises') ? "default" : "ghost"} 
-            className={`flex items-center gap-2 ${isActive('/exercises') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2"
             onClick={() => navigate('/exercises')}
           >
             <Library className="h-4 w-4" />
@@ -48,7 +57,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           
           <Button 
             variant={isActive('/calendar') ? "default" : "ghost"} 
-            className={`flex items-center gap-2 ${isActive('/calendar') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2"
             onClick={() => navigate('/calendar')}
           >
             <Calendar className="h-4 w-4" />
@@ -57,7 +66,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           
           <Button 
             variant={isActive('/history') ? "default" : "ghost"} 
-            className={`flex items-center gap-2 ${isActive('/history') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2"
             onClick={() => navigate('/history')}
           >
             <History className="h-4 w-4" />
@@ -65,8 +74,19 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           </Button>
           
           <Button 
+            variant={isActive('/progress') ? "default" : "ghost"} 
+            className="flex items-center gap-2"
+            onClick={() => navigate('/progress')}
+          >
+            <TrendingUp className="h-4 w-4" />
+            <span>Progress</span>
+          </Button>
+          
+          <ThemeToggle />
+          
+          <Button 
             onClick={onOpenCreateWorkout}
-            className="bg-workout-green hover:bg-green-600 text-white flex items-center gap-2"
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             <span>New Workout</span>
@@ -74,7 +94,8 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
         </div>
         
         {/* Mobile menu button */}
-        <div className="md:hidden">
+        <div className="md:hidden flex items-center gap-2">
+          <ThemeToggle />
           <Button 
             variant="ghost"
             size="icon"
@@ -94,7 +115,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
         <div className="container mx-auto mt-3 flex flex-col gap-2 md:hidden pb-3">
           <Button 
             variant={isActive('/') ? "default" : "outline"} 
-            className={`flex items-center gap-2 w-full justify-start ${isActive('/') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2 w-full justify-start"
             onClick={() => {
               navigate('/');
               setMobileMenuOpen(false);
@@ -105,8 +126,20 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           </Button>
           
           <Button 
+            variant={isActive('/workouts') ? "default" : "outline"} 
+            className="flex items-center gap-2 w-full justify-start"
+            onClick={() => {
+              navigate('/workouts');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <ListChecks className="h-4 w-4" />
+            <span>Workouts</span>
+          </Button>
+          
+          <Button 
             variant={isActive('/exercises') ? "default" : "outline"} 
-            className={`flex items-center gap-2 w-full justify-start ${isActive('/exercises') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2 w-full justify-start"
             onClick={() => {
               navigate('/exercises');
               setMobileMenuOpen(false);
@@ -118,7 +151,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           
           <Button 
             variant={isActive('/calendar') ? "default" : "outline"} 
-            className={`flex items-center gap-2 w-full justify-start ${isActive('/calendar') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2 w-full justify-start"
             onClick={() => {
               navigate('/calendar');
               setMobileMenuOpen(false);
@@ -130,7 +163,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           
           <Button 
             variant={isActive('/history') ? "default" : "outline"} 
-            className={`flex items-center gap-2 w-full justify-start ${isActive('/history') ? 'bg-workout-blue hover:bg-blue-600 text-white' : ''}`}
+            className="flex items-center gap-2 w-full justify-start"
             onClick={() => {
               navigate('/history');
               setMobileMenuOpen(false);
@@ -141,11 +174,23 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           </Button>
           
           <Button 
+            variant={isActive('/progress') ? "default" : "outline"} 
+            className="flex items-center gap-2 w-full justify-start"
+            onClick={() => {
+              navigate('/progress');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <TrendingUp className="h-4 w-4" />
+            <span>Progress</span>
+          </Button>
+          
+          <Button 
             onClick={() => {
               onOpenCreateWorkout();
               setMobileMenuOpen(false);
             }}
-            className="bg-workout-green hover:bg-green-600 text-white flex items-center gap-2 w-full justify-start"
+            className="flex items-center gap-2 w-full justify-start"
           >
             <Plus className="h-4 w-4" />
             <span>New Workout</span>

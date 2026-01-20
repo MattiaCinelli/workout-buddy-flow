@@ -15,6 +15,7 @@ export interface WorkoutEntry {
   category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
   sets: WorkoutSet[];
   restBetweenExercises?: number; // in seconds, default rest between different exercises
+  notes?: string; // optional notes about the workout (mood, energy, achievements)
 }
 
 export const workoutHistory: WorkoutEntry[] = [

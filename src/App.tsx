@@ -11,6 +11,8 @@ import WorkoutDetail from "./pages/WorkoutDetail";
 import WorkoutPresentation from "./pages/WorkoutPresentation";
 import CalendarPage from "./pages/Calendar";
 import HistoryPage from "./pages/History";
+import WorkoutsPage from "./pages/Workouts";
+import ProgressPage from "./pages/Progress";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/exercises" element={<ExercisesPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/history" element={<HistoryPage />} />
+            <Route path="/workouts" element={<WorkoutsPage />} />
+            <Route path="/progress" element={<ProgressPage />} />
             <Route path="/workout/:id" element={<WorkoutDetail />} />
             <Route path="/workout/:id/start" element={<WorkoutPresentation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
