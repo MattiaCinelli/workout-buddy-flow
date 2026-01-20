@@ -32,6 +32,7 @@ interface SelectedExercise {
 const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>('');
+  const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('exercises');
@@ -74,7 +75,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
         date: new Date().toISOString().split('T')[0],
         duration: estimatedDuration,
         sets: allSets,
-        restBetweenExercises: 90
+        restBetweenExercises: 90,
+        notes: notes.trim() || undefined
       };
       
       await createWorkout(workoutData);
@@ -87,6 +89,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       // Reset form and close modal
       setTitle('');
       setCategory('');
+      setNotes('');
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
@@ -207,6 +210,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     if (!isSubmitting) {
       setTitle('');
       setCategory('');
+      setNotes('');
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
@@ -261,6 +265,20 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                   <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="workout-notes" className="text-right pt-2">
+                Notes
+              </Label>
+              <textarea
+                id="workout-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="col-span-3 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="How are you feeling? Any goals for this workout?"
+                disabled={isSubmitting}
+              />
             </div>
             
             <div className="mt-2">

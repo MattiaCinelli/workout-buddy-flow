@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Play, Edit, Calendar, Clock, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, Edit, Calendar, Clock, Loader2, FileText } from 'lucide-react';
 import { WorkoutSet } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 import Navbar from '@/components/Navbar';
@@ -74,7 +74,7 @@ const WorkoutDetail = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar onOpenCreateWorkout={() => {}} />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
@@ -119,7 +119,7 @@ const WorkoutDetail = () => {
             </Badge>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-4 text-muted-foreground mb-8">
+          <div className="flex flex-col sm:flex-row gap-4 text-muted-foreground mb-4">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
               <span>{formattedDate}</span>
@@ -130,6 +130,20 @@ const WorkoutDetail = () => {
               <span>{workout.duration} minutes</span>
             </div>
           </div>
+          
+          {workout.notes && (
+            <Card className="mb-8">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-2">
+                  <FileText className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium mb-1">Notes</p>
+                    <p className="text-sm text-muted-foreground">{workout.notes}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
         
         <div className="space-y-6">

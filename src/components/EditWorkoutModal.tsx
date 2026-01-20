@@ -43,6 +43,7 @@ interface SelectedExercise {
 const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, workout }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>('');
+  const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('selected');
@@ -58,6 +59,7 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
     if (isOpen && workout) {
       setTitle(workout.title);
       setCategory(workout.category);
+      setNotes(workout.notes || '');
       
       // Group sets by exercise and create SelectedExercise array
       const exerciseMap = new Map<string, WorkoutSet[]>();
@@ -115,6 +117,7 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
         category: category as WorkoutEntry['category'],
         duration: estimatedDuration,
         sets: allSets,
+        notes: notes.trim() || undefined,
       });
       
       toast({
@@ -313,6 +316,20 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
                   <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="edit-workout-notes" className="text-right pt-2">
+                Notes
+              </Label>
+              <textarea
+                id="edit-workout-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="col-span-3 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="How are you feeling? Any goals for this workout?"
+                disabled={isSubmitting}
+              />
             </div>
             
             <div className="mt-2">
