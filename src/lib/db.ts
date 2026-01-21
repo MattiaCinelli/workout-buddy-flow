@@ -2,14 +2,16 @@ import { openDB, IDBPDatabase } from 'idb';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
+import { Course } from '@/data/courses';
 
 const DB_NAME = 'workout-buddy-db';
-const DB_VERSION = 2; // Bump version for new store
+const DB_VERSION = 3; // Bump version for courses store
 
 export interface WorkoutBuddyDB {
   exercises: Exercise;
   workouts: WorkoutEntry;
   scheduledWorkouts: ScheduledWorkout;
+  courses: Course;
 }
 
 let dbPromise: Promise<IDBPDatabase<WorkoutBuddyDB>> | null = null;
@@ -29,6 +31,10 @@ export const getDB = () => {
         // Create scheduled workouts store (added in v2)
         if (!db.objectStoreNames.contains('scheduledWorkouts')) {
           db.createObjectStore('scheduledWorkouts', { keyPath: 'id' });
+        }
+        // Create courses store (added in v3)
+        if (!db.objectStoreNames.contains('courses')) {
+          db.createObjectStore('courses', { keyPath: 'id' });
         }
       },
     });
@@ -122,6 +128,36 @@ export const bulkSaveScheduledWorkoutsToDB = async (scheduledWorkouts: Scheduled
   const tx = db.transaction('scheduledWorkouts', 'readwrite');
   await Promise.all([
     ...scheduledWorkouts.map(sw => tx.store.put(sw)),
+    tx.done
+  ]);
+};
+
+// Course operations
+export const getAllCoursesFromDB = async (): Promise<Course[]> => {
+  const db = await getDB();
+  return db.getAll('courses');
+};
+
+export const getCourseByIdFromDB = async (id: string): Promise<Course | undefined> => {
+  const db = await getDB();
+  return db.get('courses', id);
+};
+
+export const saveCourseToDB = async (course: Course): Promise<void> => {
+  const db = await getDB();
+  await db.put('courses', course);
+};
+
+export const deleteCourseFromDB = async (id: string): Promise<void> => {
+  const db = await getDB();
+  await db.delete('courses', id);
+};
+
+export const bulkSaveCoursesToDB = async (courses: Course[]): Promise<void> => {
+  const db = await getDB();
+  const tx = db.transaction('courses', 'readwrite');
+  await Promise.all([
+    ...courses.map(course => tx.store.put(course)),
     tx.done
   ]);
 };

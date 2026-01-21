@@ -2,9 +2,11 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useScheduledWorkouts, ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
+import { useCourses } from '@/hooks/useCourses';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
+import { Course, CourseWorkout } from '@/data/courses';
 
 interface DataContextType {
   // Exercises
@@ -39,6 +41,21 @@ interface DataContextType {
   getScheduledWorkoutsForRange: (startDate: Date, endDate: Date) => ExpandedScheduledWorkout[];
   getScheduledWorkoutsForDate: (date: Date) => ExpandedScheduledWorkout[];
   refreshScheduledWorkouts: () => Promise<void>;
+  
+  // Courses
+  courses: Course[];
+  coursesLoading: boolean;
+  coursesError: string | null;
+  createCourse: (data: Omit<Course, 'id' | 'createdAt'>) => Promise<Course>;
+  updateCourse: (id: string, updates: Partial<Course>) => Promise<Course | null>;
+  deleteCourse: (id: string) => Promise<Course | null>;
+  startCourse: (id: string) => Promise<Course | null>;
+  restartCourse: (id: string) => Promise<Course | null>;
+  completeWorkoutInCourse: (courseId: string, workoutId: string) => Promise<Course | null>;
+  getNextWorkoutInCourse: (courseId: string) => CourseWorkout | null;
+  getCourseById: (id: string) => Course | undefined;
+  getCourseProgress: (courseId: string) => number;
+  refreshCourses: () => Promise<void>;
   
   // Combined loading state
   isLoading: boolean;
@@ -83,6 +100,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshScheduledWorkouts
   } = useScheduledWorkouts();
 
+  const {
+    courses,
+    isLoading: coursesLoading,
+    error: coursesError,
+    createCourse,
+    updateCourse,
+    deleteCourse,
+    startCourse,
+    restartCourse,
+    completeWorkoutInCourse,
+    getNextWorkoutInCourse,
+    getCourseById,
+    getCourseProgress,
+    refreshCourses
+  } = useCourses();
+
   const value: DataContextType = {
     exercises,
     exercisesLoading,
@@ -114,7 +147,21 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getScheduledWorkoutsForDate,
     refreshScheduledWorkouts,
     
-    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading
+    courses,
+    coursesLoading,
+    coursesError,
+    createCourse,
+    updateCourse,
+    deleteCourse,
+    startCourse,
+    restartCourse,
+    completeWorkoutInCourse,
+    getNextWorkoutInCourse,
+    getCourseById,
+    getCourseProgress,
+    refreshCourses,
+    
+    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading
   };
 
   return (
