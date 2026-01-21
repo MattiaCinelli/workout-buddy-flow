@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Loader2, TrendingUp, Calendar, Dumbbell, Timer } from "lucide-react";
+import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2 } from "lucide-react";
 import Navbar from '@/components/Navbar';
 import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import { useData } from '@/contexts/DataContext';
@@ -12,6 +12,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   LineChart,
   Line,
@@ -31,7 +49,8 @@ import { format, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval, subMonths
 const ProgressPage = () => {
   const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [timeRange, setTimeRange] = useState('3months');
-  const { workouts, workoutsLoading, exercises } = useData();
+  const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
+  const { workouts, workoutsLoading, exercises, clearAllWorkouts } = useData();
 
   const dateRange = useMemo(() => {
     const end = new Date();
@@ -154,17 +173,36 @@ const ProgressPage = () => {
             <p className="text-muted-foreground">Track your fitness journey over time</p>
           </div>
           
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[180px] mt-4 md:mt-0">
-              <SelectValue placeholder="Time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1month">Last Month</SelectItem>
-              <SelectItem value="3months">Last 3 Months</SelectItem>
-              <SelectItem value="6months">Last 6 Months</SelectItem>
-              <SelectItem value="1year">Last Year</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 mt-4 md:mt-0">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1month">Last Month</SelectItem>
+                <SelectItem value="3months">Last 3 Months</SelectItem>
+                <SelectItem value="6months">Last 6 Months</SelectItem>
+                <SelectItem value="1year">Last Year</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setClearHistoryOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All History
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -335,6 +373,29 @@ const ProgressPage = () => {
         isOpen={createWorkoutOpen}
         onClose={() => setCreateWorkoutOpen(false)}
       />
+      
+      <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Workout History?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All your workout history and progress data will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                await clearAllWorkouts();
+                toast.success("All workout history has been cleared");
+              }}
+            >
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

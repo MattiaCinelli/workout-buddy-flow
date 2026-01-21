@@ -24,6 +24,7 @@ interface DataContextType {
   createWorkout: (data: Omit<WorkoutEntry, 'id'>) => Promise<WorkoutEntry>;
   updateWorkout: (id: string, updates: Partial<WorkoutEntry>) => Promise<WorkoutEntry | null>;
   deleteWorkout: (id: string) => Promise<WorkoutEntry | null>;
+  clearAllWorkouts: () => Promise<void>;
   getWorkoutById: (id: string) => WorkoutEntry | undefined;
   fetchWorkoutById: (id: string) => Promise<WorkoutEntry | undefined>;
   refreshWorkouts: () => Promise<void>;
@@ -64,6 +65,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createWorkout,
     updateWorkout,
     deleteWorkout,
+    clearAllWorkouts,
     getWorkoutById,
     fetchWorkoutById,
     refreshWorkouts
@@ -97,6 +99,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createWorkout,
     updateWorkout,
     deleteWorkout,
+    clearAllWorkouts,
     getWorkoutById,
     fetchWorkoutById,
     refreshWorkouts,

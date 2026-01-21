@@ -82,6 +82,14 @@ export const useWorkouts = () => {
     return workoutToDelete;
   }, [workouts]);
 
+  // Clear all workouts
+  const clearAllWorkouts = useCallback(async (): Promise<void> => {
+    for (const workout of workouts) {
+      await deleteWorkoutFromDB(workout.id);
+    }
+    setWorkouts([]);
+  }, [workouts]);
+
   // Get workout by ID
   const getWorkoutById = useCallback((id: string): WorkoutEntry | undefined => {
     return workouts.find(w => w.id === id);
@@ -99,6 +107,7 @@ export const useWorkouts = () => {
     createWorkout,
     updateWorkout,
     deleteWorkout,
+    clearAllWorkouts,
     getWorkoutById,
     fetchWorkoutById,
     refreshWorkouts: loadWorkouts
