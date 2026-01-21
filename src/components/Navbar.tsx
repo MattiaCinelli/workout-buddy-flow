@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Plus, Home, Menu, X, Library, Calendar, History, ListChecks, TrendingUp } from "lucide-react";
+import { Dumbbell, Plus, Home, Menu, X, Library, Calendar, History, ListChecks, TrendingUp, BookOpen } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -80,6 +80,15 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           >
             <TrendingUp className="h-4 w-4" />
             <span>Progress</span>
+          </Button>
+          
+          <Button 
+            variant={isActive('/courses') ? "default" : "ghost"} 
+            className="flex items-center gap-2"
+            onClick={() => navigate('/courses')}
+          >
+            <BookOpen className="h-4 w-4" />
+            <span>Courses</span>
           </Button>
           
           <ThemeToggle />
@@ -183,6 +192,18 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           >
             <TrendingUp className="h-4 w-4" />
             <span>Progress</span>
+          </Button>
+          
+          <Button 
+            variant={isActive('/courses') ? "default" : "outline"} 
+            className="flex items-center gap-2 w-full justify-start"
+            onClick={() => {
+              navigate('/courses');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <BookOpen className="h-4 w-4" />
+            <span>Courses</span>
           </Button>
           
           <Button 
