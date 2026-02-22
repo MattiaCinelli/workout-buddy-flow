@@ -42,12 +42,6 @@ const Index = () => {
             <p className="text-muted-foreground">Track your fitness progress</p>
           </div>
           
-          <Button 
-            onClick={() => setCreateWorkoutOpen(true)}
-            className="mt-4 md:mt-0"
-          >
-            <Plus className="mr-2 h-4 w-4" /> New Workout
-          </Button>
         </div>
         
         {/* Main Dashboard Grid */}
