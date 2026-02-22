@@ -173,7 +173,7 @@ const ExerciseManager: React.FC = () => {
         <h2 className="text-2xl font-bold">Exercise Library</h2>
         <Button 
           onClick={() => setIsFormOpen(true)}
-          className="bg-workout-blue hover:bg-blue-600"
+          className="bg-primary hover:bg-primary/90"
         >
           <Plus className="mr-2 h-4 w-4" /> New Exercise
         </Button>
@@ -199,10 +199,10 @@ const ExerciseManager: React.FC = () => {
             />
           ))
         ) : (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
-            <FileImage className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No exercises found</h3>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
+            <FileImage className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-2 text-sm font-medium text-foreground">No exercises found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
               {searchQuery 
                 ? "Try adjusting your search query" 
                 : "Get started by creating a new exercise"}
@@ -211,7 +211,7 @@ const ExerciseManager: React.FC = () => {
               <div className="mt-6">
                 <Button
                   onClick={() => setIsFormOpen(true)}
-                  className="bg-workout-blue hover:bg-blue-600"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   <Plus className="mr-2 h-4 w-4" /> New Exercise
                 </Button>
@@ -225,7 +225,7 @@ const ExerciseManager: React.FC = () => {
         <Button
           onClick={() => setIsFormOpen(true)}
           size="icon"
-          className="h-14 w-14 rounded-full shadow-lg bg-workout-blue hover:bg-blue-600"
+          className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
         >
           <Plus className="h-6 w-6" />
         </Button>
