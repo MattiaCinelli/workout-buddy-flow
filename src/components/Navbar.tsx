@@ -92,14 +92,6 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
           </Button>
           
           <ThemeToggle />
-          
-          <Button 
-            onClick={onOpenCreateWorkout}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New Workout</span>
-          </Button>
         </div>
         
         {/* Mobile menu button */}
@@ -206,16 +198,6 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
             <span>Courses</span>
           </Button>
           
-          <Button 
-            onClick={() => {
-              onOpenCreateWorkout();
-              setMobileMenuOpen(false);
-            }}
-            className="flex items-center gap-2 w-full justify-start"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New Workout</span>
-          </Button>
         </div>
       )}
     </nav>
