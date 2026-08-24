@@ -15,7 +15,18 @@ export const useCourses = () => {
   const loadCourses = useCallback(async () => {
     try {
       setIsLoading(true);
-      const dbCourses = await getAllCoursesFromDB();
+      const storedCourses = await getAllCoursesFromDB();
+      const dbCourses = storedCourses.map(course => ({
+        ...course,
+        durationWeeks: course.durationWeeks || Math.max(1, ...course.workouts.map(item => item.week || 1)),
+        workouts: course.workouts.map((item, index) => ({
+          ...item,
+          id: item.id || crypto.randomUUID(),
+          type: item.type || 'workout',
+          week: item.week || 1,
+          day: item.day || Math.min(7, index + 1),
+        }))
+      } as Course));
       // Sort by creation date descending
       dbCourses.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setCourses(dbCourses);
@@ -94,12 +105,12 @@ export const useCourses = () => {
   }, [courses, updateCourse]);
 
   // Complete a workout in a course
-  const completeWorkoutInCourse = useCallback(async (courseId: string, workoutId: string): Promise<Course | null> => {
+  const completeWorkoutInCourse = useCallback(async (courseId: string, courseItemId: string): Promise<Course | null> => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return null;
     
     const updatedWorkouts = course.workouts.map(w => 
-      w.workoutId === workoutId 
+      w.id === courseItemId
         ? { ...w, completed: true, completedAt: new Date().toISOString() }
         : w
     );

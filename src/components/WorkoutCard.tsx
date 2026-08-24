@@ -2,12 +2,13 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, ChevronRight, Activity } from "lucide-react";
+import { WorkoutSession } from '@/data/workoutSessions';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { exerciseList } from '@/data/exercises';
 import { useNavigate } from 'react-router-dom';
 
 interface WorkoutCardProps {
-  workout: WorkoutEntry;
+  workout: WorkoutSession | WorkoutEntry;
 }
 
 const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
@@ -49,7 +50,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
 
   // Handle click to navigate to workout detail page
   const handleCardClick = () => {
-    navigate(`/workout/${workout.id}`);
+    navigate(`/workout/${'workoutId' in workout ? workout.workoutId : workout.id}`);
   };
 
   return (

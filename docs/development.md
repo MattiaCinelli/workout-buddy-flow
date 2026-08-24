@@ -2,11 +2,33 @@
 
 ## Running locally
 
+Install **Node.js 22 LTS** before running the project. `npm` is included with Node.
+
 ```sh
 npm install
 npm run dev        # Vite dev server
 npm run build      # production build into dist/
 ```
+
+## Quality checks
+
+Run these before handing off a change:
+
+```sh
+npm run lint                         # ESLint; generated UI may emit non-blocking warnings
+npx tsc --noEmit -p tsconfig.app.json
+npm run build
+npm run test:e2e
+```
+
+Playwright uses Chromium. Install its browser once if necessary:
+
+```sh
+npx playwright install chromium
+```
+
+End-to-end tests live in `e2e/`. The configuration starts Vite automatically on
+`127.0.0.1:4173` and uses a fresh browser context for each test.
 
 ## Project layout
 
@@ -18,7 +40,7 @@ src/
     dashboard/   calendar preview, today's focus, streak, weekly goal, quick stats
     ui/          shadcn/ui primitives (generated — avoid hand-editing)
   contexts/      DataContext: the single app-wide state provider
-  hooks/         one hook per domain collection + useTheme / use-toast / use-mobile
+  hooks/         one hook per domain collection, including completed sessions
   data/          TypeScript types and seed data
   lib/db.ts      IndexedDB access helpers
   index.css      design tokens (colours, radii, dark theme)
@@ -39,6 +61,9 @@ src/
 4. Expose it through `DataContext`.
 5. Build the pages/components on top of `useData()`.
 
+Never reuse an existing store for a concept with a different lifecycle. In particular,
+workout templates are editable plans while workout sessions are historical snapshots.
+
 **A new page**
 1. Create it in `src/pages/`.
 2. Register the route in `src/App.tsx` *above* the `*` catch-all.
@@ -55,21 +80,57 @@ src/
 - Destructive actions (delete exercise/workout/course, clear history) must go through
   an `AlertDialog` confirmation.
 - Keep dates as ISO strings in storage; format for display with `date-fns`.
+- Preserve the flat order of `WorkoutSet[]`; grouping sets globally changes circuits
+  and supersets.
+- Use a course item's unique `id` for progress. `workoutId` is not unique because the
+  same template may appear multiple times in one program.
+- Add or update an end-to-end test for user-visible workflows.
 
 ## Packaging for Android (Capacitor)
 
-`capacitor.config.ts` points at `dist` as the web directory. On a machine with Android
-Studio installed:
+`capacitor.config.ts` points at `dist` as the web directory. Android builds require:
+
+- Android Studio and the Android SDK
+- Android SDK Build-Tools 35.0.0
+- Java 21 (Android Studio includes a compatible runtime)
+
+On macOS, expose Android Studio's Java runtime to Gradle:
+
+```sh
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+export PATH="$JAVA_HOME/bin:$PATH"
+java -version
+```
+
+Add the two exports to `~/.zshrc` to make them persistent. Then build and synchronize:
 
 ```sh
 npm run build
-npx cap add android      # first time only
+npx cap add android      # first time only; skip when android/ already exists
 npx cap sync android
 npx cap run android      # or open the project in Android Studio to build an APK
 ```
 
+Always run `npm run build` before `cap sync`; Capacitor copies the current `dist/`
+contents into the native project.
+
 IndexedDB works inside the Capacitor WebView, so the entire database ships with the
 app and persists across restarts and updates — no server required.
+
+### Android troubleshooting
+
+**`Unable to locate a Java Runtime`**
+
+Set `JAVA_HOME` to Android Studio's bundled `jbr` directory as shown above, then open
+a new terminal or run `source ~/.zshrc`.
+
+**`ZipException: invalid block type` while installing Build-Tools 35**
+
+The SDK archive is corrupt or partially extracted. In Android Studio, open
+**Tools → SDK Manager → SDK Tools**, enable **Show Package Details**, uninstall
+**Android SDK Build-Tools 35.0.0**, apply, then install 35.0.0 again.
+
+The Gradle `flatDir` messages are warnings and are not the cause of that failure.
 
 ## Gotchas seen in this codebase
 
@@ -80,3 +141,24 @@ app and persists across restarts and updates — no server required.
   `useData()`.
 - **A page renders white in dark mode** — a hardcoded Tailwind grey somewhere on that
   page's root element.
+- **History changes when a template is created** — history must read `sessions`, not
+  `workouts`.
+- **A repeated course workout completes twice** — completion must use `courseItemId`,
+  not `workoutId`.
+- **Delete fails with a reference message** — remove the workout/exercise from the
+  listed templates, courses or calendar entries, and clear dependent history only if
+  the user truly wants to discard it.
+
+## Manual release checklist
+
+1. Create and edit an exercise, including a local image.
+2. Build a workout with an interleaved circuit and confirm guided mode preserves order.
+3. Finish the workout and verify exactly one history entry and updated progress stats.
+4. Create a multi-week course containing a repeated workout and a recovery day.
+5. Schedule the course and verify workout dates match their week/day positions.
+6. Complete the next course workout through guided mode and confirm only that item
+   advances.
+7. Confirm referenced exercises/workouts cannot be deleted silently.
+8. Check weekly and monthly calendars, light/dark themes, and a narrow mobile viewport.
+9. Run the quality-check commands above.
+10. Build, sync and launch the Android package on an emulator or device.

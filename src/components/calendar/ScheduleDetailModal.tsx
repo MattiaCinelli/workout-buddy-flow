@@ -99,7 +99,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
 
   const handleStartWorkout = () => {
     onClose();
-    navigate(`/workout/${schedule.workoutId}/start`);
+    navigate(`/workout/${schedule.workoutId}/start?scheduledWorkoutId=${schedule.id}`);
   };
 
   const handleViewWorkout = () => {

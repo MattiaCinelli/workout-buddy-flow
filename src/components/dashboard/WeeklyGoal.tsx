@@ -22,7 +22,7 @@ const GOAL_OPTIONS = [2, 3, 4, 5, 6, 7];
 const STORAGE_KEY = 'workout-weekly-goal';
 
 const WeeklyGoal: React.FC = () => {
-  const { workouts } = useData();
+  const { sessions: workouts } = useData();
   
   const [weeklyGoal, setWeeklyGoal] = useState<number>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);

@@ -11,11 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useData } from '@/contexts/DataContext';
 import { CourseWorkout } from '@/data/courses';
-import { GripVertical, Plus } from 'lucide-react';
+import CourseProgramBuilder from './CourseProgramBuilder';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreateCourseModalProps {
@@ -27,38 +26,31 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose }
   const { workouts, createCourse } = useData();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedWorkouts, setSelectedWorkouts] = useState<string[]>([]);
+  const [goal, setGoal] = useState('');
+  const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [prerequisites, setPrerequisites] = useState('');
+  const [courseWorkouts, setCourseWorkouts] = useState<CourseWorkout[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleToggleWorkout = (workoutId: string) => {
-    setSelectedWorkouts(prev => 
-      prev.includes(workoutId)
-        ? prev.filter(id => id !== workoutId)
-        : [...prev, workoutId]
-    );
-  };
 
   const handleSubmit = async () => {
     if (!title.trim()) {
       toast.error('Please enter a course title');
       return;
     }
-    if (selectedWorkouts.length === 0) {
-      toast.error('Please select at least one workout');
+    if (!courseWorkouts.some(item => item.type === 'workout' && item.workoutId)) {
+      toast.error('Please add at least one workout session');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const courseWorkouts: CourseWorkout[] = selectedWorkouts.map((workoutId, index) => ({
-        workoutId,
-        order: index + 1,
-        completed: false
-      }));
-
       await createCourse({
         title: title.trim(),
         description: description.trim() || undefined,
+        goal: goal.trim() || undefined,
+        difficulty,
+        prerequisites: prerequisites.trim() || undefined,
+        durationWeeks: Math.max(...courseWorkouts.map(item => item.week), 1),
         workouts: courseWorkouts
       });
 
@@ -75,13 +67,16 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose }
   const handleClose = () => {
     setTitle('');
     setDescription('');
-    setSelectedWorkouts([]);
+    setGoal('');
+    setDifficulty('beginner');
+    setPrerequisites('');
+    setCourseWorkouts([]);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Course</DialogTitle>
           <DialogDescription>
@@ -110,47 +105,12 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose }
               rows={2}
             />
           </div>
-
-          <div className="space-y-2">
-            <Label>Select Workouts ({selectedWorkouts.length} selected)</Label>
-            <ScrollArea className="h-[200px] border rounded-md p-2">
-              {workouts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No workouts available. Create some workouts first.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {workouts.map((workout) => (
-                    <div
-                      key={workout.id}
-                      className={`flex items-center gap-3 p-2 rounded-md border cursor-pointer transition-colors ${
-                        selectedWorkouts.includes(workout.id)
-                          ? 'bg-primary/10 border-primary'
-                          : 'hover:bg-muted'
-                      }`}
-                      onClick={() => handleToggleWorkout(workout.id)}
-                    >
-                      <Checkbox
-                        checked={selectedWorkouts.includes(workout.id)}
-                        onCheckedChange={() => handleToggleWorkout(workout.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{workout.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {workout.category} • {workout.duration} min • {workout.sets.length} sets
-                        </p>
-                      </div>
-                      {selectedWorkouts.includes(workout.id) && (
-                        <span className="text-xs text-muted-foreground">
-                          #{selectedWorkouts.indexOf(workout.id) + 1}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2"><Label htmlFor="course-goal">Goal</Label><Input id="course-goal" placeholder="Build strength" value={goal} onChange={e => setGoal(e.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="course-difficulty">Difficulty</Label><select id="course-difficulty" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={difficulty} onChange={e => setDifficulty(e.target.value as typeof difficulty)}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
           </div>
+          <div className="space-y-2"><Label>Prerequisites (optional)</Label><Input placeholder="Equipment, experience or health requirements" value={prerequisites} onChange={e => setPrerequisites(e.target.value)} /></div>
+          <CourseProgramBuilder items={courseWorkouts} workouts={workouts} onChange={setCourseWorkouts} />
         </div>
 
         <DialogFooter>

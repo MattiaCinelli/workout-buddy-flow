@@ -5,7 +5,7 @@ import { useData } from '@/contexts/DataContext';
 import { format, subDays, isSameDay, parseISO, startOfToday, differenceInDays } from 'date-fns';
 
 const WorkoutStreak: React.FC = () => {
-  const { workouts } = useData();
+  const { sessions: workouts } = useData();
   
   const streakData = useMemo(() => {
     if (workouts.length === 0) {

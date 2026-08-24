@@ -137,7 +137,7 @@ const ExerciseManager: React.FC = () => {
         console.error('Failed to delete exercise:', error);
         toast({
           title: "Error",
-          description: "Failed to delete exercise. Please try again.",
+          description: error instanceof Error ? error.message : "Failed to delete exercise. Please try again.",
           variant: "destructive",
         });
       } finally {

@@ -48,6 +48,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
         {course.description && (
           <p className="text-sm text-muted-foreground mt-1">{course.description}</p>
         )}
+        <div className="flex flex-wrap gap-1 mt-2">
+          {course.difficulty && <Badge variant="secondary" className="capitalize">{course.difficulty}</Badge>}
+          {course.durationWeeks && <Badge variant="outline">{course.durationWeeks}w</Badge>}
+          {course.goal && <Badge variant="outline" className="max-w-full truncate">{course.goal}</Badge>}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -55,7 +60,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{completedCount}/{totalCount} workouts</span>
+              <span className="font-medium">{completedCount}/{totalCount} program days</span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>

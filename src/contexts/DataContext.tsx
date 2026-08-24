@@ -7,8 +7,15 @@ import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course, CourseWorkout } from '@/data/courses';
+import { WorkoutSession } from '@/data/workoutSessions';
+import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 
 interface DataContextType {
+  sessions: WorkoutSession[];
+  sessionsLoading: boolean;
+  sessionsError: string | null;
+  createSession: (data: Omit<WorkoutSession, 'id'>) => Promise<WorkoutSession>;
+  clearAllSessions: () => Promise<void>;
   // Exercises
   exercises: Exercise[];
   exercisesLoading: boolean;
@@ -51,7 +58,7 @@ interface DataContextType {
   deleteCourse: (id: string) => Promise<Course | null>;
   startCourse: (id: string) => Promise<Course | null>;
   restartCourse: (id: string) => Promise<Course | null>;
-  completeWorkoutInCourse: (courseId: string, workoutId: string) => Promise<Course | null>;
+  completeWorkoutInCourse: (courseId: string, courseItemId: string) => Promise<Course | null>;
   getNextWorkoutInCourse: (courseId: string) => CourseWorkout | null;
   getCourseById: (id: string) => Course | undefined;
   getCourseProgress: (courseId: string) => number;
@@ -64,13 +71,14 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, clearAllSessions } = useWorkoutSessions();
   const {
     exercises,
     isLoading: exercisesLoading,
     error: exercisesError,
     createExercise,
     updateExercise,
-    deleteExercise,
+    deleteExercise: deleteExerciseRaw,
     getExerciseById,
     refreshExercises
   } = useExercises();
@@ -81,7 +89,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error: workoutsError,
     createWorkout,
     updateWorkout,
-    deleteWorkout,
+    deleteWorkout: deleteWorkoutRaw,
     clearAllWorkouts,
     getWorkoutById,
     fetchWorkoutById,
@@ -116,7 +124,29 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshCourses
   } = useCourses();
 
+  const deleteExercise = async (id: string) => {
+    const templateReferences = workouts.reduce((count, workout) => count + workout.sets.filter(set => set.exerciseId === id).length, 0);
+    const historyReferences = sessions.reduce((count, session) => count + session.sets.filter(set => set.exerciseId === id).length, 0);
+    if (templateReferences || historyReferences) throw new Error(`This exercise is used by ${templateReferences} template set${templateReferences === 1 ? '' : 's'} and ${historyReferences} completed set${historyReferences === 1 ? '' : 's'}. Remove the template references and clear related history first.`);
+    return deleteExerciseRaw(id);
+  };
+
+  const deleteWorkout = async (id: string) => {
+    const scheduleReferences = scheduledWorkouts.filter(item => item.workoutId === id).length;
+    const courseReferences = courses.reduce((count, course) => count + course.workouts.filter(item => item.workoutId === id).length, 0);
+    const historyReferences = sessions.filter(session => session.workoutId === id).length;
+    if (scheduleReferences || courseReferences || historyReferences) {
+      throw new Error(`This workout is used by ${courseReferences} course item${courseReferences === 1 ? '' : 's'}, ${scheduleReferences} calendar item${scheduleReferences === 1 ? '' : 's'}, and ${historyReferences} completed session${historyReferences === 1 ? '' : 's'}. Remove those references first.`);
+    }
+    return deleteWorkoutRaw(id);
+  };
+
   const value: DataContextType = {
+    sessions,
+    sessionsLoading,
+    sessionsError,
+    createSession,
+    clearAllSessions,
     exercises,
     exercisesLoading,
     exercisesError,
@@ -161,7 +191,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getCourseProgress,
     refreshCourses,
     
-    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading
+    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading
   };
 
   return (

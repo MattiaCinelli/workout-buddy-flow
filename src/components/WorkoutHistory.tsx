@@ -1,11 +1,11 @@
 
 import React from 'react';
 import WorkoutCard from './WorkoutCard';
-import { WorkoutEntry } from '@/data/workoutHistory';
+import { WorkoutSession } from '@/data/workoutSessions';
 import { CalendarDays } from 'lucide-react';
 
 interface WorkoutHistoryProps {
-  workouts: WorkoutEntry[];
+  workouts: WorkoutSession[];
   showEmpty?: boolean;
 }
 

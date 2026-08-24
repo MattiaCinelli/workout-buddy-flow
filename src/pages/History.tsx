@@ -34,7 +34,7 @@ const HistoryPage: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   
-  const { workouts } = useData();
+  const { sessions: workouts } = useData();
 
   const filteredAndSortedWorkouts = useMemo(() => {
     let result = [...workouts];

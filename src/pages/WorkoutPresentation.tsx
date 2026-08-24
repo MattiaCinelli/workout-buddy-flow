@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Play, Pause, SkipForward, Timer, X } from 'lucide-react';
@@ -21,9 +21,12 @@ type WorkoutStep = {
 const WorkoutPresentation = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
-  const { workouts, exercises } = useData();
+  const { workouts, exercises, workoutsLoading, createSession, completeWorkoutInCourse } = useData();
+  const startedAt = useRef(Date.now());
+  const completionSaved = useRef(false);
   const [activeStep, setActiveStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -33,19 +36,57 @@ const WorkoutPresentation = () => {
   // Find the workout by ID
   const workout = workouts.find(w => w.id === id);
   
-  // If workout not found, redirect to details page
-  if (!workout) {
-    useEffect(() => {
+  useEffect(() => {
+    if (!workoutsLoading && !workout) {
       toast({
         title: "Workout not found",
         description: "The workout you're trying to start doesn't exist.",
         variant: "destructive"
       });
       navigate('/');
-    }, []);
-    
-    return null;
-  }
+    }
+  }, [workout, workoutsLoading, navigate, toast]);
+
+  const initializeStep = useCallback((index: number, steps: WorkoutStep[]) => {
+    if (index >= steps.length) return;
+    const step = steps[index];
+    setTimeLeft(step.duration || 0);
+  }, []);
+
+  const handleWorkoutComplete = useCallback(async () => {
+    if (!workout || completionSaved.current) return;
+    completionSaved.current = true;
+    const completedAt = new Date().toISOString();
+    const courseId = searchParams.get('courseId') || undefined;
+    const courseItemId = searchParams.get('courseItemId') || undefined;
+    await createSession({
+      workoutId: workout.id,
+      completedAt,
+      date: completedAt,
+      title: workout.title,
+      duration: Math.max(1, Math.round((Date.now() - startedAt.current) / 60000)),
+      plannedDuration: workout.duration,
+      category: workout.category,
+      sets: workout.sets,
+      notes: workout.notes,
+      courseId,
+      courseItemId,
+      scheduledWorkoutId: searchParams.get('scheduledWorkoutId') || undefined,
+    });
+    if (courseId && courseItemId) await completeWorkoutInCourse(courseId, courseItemId);
+    toast({ title: "Workout Complete!", description: "Great job! You've finished your workout." });
+    navigate(courseId ? `/courses/${courseId}` : `/workout/${id}`);
+  }, [workout, searchParams, createSession, completeWorkoutInCourse, toast, navigate, id]);
+
+  const handleNextStep = useCallback(() => {
+    const nextStepIndex = activeStep + 1;
+    if (nextStepIndex >= workoutSteps.length) {
+      void handleWorkoutComplete();
+      return;
+    }
+    setActiveStep(nextStepIndex);
+    initializeStep(nextStepIndex, workoutSteps);
+  }, [activeStep, workoutSteps, initializeStep, handleWorkoutComplete]);
 
   // Prepare workout steps on component mount
   useEffect(() => {
@@ -53,23 +94,13 @@ const WorkoutPresentation = () => {
     
     const steps: WorkoutStep[] = [];
     
-    // Group sets by exercise
-    const exerciseSets: Record<string, WorkoutSet[]> = {};
-    workout.sets.forEach(set => {
-      if (!exerciseSets[set.exerciseId]) {
-        exerciseSets[set.exerciseId] = [];
-      }
-      exerciseSets[set.exerciseId].push(set);
-    });
-    
-    // Convert to workout steps (exercise followed by rest)
-    Object.entries(exerciseSets).forEach(([exerciseId, sets], exerciseIndex) => {
-      sets.forEach((set, setIndex) => {
+    // Preserve the authored flat order so circuits and supersets remain interleaved.
+    workout.sets.forEach((set, setIndex) => {
         // Add exercise step
         steps.push({
           type: 'exercise',
           exerciseId: set.exerciseId,
-          setIndex,
+          setIndex: workout.sets.slice(0, setIndex + 1).filter(candidate => candidate.exerciseId === set.exerciseId).length - 1,
           reps: set.reps,
           weight: set.weight,
           duration: set.duration,
@@ -77,28 +108,18 @@ const WorkoutPresentation = () => {
         });
         
         // Add rest step after all sets except the last set of the last exercise
-        const isLastSet = setIndex === sets.length - 1;
-        const isLastExercise = exerciseIndex === Object.keys(exerciseSets).length - 1;
-        
-        if (!isLastSet) {
-          // Rest between sets (default to 60 seconds if not specified)
+        const nextSet = workout.sets[setIndex + 1];
+        if (nextSet) {
           steps.push({
             type: 'rest',
-            duration: set.restAfter || 60
-          });
-        } else if (!isLastExercise) {
-          // Rest between exercises (default to 90 seconds if not specified)
-          steps.push({
-            type: 'rest',
-            duration: workout.restBetweenExercises || 90
+            duration: set.restAfter ?? (nextSet.exerciseId === set.exerciseId ? 60 : (workout.restBetweenExercises ?? 90))
           });
         }
-      });
     });
     
     setWorkoutSteps(steps);
     initializeStep(0, steps);
-  }, [workout]);
+  }, [workout, initializeStep]);
   
   // Calculate total workout progress
   useEffect(() => {
@@ -123,48 +144,7 @@ const WorkoutPresentation = () => {
     }, 1000);
     
     return () => clearInterval(timer);
-  }, [timeLeft, isPaused]);
-  
-  // Initialize the current step
-  const initializeStep = useCallback((index: number, steps: WorkoutStep[]) => {
-    if (index >= steps.length) {
-      // Workout complete
-      return;
-    }
-    
-    const step = steps[index];
-    
-    if (step.type === 'rest' && step.duration) {
-      setTimeLeft(step.duration);
-    } else {
-      // For exercise steps, no timer unless it's a timed exercise
-      setTimeLeft(step.duration || 0);
-    }
-  }, []);
-  
-  // Handle proceeding to the next step
-  const handleNextStep = useCallback(() => {
-    const nextStepIndex = activeStep + 1;
-    
-    if (nextStepIndex >= workoutSteps.length) {
-      // Workout complete
-      handleWorkoutComplete();
-      return;
-    }
-    
-    setActiveStep(nextStepIndex);
-    initializeStep(nextStepIndex, workoutSteps);
-  }, [activeStep, workoutSteps, initializeStep]);
-  
-  // Handle workout completion
-  const handleWorkoutComplete = () => {
-    toast({
-      title: "Workout Complete!",
-      description: "Great job! You've finished your workout.",
-    });
-    
-    navigate(`/workout/${id}`);
-  };
+  }, [timeLeft, isPaused, handleNextStep]);
   
   // Handle play/pause toggle
   const togglePause = () => {
@@ -178,6 +158,8 @@ const WorkoutPresentation = () => {
   
   // Get current step details
   const currentStep = workoutSteps[activeStep];
+
+  if (!workout) return null;
   
   if (!currentStep) {
     return (

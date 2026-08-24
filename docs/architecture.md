@@ -17,7 +17,7 @@
         |  useData()
   DataContext (src/contexts)        single provider exposing all app state
         |
-  Hooks (src/hooks)                 useExercises / useWorkouts /
+  Hooks (src/hooks)                 useExercises / useWorkouts / useWorkoutSessions /
         |                           useScheduledWorkouts / useCourses
   DB helpers (src/lib/db.ts)        typed CRUD over IndexedDB
         |
@@ -33,7 +33,7 @@ Rules of thumb:
 
 ## The data layer (`src/lib/db.ts`)
 
-One IndexedDB database, `workout-buddy-db`, with four object stores, each keyed by `id`:
+One IndexedDB database, `workout-buddy-db`, with five object stores, each keyed by `id`:
 
 | Store | Type | Added in DB version |
 | --- | --- | --- |
@@ -41,18 +41,21 @@ One IndexedDB database, `workout-buddy-db`, with four object stores, each keyed 
 | `workouts` | `WorkoutEntry` | 1 |
 | `scheduledWorkouts` | `ScheduledWorkout` | 2 |
 | `courses` | `Course` | 3 |
+| `workoutSessions` | `WorkoutSession` | 4 |
 
 `getDB()` lazily opens the database once and memoises the promise. The `upgrade`
 callback creates any store that does not yet exist, so bumping `DB_VERSION` and adding
 another `if (!db.objectStoreNames.contains(...))` block is all that a new store needs —
-existing user data is never dropped.
+existing user data is never dropped. Course records from the earlier schema are
+normalized in `useCourses` with unique item IDs and week/day defaults when loaded.
 
-Every store has the same helper shape: `getAllXFromDB`, `getXByIdFromDB`, `saveXToDB`
-(an upsert via `put`), `deleteXFromDB`, and `bulkSaveXToDB`.
+DB helpers are intentionally small: collections expose the reads, upserts, deletes,
+bulk writes, or clears required by their hook. Writes use IndexedDB `put`, making them
+safe upserts by entity ID.
 
 ## State management (`src/contexts/DataContext.tsx`)
 
-`DataProvider` calls the four hooks once, near the root of the app, and republishes
+`DataProvider` calls the five domain hooks once, near the root of the app, and republishes
 their values on a single context. Consumers use:
 
 ```ts
@@ -62,23 +65,30 @@ const { workouts, createWorkout, isLoading } = useData();
 This means one shared copy of the data for the whole app: creating a workout in a modal
 is immediately visible on the dashboard, calendar and course pages.
 
+The context also enforces referential deletion rules. An exercise cannot be deleted
+while templates or completed sessions contain it, and a workout cannot be deleted
+while history, courses or calendar records reference it. This prevents dangling IDs.
+
 `useData()` throws if used outside the provider, which keeps mistakes loud.
 
 ## Domain hooks
 
 - **`useExercises`** — loads the library; if the store is empty it seeds it with
   `exerciseList` from `src/data/exercises.ts` so a fresh install is not blank.
-- **`useWorkouts`** — loads and keeps workouts sorted by date descending; also exposes
-  `clearAllWorkouts` (used by the "clear history" action) and `fetchWorkoutById` for
-  pages that want a value straight from the DB.
+- **`useWorkouts`** — owns reusable workout templates and exposes template CRUD plus
+  `fetchWorkoutById` for pages that need a fresh DB value.
+- **`useWorkoutSessions`** — owns completed-session snapshots. Guided mode writes one
+  session after the final step; history, streaks, goals and progress charts consume
+  this collection. `clearAllSessions` clears history without deleting templates.
 - **`useScheduledWorkouts`** — stores *rules*, not occurrences. A record has a
   `startDate`, `recurrence` (`none` / `daily` / `weekly`), optional `recurrenceDay` and
   optional `endRecurrenceDate`. `getScheduledWorkoutsForRange` / `...ForDate` expand
   those rules into `ExpandedScheduledWorkout` instances (each carrying a concrete
   `displayDate`) for the calendar to render. Nothing recurring is ever written per-day.
-- **`useCourses`** — a course holds `workouts: CourseWorkout[]` with `order` and
-  `completed`. `startCourse` stamps `startedAt`, `completeWorkoutInCourse` marks one
-  entry done (and stamps `completedAt` on the course when all are done),
+- **`useCourses`** — a course holds ordered workout/recovery items with unique IDs and
+  week/day placement. `startCourse` stamps `startedAt`; guided completion marks the
+  exact workout item, while recovery days are completed explicitly. The hook stamps
+  `completedAt` on the course when all items are done,
   `getNextWorkoutInCourse` returns the first uncompleted entry, and `restartCourse`
   clears all completion flags.
 
@@ -108,3 +118,18 @@ mode and have caused real bugs in this project — do not reintroduce them.
 
 Theme switching lives in `src/hooks/useTheme.ts` and `src/components/ThemeToggle.tsx`
 (toggles the `dark` class on the document root, persisted locally).
+
+## Completion flow
+
+```text
+Workout template / course item / calendar entry
+                    |
+                    v
+        Guided workout presentation
+                    |
+                    v
+        WorkoutSession written to IndexedDB
+          |                         |
+          v                         v
+ History, charts, streaks     Exact course item completed
+```

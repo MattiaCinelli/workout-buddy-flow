@@ -47,7 +47,7 @@ const Index = () => {
         {/* Main Dashboard Grid */}
         <div className="space-y-6">
           {/* Calendar Preview - Full Width */}
-          <CalendarPreview onStartWorkout={(id) => navigate(`/workout/${id}/present`)} />
+          <CalendarPreview onStartWorkout={(id) => navigate(`/workout/${id}/start`)} />
           
           {/* Today's Focus + Streak/Goal Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

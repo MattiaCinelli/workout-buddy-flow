@@ -260,7 +260,7 @@ const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({ isOpen, onClose, wo
       console.error('Failed to delete workout:', error);
       toast({
         title: "Error",
-        description: "Failed to delete workout. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to delete workout. Please try again.",
         variant: "destructive"
       });
     } finally {

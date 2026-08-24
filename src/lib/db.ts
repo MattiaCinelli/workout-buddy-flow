@@ -3,15 +3,17 @@ import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course } from '@/data/courses';
+import { WorkoutSession } from '@/data/workoutSessions';
 
 const DB_NAME = 'workout-buddy-db';
-const DB_VERSION = 3; // Bump version for courses store
+const DB_VERSION = 4;
 
 export interface WorkoutBuddyDB {
   exercises: Exercise;
   workouts: WorkoutEntry;
   scheduledWorkouts: ScheduledWorkout;
   courses: Course;
+  workoutSessions: WorkoutSession;
 }
 
 let dbPromise: Promise<IDBPDatabase<WorkoutBuddyDB>> | null = null;
@@ -35,6 +37,9 @@ export const getDB = () => {
         // Create courses store (added in v3)
         if (!db.objectStoreNames.contains('courses')) {
           db.createObjectStore('courses', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('workoutSessions')) {
+          db.createObjectStore('workoutSessions', { keyPath: 'id' });
         }
       },
     });
@@ -160,6 +165,21 @@ export const bulkSaveCoursesToDB = async (courses: Course[]): Promise<void> => {
     ...courses.map(course => tx.store.put(course)),
     tx.done
   ]);
+};
+
+export const getAllWorkoutSessionsFromDB = async (): Promise<WorkoutSession[]> => {
+  const db = await getDB();
+  return db.getAll('workoutSessions');
+};
+
+export const saveWorkoutSessionToDB = async (session: WorkoutSession): Promise<void> => {
+  const db = await getDB();
+  await db.put('workoutSessions', session);
+};
+
+export const deleteAllWorkoutSessionsFromDB = async (): Promise<void> => {
+  const db = await getDB();
+  await db.clear('workoutSessions');
 };
 
 // Initialize database with default data if empty

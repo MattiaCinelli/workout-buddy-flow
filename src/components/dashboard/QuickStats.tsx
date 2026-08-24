@@ -12,7 +12,7 @@ import {
 } from 'date-fns';
 
 const QuickStats: React.FC = () => {
-  const { workouts } = useData();
+  const { sessions: workouts } = useData();
   
   const today = startOfToday();
   const thisWeekStart = startOfWeek(today, { weekStartsOn: 1 });

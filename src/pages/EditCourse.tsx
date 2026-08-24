@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CourseWorkout } from '@/data/courses';
+import CourseProgramBuilder from '@/components/CourseProgramBuilder';
 import { toast } from 'sonner';
 
 const EditCourse = () => {
@@ -25,26 +26,24 @@ const EditCourse = () => {
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedWorkouts, setSelectedWorkouts] = useState<string[]>([]);
+  const [goal, setGoal] = useState('');
+  const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [prerequisites, setPrerequisites] = useState('');
+  const [programItems, setProgramItems] = useState<CourseWorkout[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (course) {
       setTitle(course.title);
       setDescription(course.description || '');
+      setGoal(course.goal || '');
+      setDifficulty(course.difficulty || 'beginner');
+      setPrerequisites(course.prerequisites || '');
       // Keep the order from the course
       const sorted = [...course.workouts].sort((a, b) => a.order - b.order);
-      setSelectedWorkouts(sorted.map(w => w.workoutId));
+      setProgramItems(sorted);
     }
   }, [course]);
-
-  const handleToggleWorkout = (workoutId: string) => {
-    setSelectedWorkouts(prev => 
-      prev.includes(workoutId)
-        ? prev.filter(id => id !== workoutId)
-        : [...prev, workoutId]
-    );
-  };
 
   const handleSave = async () => {
     if (!course) return;
@@ -53,32 +52,21 @@ const EditCourse = () => {
       toast.error('Please enter a course title');
       return;
     }
-    if (selectedWorkouts.length === 0) {
-      toast.error('Please select at least one workout');
+    if (!programItems.some(item => item.type === 'workout' && item.workoutId)) {
+      toast.error('Please add at least one workout session');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Preserve completion status for existing workouts
-      const existingCompletions = new Map<string, { completed: boolean; completedAt?: string }>(
-        course.workouts.map(w => [w.workoutId, { completed: w.completed, completedAt: w.completedAt }])
-      );
-
-      const courseWorkouts: CourseWorkout[] = selectedWorkouts.map((workoutId, index) => {
-        const existing = existingCompletions.get(workoutId);
-        return {
-          workoutId,
-          order: index + 1,
-          completed: existing?.completed || false,
-          completedAt: existing?.completedAt
-        };
-      });
-
       await updateCourse(course.id, {
         title: title.trim(),
         description: description.trim() || undefined,
-        workouts: courseWorkouts
+        goal: goal.trim() || undefined,
+        difficulty,
+        prerequisites: prerequisites.trim() || undefined,
+        durationWeeks: Math.max(...programItems.map(item => item.week), 1),
+        workouts: programItems
       });
 
       toast.success('Course updated successfully!');
@@ -120,7 +108,7 @@ const EditCourse = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
       
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6 max-w-2xl">
+      <main className="flex-1 container mx-auto py-6 px-4 md:px-6 max-w-3xl">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/courses/${course.id}`)}>
@@ -150,55 +138,12 @@ const EditCourse = () => {
               rows={3}
             />
           </div>
-
-          <div className="space-y-2">
-            <Label>Select Workouts ({selectedWorkouts.length} selected)</Label>
-            <p className="text-sm text-muted-foreground">
-              Click to select workouts. Order is based on selection order.
-            </p>
-            <ScrollArea className="h-[300px] border rounded-md p-2">
-              {workouts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No workouts available. Create some workouts first.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {workouts.map((workout) => {
-                    const orderIndex = selectedWorkouts.indexOf(workout.id);
-                    const isSelected = orderIndex !== -1;
-                    
-                    return (
-                      <div
-                        key={workout.id}
-                        className={`flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
-                          isSelected
-                            ? 'bg-primary/10 border-primary'
-                            : 'hover:bg-muted'
-                        }`}
-                        onClick={() => handleToggleWorkout(workout.id)}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleToggleWorkout(workout.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{workout.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {workout.category} • {workout.duration} min • {workout.sets.length} sets
-                          </p>
-                        </div>
-                        {isSelected && (
-                          <span className="text-sm font-medium text-primary">
-                            #{orderIndex + 1}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2"><Label>Goal</Label><Input value={goal} onChange={e => setGoal(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Difficulty</Label><select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={difficulty} onChange={e => setDifficulty(e.target.value as typeof difficulty)}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
           </div>
+          <div className="space-y-2"><Label>Prerequisites</Label><Input value={prerequisites} onChange={e => setPrerequisites(e.target.value)} /></div>
+          <CourseProgramBuilder items={programItems} workouts={workouts} onChange={setProgramItems} />
 
           <div className="flex gap-3">
             <Button 

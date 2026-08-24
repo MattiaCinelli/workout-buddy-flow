@@ -32,9 +32,10 @@ with all data stored on the device.
 | --- | --- |
 | **Exercise** | A single movement (Bench Press, Plank). Has a category, muscle groups, difficulty and optional image. |
 | **Set** | One block of work for an exercise inside a workout: reps + weight, or duration/distance, plus rest after. |
-| **Workout** | A named, ordered collection of sets. Doubles as both a *template* and a *history entry* (it has a date and duration). |
+| **Workout** | A reusable, named and ordered collection of planned sets. |
+| **Workout Session** | An immutable completion record created by guided mode, including actual elapsed time and optional course/calendar links. |
 | **Scheduled Workout** | A workout placed on a date/time in the calendar, optionally recurring daily or on a weekday. |
-| **Course** | An ordered list of workouts to be completed one at a time; each completion unlocks the next. |
+| **Course** | A week/day program of repeatable workout sessions and recovery days, with goals, difficulty, prerequisites and per-day instructions. |
 
 ## The main user journeys
 
@@ -46,16 +47,20 @@ Create Workout   ->  pick exercises, set sets x reps or duration, rest times
        |
        +--> Calendar  ->  schedule it on a day/time, optionally recurring
        |
-       +--> Courses   ->  chain several workouts into a progression
+       +--> Courses   ->  arrange repeatable workouts/recovery by week and day
+       |                   -> schedule the entire program from one start date
        |
        v
 Workout Detail   ->  review the plan, edit or delete it
        |
        v
-Start Workout    ->  full-screen guided run: exercise -> timer -> rest -> next
+Start Workout    ->  full-screen guided run preserving authored set order
        |
        v
-History / Progress -> filter past sessions, see streaks, charts, clear data
+Workout Session  ->  snapshot actual completion and elapsed time
+       |
+       v
+History / Progress -> filter completed sessions, see streaks/charts, clear history
 ```
 
 ## Non-goals
@@ -63,3 +68,4 @@ History / Progress -> filter past sessions, see streaks, charts, clear data
 - No multi-user features, sharing or social feed.
 - No server-side database or authentication.
 - No wearable / health-platform integration.
+- No built-in export, backup or cross-device synchronization yet.

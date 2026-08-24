@@ -50,7 +50,7 @@ const ProgressPage = () => {
   const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [timeRange, setTimeRange] = useState('3months');
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
-  const { workouts, workoutsLoading, exercises, clearAllWorkouts } = useData();
+  const { sessions: workouts, sessionsLoading: workoutsLoading, exercises, clearAllSessions: clearAllWorkouts } = useData();
 
   const dateRange = useMemo(() => {
     const end = new Date();

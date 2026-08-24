@@ -1,8 +1,8 @@
 # Workout Buddy
 
-An offline-first personal training app: build your own exercise library, compose
-workouts, plan them on a calendar, run them full-screen while you train, and follow
-multi-workout courses — all without an account, a server, or an internet connection.
+An offline-first personal training app for creating workouts and structured training
+programs, scheduling them, following guided sessions, and reviewing real completion
+history — without an account, server, or internet connection.
 
 Runs in the browser and packages into an installable Android app with Capacitor.
 
@@ -12,22 +12,36 @@ Runs in the browser and packages into an installable Android app with Capacitor.
   groups, difficulty and a photo from your device.
 - **Workout builder** — pick exercises and set sets × reps, weight, duration, distance
   and rest times, with sensible defaults per exercise type.
-- **Guided workout mode** — full-screen player that walks you through every set and
-  rest period with timers, pause/skip and a progress bar.
+- **Guided workout mode** — preserves authored circuit/superset order, walks through
+  sets and rest periods, and records an immutable session on completion.
 - **Calendar** — weekly and monthly views, scheduling with time slots and daily/weekly
   recurrence.
-- **Courses** — chain workouts into a progression; complete one to unlock the next,
-  restart at any time.
+- **Structured courses** — organize repeatable workouts and recovery days by week/day,
+  with goals, difficulty, prerequisites and per-session guidance.
+- **Course scheduling** — place every workout in a course onto the calendar from one
+  program start date.
 - **History & progress** — filterable session history, streaks, weekly goal and charts,
   plus a "clear all history" reset.
 - **Light & dark themes.**
 
 ## Quick start
 
+Requirements: **Node.js 22 LTS** (includes npm).
+
 ```sh
 npm install
 npm run dev
 ```
+
+Open the URL printed by Vite. Useful verification commands:
+
+```sh
+npm run lint
+npm run build
+npm run test:e2e
+```
+
+The first browser-test run may require `npx playwright install chromium`.
 
 ## Documentation
 
@@ -47,3 +61,12 @@ React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router · I
 
 There is no backend and no login. All data is stored in an IndexedDB database
 (`workout-buddy-db`) on the user's own device and never leaves it.
+
+This also means there is currently no cloud sync or built-in backup. Clearing site/app
+storage or uninstalling the Android app can remove locally stored data.
+
+## Scope
+
+Workout Buddy is designed for a person creating and following programs on one device.
+It does not currently provide trainer/client accounts, remote assignments, sharing,
+wearable integrations, or cross-device synchronization.
