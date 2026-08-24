@@ -1,73 +1,49 @@
-# Welcome to your Lovable project
+# Workout Buddy
 
-## Project info
+An offline-first personal training app: build your own exercise library, compose
+workouts, plan them on a calendar, run them full-screen while you train, and follow
+multi-workout courses — all without an account, a server, or an internet connection.
 
-**URL**: https://lovable.dev/projects/fc9f2f6d-331a-49a6-865e-e2ca097c16ff
+Runs in the browser and packages into an installable Android app with Capacitor.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Exercise library** — create, edit and delete exercises with category, muscle
+  groups, difficulty and a photo from your device.
+- **Workout builder** — pick exercises and set sets × reps, weight, duration, distance
+  and rest times, with sensible defaults per exercise type.
+- **Guided workout mode** — full-screen player that walks you through every set and
+  rest period with timers, pause/skip and a progress bar.
+- **Calendar** — weekly and monthly views, scheduling with time slots and daily/weekly
+  recurrence.
+- **Courses** — chain workouts into a progression; complete one to unlock the next,
+  restart at any time.
+- **History & progress** — filterable session history, streaks, weekly goal and charts,
+  plus a "clear all history" reset.
+- **Light & dark themes.**
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/fc9f2f6d-331a-49a6-865e-e2ca097c16ff) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Quick start
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Documentation
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Document | Contents |
+| --- | --- |
+| [docs/overview.md](docs/overview.md) | What the project is, the aims and ideas behind it, core concepts, user journeys |
+| [docs/architecture.md](docs/architecture.md) | Stack, layering, state management, routing, styling rules |
+| [docs/data-model.md](docs/data-model.md) | Every entity, field by field, and why it is shaped that way |
+| [docs/development.md](docs/development.md) | Project layout, how to add features, conventions, Android packaging |
 
-**Use GitHub Codespaces**
+## Tech stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router · IndexedDB
+(via `idb`) · date-fns · Recharts · Capacitor
 
-## What technologies are used for this project?
+## Data & privacy
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/fc9f2f6d-331a-49a6-865e-e2ca097c16ff) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+There is no backend and no login. All data is stored in an IndexedDB database
+(`workout-buddy-db`) on the user's own device and never leaves it.
