@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DataProvider } from "@/contexts/DataContext";
+import AutoSync from "@/components/AutoSync";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ExercisesPage from "./pages/Exercises";
@@ -23,6 +24,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <DataProvider>
+        <AutoSync />
         <Toaster />
         <Sonner />
         <BrowserRouter>

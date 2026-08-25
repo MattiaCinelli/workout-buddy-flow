@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
 import Navbar from '@/components/Navbar';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import WeeklyCalendar from '@/components/calendar/WeeklyCalendar';
 import MonthlyCalendar from '@/components/calendar/MonthlyCalendar';
 import ScheduleWorkoutModal from '@/components/calendar/ScheduleWorkoutModal';
@@ -11,7 +10,6 @@ import { useData } from '@/contexts/DataContext';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 
 const CalendarPage: React.FC = () => {
-  const [isCreateWorkoutModalOpen, setIsCreateWorkoutModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -50,7 +48,7 @@ const CalendarPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar onOpenCreateWorkout={() => setIsCreateWorkoutModalOpen(true)} />
+      <Navbar />
 
       <main className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
@@ -83,11 +81,6 @@ const CalendarPage: React.FC = () => {
           />
         )}
       </main>
-
-      <CreateWorkoutModal
-        isOpen={isCreateWorkoutModalOpen}
-        onClose={() => setIsCreateWorkoutModalOpen(false)}
-      />
 
       <ScheduleWorkoutModal
         isOpen={isScheduleModalOpen}

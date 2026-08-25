@@ -64,7 +64,7 @@ const WorkoutDetail = () => {
       case 'flexibility': return 'bg-workout-purple text-white';
       case 'balance': return 'bg-workout-yellow text-black';
       case 'mixed': return 'bg-workout-green text-white';
-      default: return 'bg-gray-200 text-gray-800';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -75,7 +75,7 @@ const WorkoutDetail = () => {
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => {}} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         <div className="mb-6">

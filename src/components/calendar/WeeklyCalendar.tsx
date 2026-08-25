@@ -1,5 +1,5 @@
 import React from 'react';
-import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
+import { format, startOfWeek, addDays, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -39,13 +39,13 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       case 'strength':
         return 'bg-workout-blue/20 border-workout-blue text-workout-blue';
       case 'cardio':
-        return 'bg-workout-orange/20 border-workout-orange text-workout-orange';
+        return 'bg-workout-red/20 border-workout-red text-workout-red';
       case 'flexibility':
         return 'bg-workout-green/20 border-workout-green text-workout-green';
       case 'balance':
         return 'bg-purple-500/20 border-purple-500 text-purple-600';
       default:
-        return 'bg-gray-200 border-gray-400 text-gray-600';
+        return 'bg-muted border-muted-foreground/40 text-muted-foreground';
     }
   };
 

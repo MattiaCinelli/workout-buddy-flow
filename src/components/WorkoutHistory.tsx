@@ -16,7 +16,7 @@ const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   if (workouts.length === 0 && showEmpty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-        <div className="bg-gray-100 rounded-full p-4 mb-4">
+        <div className="bg-muted rounded-full p-4 mb-4">
           <CalendarDays className="h-8 w-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-medium">No workout history</h3>

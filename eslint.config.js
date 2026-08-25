@@ -23,9 +23,10 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
-      "@typescript-eslint/no-unused-vars": "off",
-      // Compatibility guard for ESLint 9.x + the currently locked typescript-eslint.
-      "@typescript-eslint/no-unused-expressions": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },
+      ],
     },
   }
 );

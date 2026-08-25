@@ -23,6 +23,8 @@ export interface Course {
   createdAt: string;
   startedAt?: string; // When user started the course
   completedAt?: string; // When entire course was completed
+  updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
+  deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
 }
 
 export const defaultCourses: Course[] = [];

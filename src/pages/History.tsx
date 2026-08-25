@@ -19,7 +19,6 @@ import { CalendarIcon, Search, X, Filter, Dumbbell } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import WorkoutCard from '@/components/WorkoutCard';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +26,6 @@ type CategoryFilter = 'all' | 'strength' | 'cardio' | 'flexibility' | 'balance' 
 type SortOption = 'newest' | 'oldest' | 'duration-high' | 'duration-low';
 
 const HistoryPage: React.FC = () => {
-  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -107,7 +105,7 @@ const HistoryPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
@@ -262,13 +260,7 @@ const HistoryPage: React.FC = () => {
             ))}
           </div>
         )}
-      </main>
-
-      <CreateWorkoutModal 
-        isOpen={createWorkoutOpen}
-        onClose={() => setCreateWorkoutOpen(false)}
-      />
-    </div>
+      </main>    </div>
   );
 };
 

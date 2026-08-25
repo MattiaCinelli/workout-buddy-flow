@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import React from 'react';
+import { Loader2 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import CalendarPreview from '@/components/dashboard/CalendarPreview';
 import TodaysFocus from '@/components/dashboard/TodaysFocus';
 import WorkoutStreak from '@/components/dashboard/WorkoutStreak';
@@ -12,14 +10,13 @@ import QuickStats from '@/components/dashboard/QuickStats';
 import { useData } from '@/contexts/DataContext';
 
 const Index = () => {
-  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const navigate = useNavigate();
   const { isLoading } = useData();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -32,7 +29,7 @@ const Index = () => {
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
@@ -65,12 +62,7 @@ const Index = () => {
         </div>
       </main>
       
-      {/* Create Workout Modal */}
-      <CreateWorkoutModal 
-        isOpen={createWorkoutOpen}
-        onClose={() => setCreateWorkoutOpen(false)}
-      />
-    </div>
+      {/* Create Workout Modal */}    </div>
   );
 };
 

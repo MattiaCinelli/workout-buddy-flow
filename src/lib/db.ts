@@ -21,7 +21,7 @@ let dbPromise: Promise<IDBPDatabase<WorkoutBuddyDB>> | null = null;
 export const getDB = () => {
   if (!dbPromise) {
     dbPromise = openDB<WorkoutBuddyDB>(DB_NAME, DB_VERSION, {
-      upgrade(db, oldVersion) {
+      upgrade(db) {
         // Create exercises store
         if (!db.objectStoreNames.contains('exercises')) {
           db.createObjectStore('exercises', { keyPath: 'id' });

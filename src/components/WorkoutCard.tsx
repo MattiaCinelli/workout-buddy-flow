@@ -33,7 +33,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
       case 'flexibility': return 'bg-workout-purple text-white';
       case 'balance': return 'bg-workout-yellow text-black';
       case 'mixed': return 'bg-workout-green text-white';
-      default: return 'bg-gray-200 text-gray-800';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 

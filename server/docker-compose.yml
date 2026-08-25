@@ -1,0 +1,14 @@
+services:
+  workout-buddy-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+    volumes:
+      - workout-buddy-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  workout-buddy-data:

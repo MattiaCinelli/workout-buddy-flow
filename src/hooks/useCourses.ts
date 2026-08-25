@@ -1,166 +1,109 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Course, CourseWorkout } from '@/data/courses';
-import { 
-  getAllCoursesFromDB, 
-  saveCourseToDB, 
-  deleteCourseFromDB 
-} from '@/lib/db';
+import { getAllCoursesFromDB, saveCourseToDB, deleteCourseFromDB } from '@/lib/db';
+import { useIndexedDBCollection } from './useIndexedDBCollection';
+
+// Normalizes course records from earlier schema versions (unique item IDs,
+// week/day defaults) and keeps the list sorted newest-first.
+const normalizeAndSort = (courses: Course[]): Course[] => {
+  const normalized = courses.map(course => ({
+    ...course,
+    durationWeeks: course.durationWeeks || Math.max(1, ...course.workouts.map(item => item.week || 1)),
+    workouts: course.workouts.map((item, index) => ({
+      ...item,
+      id: item.id || crypto.randomUUID(),
+      type: item.type || 'workout',
+      week: item.week || 1,
+      day: item.day || Math.min(7, index + 1),
+    }))
+  } as Course));
+  return normalized.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+};
 
 export const useCourses = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load courses from IndexedDB
-  const loadCourses = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const storedCourses = await getAllCoursesFromDB();
-      const dbCourses = storedCourses.map(course => ({
-        ...course,
-        durationWeeks: course.durationWeeks || Math.max(1, ...course.workouts.map(item => item.week || 1)),
-        workouts: course.workouts.map((item, index) => ({
-          ...item,
-          id: item.id || crypto.randomUUID(),
-          type: item.type || 'workout',
-          week: item.week || 1,
-          day: item.day || Math.min(7, index + 1),
-        }))
-      } as Course));
-      // Sort by creation date descending
-      dbCourses.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setCourses(dbCourses);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to load courses:', err);
-      setError('Failed to load courses');
-      setCourses([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadCourses();
-  }, [loadCourses]);
-
-  // Create a new course
-  const createCourse = useCallback(async (courseData: Omit<Course, 'id' | 'createdAt'>): Promise<Course> => {
-    const newCourse: Course = {
-      ...courseData,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString()
-    };
-    
-    await saveCourseToDB(newCourse);
-    setCourses(prev => [newCourse, ...prev]);
-    
-    return newCourse;
-  }, []);
-
-  // Update an existing course
-  const updateCourse = useCallback(async (id: string, updates: Partial<Course>): Promise<Course | null> => {
-    const existingCourse = courses.find(c => c.id === id);
-    if (!existingCourse) return null;
-    
-    const updatedCourse: Course = { ...existingCourse, ...updates };
-    await saveCourseToDB(updatedCourse);
-    setCourses(prev => prev.map(c => c.id === id ? updatedCourse : c));
-    
-    return updatedCourse;
-  }, [courses]);
-
-  // Delete a course
-  const deleteCourse = useCallback(async (id: string): Promise<Course | null> => {
-    const courseToDelete = courses.find(c => c.id === id);
-    if (!courseToDelete) return null;
-    
-    await deleteCourseFromDB(id);
-    setCourses(prev => prev.filter(c => c.id !== id));
-    
-    return courseToDelete;
-  }, [courses]);
+  const { items, isLoading, error, load, create, update, remove, getById } =
+    useIndexedDBCollection<Course, 'createdAt'>({
+      getAll: getAllCoursesFromDB,
+      save: saveCourseToDB,
+      remove: deleteCourseFromDB,
+      errorMessage: 'Failed to load courses',
+      transform: normalizeAndSort,
+      stamp: () => ({ createdAt: new Date().toISOString() })
+    });
 
   // Start a course (set startedAt)
   const startCourse = useCallback(async (id: string): Promise<Course | null> => {
-    return updateCourse(id, { startedAt: new Date().toISOString() });
-  }, [updateCourse]);
+    return update(id, { startedAt: new Date().toISOString() });
+  }, [update]);
 
   // Restart a course (reset all workout completions)
   const restartCourse = useCallback(async (id: string): Promise<Course | null> => {
-    const course = courses.find(c => c.id === id);
+    const course = items.find(c => c.id === id);
     if (!course) return null;
-    
+
     const resetWorkouts = course.workouts.map(w => ({
       ...w,
       completed: false,
       completedAt: undefined
     }));
-    
-    return updateCourse(id, { 
-      workouts: resetWorkouts, 
+
+    return update(id, {
+      workouts: resetWorkouts,
       startedAt: new Date().toISOString(),
-      completedAt: undefined 
+      completedAt: undefined
     });
-  }, [courses, updateCourse]);
+  }, [items, update]);
 
   // Complete a workout in a course
   const completeWorkoutInCourse = useCallback(async (courseId: string, courseItemId: string): Promise<Course | null> => {
-    const course = courses.find(c => c.id === courseId);
+    const course = items.find(c => c.id === courseId);
     if (!course) return null;
-    
-    const updatedWorkouts = course.workouts.map(w => 
+
+    const updatedWorkouts = course.workouts.map(w =>
       w.id === courseItemId
         ? { ...w, completed: true, completedAt: new Date().toISOString() }
         : w
     );
-    
-    // Check if all workouts are completed
+
     const allCompleted = updatedWorkouts.every(w => w.completed);
-    
-    return updateCourse(courseId, { 
+
+    return update(courseId, {
       workouts: updatedWorkouts,
       completedAt: allCompleted ? new Date().toISOString() : undefined
     });
-  }, [courses, updateCourse]);
+  }, [items, update]);
 
   // Get the next workout in a course
   const getNextWorkoutInCourse = useCallback((courseId: string): CourseWorkout | null => {
-    const course = courses.find(c => c.id === courseId);
+    const course = items.find(c => c.id === courseId);
     if (!course) return null;
-    
-    // Find the first incomplete workout (sorted by order)
+
     const sortedWorkouts = [...course.workouts].sort((a, b) => a.order - b.order);
     return sortedWorkouts.find(w => !w.completed) || null;
-  }, [courses]);
-
-  // Get course by ID
-  const getCourseById = useCallback((id: string): Course | undefined => {
-    return courses.find(c => c.id === id);
-  }, [courses]);
+  }, [items]);
 
   // Get course progress (percentage)
   const getCourseProgress = useCallback((courseId: string): number => {
-    const course = courses.find(c => c.id === courseId);
+    const course = items.find(c => c.id === courseId);
     if (!course || course.workouts.length === 0) return 0;
-    
+
     const completedCount = course.workouts.filter(w => w.completed).length;
     return Math.round((completedCount / course.workouts.length) * 100);
-  }, [courses]);
+  }, [items]);
 
   return {
-    courses,
+    courses: items,
     isLoading,
     error,
-    createCourse,
-    updateCourse,
-    deleteCourse,
+    createCourse: create,
+    updateCourse: update,
+    deleteCourse: remove,
     startCourse,
     restartCourse,
     completeWorkoutInCourse,
     getNextWorkoutInCourse,
-    getCourseById,
+    getCourseById: getById,
     getCourseProgress,
-    refreshCourses: loadCourses
+    refreshCourses: load
   };
 };

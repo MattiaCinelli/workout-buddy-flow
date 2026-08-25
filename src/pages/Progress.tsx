@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2, Download, Upload } from "lucide-react";
+import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2, Download, Upload, RefreshCw } from "lucide-react";
 import Navbar from '@/components/Navbar';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
+import SyncSettingsModal from '@/components/SyncSettingsModal';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,22 +40,21 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Legend,
   AreaChart,
   Area,
 } from 'recharts';
-import { format, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
+import { format, parseISO, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
 import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
 import { scheduleWorkoutReminders } from '@/lib/notifications';
 
 const ProgressPage = () => {
-  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [timeRange, setTimeRange] = useState('3months');
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const [syncSettingsOpen, setSyncSettingsOpen] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<WorkoutBuddyBackup | null>(null);
   const backupInput = useRef<HTMLInputElement>(null);
-  const { sessions: workouts, sessionsLoading: workoutsLoading, exercises, clearAllSessions: clearAllWorkouts } = useData();
+  const { sessions: workouts, sessionsLoading: workoutsLoading, clearAllSessions: clearAllWorkouts } = useData();
 
   const dateRange = useMemo(() => {
     const end = new Date();
@@ -155,7 +154,7 @@ const ProgressPage = () => {
   if (workoutsLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -168,7 +167,7 @@ const ProgressPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
@@ -207,7 +206,10 @@ const ProgressPage = () => {
                 <DropdownMenuItem onClick={() => backupInput.current?.click()}>
                   <Upload className="h-4 w-4 mr-2" />Restore Backup
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem onClick={() => setSyncSettingsOpen(true)}>
+                  <RefreshCw className="h-4 w-4 mr-2" />Self-Hosted Sync
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={() => setClearHistoryOpen(true)}
                 >
@@ -392,13 +394,7 @@ const ProgressPage = () => {
             </CardContent>
           </Card>
         )}
-      </main>
-      
-      <CreateWorkoutModal 
-        isOpen={createWorkoutOpen}
-        onClose={() => setCreateWorkoutOpen(false)}
-      />
-      
+      </main>      
       <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -437,6 +433,7 @@ const ProgressPage = () => {
           }}>Restore and replace</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <SyncSettingsModal isOpen={syncSettingsOpen} onClose={() => setSyncSettingsOpen(false)} />
     </div>
   );
 };

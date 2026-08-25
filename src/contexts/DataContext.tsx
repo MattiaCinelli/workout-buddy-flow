@@ -10,6 +10,7 @@ import { Course, CourseWorkout } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
+import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
 
 interface DataContextType {
   sessions: WorkoutSession[];
@@ -17,6 +18,7 @@ interface DataContextType {
   sessionsError: string | null;
   createSession: (data: Omit<WorkoutSession, 'id'>) => Promise<WorkoutSession>;
   clearAllSessions: () => Promise<void>;
+  refreshSessions: () => Promise<void>;
   // Exercises
   exercises: Exercise[];
   exercisesLoading: boolean;
@@ -72,7 +74,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, clearAllSessions } = useWorkoutSessions();
+  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, clearAllSessions, refreshSessions } = useWorkoutSessions();
   const {
     exercises,
     isLoading: exercisesLoading,
@@ -126,19 +128,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   } = useCourses();
 
   const deleteExercise = async (id: string) => {
-    const templateReferences = workouts.reduce((count, workout) => count + workout.sets.filter(set => set.exerciseId === id).length, 0);
-    const historyReferences = sessions.reduce((count, session) => count + session.sets.filter(set => set.exerciseId === id).length, 0);
-    if (templateReferences || historyReferences) throw new Error(`This exercise is used by ${templateReferences} template set${templateReferences === 1 ? '' : 's'} and ${historyReferences} completed set${historyReferences === 1 ? '' : 's'}. Remove the template references and clear related history first.`);
+    const { blocked, reason } = checkExerciseDeletion(id, workouts, sessions);
+    if (blocked) throw new Error(reason);
     return deleteExerciseRaw(id);
   };
 
   const deleteWorkout = async (id: string) => {
-    const scheduleReferences = scheduledWorkouts.filter(item => item.workoutId === id).length;
-    const courseReferences = courses.reduce((count, course) => count + course.workouts.filter(item => item.workoutId === id).length, 0);
-    const historyReferences = sessions.filter(session => session.workoutId === id).length;
-    if (scheduleReferences || courseReferences || historyReferences) {
-      throw new Error(`This workout is used by ${courseReferences} course item${courseReferences === 1 ? '' : 's'}, ${scheduleReferences} calendar item${scheduleReferences === 1 ? '' : 's'}, and ${historyReferences} completed session${historyReferences === 1 ? '' : 's'}. Remove those references first.`);
-    }
+    const { blocked, reason } = checkWorkoutDeletion(id, scheduledWorkouts, courses, sessions);
+    if (blocked) throw new Error(reason);
     return deleteWorkoutRaw(id);
   };
 
@@ -175,6 +172,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sessionsError,
     createSession,
     clearAllSessions,
+    refreshSessions,
     exercises,
     exercisesLoading,
     exercisesError,

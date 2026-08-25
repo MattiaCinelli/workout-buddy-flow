@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Save, GripVertical, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
 import { CourseWorkout } from '@/data/courses';
 import CourseProgramBuilder from '@/components/CourseProgramBuilder';
 import { toast } from 'sonner';
@@ -18,9 +14,8 @@ import { toast } from 'sonner';
 const EditCourse = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
-  
-  const { getCourseById, updateCourse, workouts, coursesLoading, getWorkoutById } = useData();
+
+  const { getCourseById, updateCourse, workouts, coursesLoading } = useData();
   
   const course = id ? getCourseById(id) : undefined;
   
@@ -82,7 +77,7 @@ const EditCourse = () => {
   if (coursesLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -93,7 +88,7 @@ const EditCourse = () => {
   if (!course) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-xl font-semibold mb-2">Course not found</h2>
@@ -106,7 +101,7 @@ const EditCourse = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6 max-w-3xl">
         {/* Header */}
@@ -163,13 +158,7 @@ const EditCourse = () => {
             </Button>
           </div>
         </div>
-      </main>
-      
-      <CreateWorkoutModal 
-        isOpen={createWorkoutOpen}
-        onClose={() => setCreateWorkoutOpen(false)}
-      />
-    </div>
+      </main>    </div>
   );
 };
 

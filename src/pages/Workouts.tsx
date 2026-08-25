@@ -30,7 +30,7 @@ const WorkoutsPage = () => {
   if (workoutsLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -43,7 +43,7 @@ const WorkoutsPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}

@@ -13,6 +13,8 @@ export interface ScheduledWorkout {
   endRecurrenceDate?: string; // Optional end date for recurring events
   notes?: string;
   createdAt: string;
+  updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
+  deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
 }
 
 export const weekDays: WeekDay[] = [

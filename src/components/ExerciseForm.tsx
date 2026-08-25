@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -42,6 +43,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   isSubmitting = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,20 +66,31 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     });
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // Check file size (max 5MB for IndexedDB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        form.setValue('imageUrl', reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Check file size (max 5MB for IndexedDB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    setIsProcessingImage(true);
+    try {
+      // GIFs go through as-is so animation is preserved; canvas resizing
+      // would flatten them to a single frame. Static images are downscaled
+      // so a full-resolution phone photo isn't stored verbatim for what
+      // only ever renders as a thumbnail.
+      const dataUrl = file.type === 'image/gif'
+        ? await readFileAsDataUrl(file)
+        : await resizeImageToDataUrl(file);
+      form.setValue('imageUrl', dataUrl);
+    } catch (error) {
+      console.error('Failed to process image:', error);
+      alert('Could not read that image. Try a different file.');
+    } finally {
+      setIsProcessingImage(false);
     }
   };
 
@@ -187,10 +200,14 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="w-full"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isProcessingImage}
             >
-              <FileImage className="h-4 w-4 mr-2" />
-              Choose Image
+              {isProcessingImage ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileImage className="h-4 w-4 mr-2" />
+              )}
+              {isProcessingImage ? 'Processing…' : 'Choose Image'}
             </Button>
             <input
               type="file"

@@ -14,20 +14,20 @@ interface ExerciseItemProps {
 const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit }) => {
   const getCategoryColor = () => {
     switch (exercise.category) {
-      case 'strength': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-      case 'cardio': return 'bg-red-100 text-red-800 hover:bg-red-200';
-      case 'flexibility': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
-      case 'balance': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
+      case 'strength': return 'bg-workout-blue text-white hover:bg-workout-blue/90';
+      case 'cardio': return 'bg-workout-red text-white hover:bg-workout-red/90';
+      case 'flexibility': return 'bg-workout-purple text-white hover:bg-workout-purple/90';
+      case 'balance': return 'bg-workout-yellow text-black hover:bg-workout-yellow/90';
+      default: return 'bg-muted text-muted-foreground hover:bg-muted/80';
     }
   };
-  
+
   const getDifficultyColor = () => {
     switch (exercise.difficulty) {
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'beginner': return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
+      case 'intermediate': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
+      case 'advanced': return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -44,7 +44,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
       <div className="flex justify-between items-start">
         <div className="flex gap-3">
           {exercise.imageUrl ? (
-            <div className="w-16 h-16 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+            <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
               <img 
                 src={exercise.imageUrl} 
                 alt={exercise.name} 
@@ -55,8 +55,8 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
               />
             </div>
           ) : (
-            <div className="w-16 h-16 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-              <Image className="h-8 w-8 text-gray-400" />
+            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+              <Image className="h-8 w-8 text-muted-foreground" />
             </div>
           )}
           

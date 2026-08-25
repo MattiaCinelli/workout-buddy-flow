@@ -8,7 +8,6 @@ import {
   addDays,
   addMonths,
   isSameMonth,
-  isSameDay,
   isToday,
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -51,13 +50,13 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
       case 'strength':
         return 'bg-workout-blue';
       case 'cardio':
-        return 'bg-workout-orange';
+        return 'bg-workout-red';
       case 'flexibility':
         return 'bg-workout-green';
       case 'balance':
         return 'bg-purple-500';
       default:
-        return 'bg-gray-400';
+        return 'bg-muted-foreground';
     }
   };
 

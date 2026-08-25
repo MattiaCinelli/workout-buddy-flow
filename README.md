@@ -2,7 +2,9 @@
 
 An offline-first personal training app for creating workouts and structured training
 programs, scheduling them, following guided sessions, and reviewing real completion
-history — without an account, server, or internet connection.
+history — without requiring an account, server, or internet connection. An optional,
+self-hosted sync server (see below) lets it work across more than one device without
+depending on any third-party cloud.
 
 Runs in the browser and packages into an installable Android app with Capacitor.
 
@@ -55,22 +57,35 @@ The first browser-test run may require `npx playwright install chromium`.
 | [docs/architecture.md](docs/architecture.md) | Stack, layering, state management, routing, styling rules |
 | [docs/data-model.md](docs/data-model.md) | Every entity, field by field, and why it is shaped that way |
 | [docs/development.md](docs/development.md) | Project layout, how to add features, conventions, Android packaging |
+| [docs/self-hosted-sync.md](docs/self-hosted-sync.md) | Optional self-hosted sync server: status, design decisions, schema, deployment |
 
 ## Tech stack
 
-React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · React Router · IndexedDB
-(via `idb`) · date-fns · Recharts · Capacitor
+**App** (`src/`): React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · React
+Router · IndexedDB (via `idb`) · date-fns · Recharts · Capacitor
+
+**Sync server** (`server/`, optional): Node.js · TypeScript · better-sqlite3 ·
+Fastify — see [docs/self-hosted-sync.md](docs/self-hosted-sync.md).
 
 ## Data & privacy
 
-There is no backend and no login. All data is stored in an IndexedDB database
-(`workout-buddy-db`) on the user's own device and never leaves it.
+By default there is no backend and no login. All data is stored in an IndexedDB
+database (`workout-buddy-db`) on the user's own device and never leaves it. Clearing
+site/app storage or uninstalling the Android app can remove locally stored data —
+manual JSON backup/restore (Progress settings) is the safety net.
 
-This also means there is currently no cloud sync or built-in backup. Clearing site/app
-storage or uninstalling the Android app can remove locally stored data.
+A self-hosted sync server (`server/` — see
+[docs/self-hosted-sync.md](docs/self-hosted-sync.md)) is available for anyone who wants
+their library on more than one device, syncing automatically in the background. It is
+opt-in, and it is *self*-hosted: no third-party cloud provider, no vendor account, no
+tracking. Accounts on it are admin-created only — there is no public signup — and it
+runs as an OCI container (built and run with Podman; the `Dockerfile` works with Docker
+too) anywhere that can host one — a home server, a NAS, a Raspberry Pi, a small VPS —
+never a managed cloud platform.
 
 ## Scope
 
-Workout Buddy is designed for a person creating and following programs on one device.
-It does not currently provide trainer/client accounts, remote assignments, sharing,
-wearable integrations, or cross-device synchronization.
+Workout Buddy is designed for a person creating and following programs, optionally
+across their own devices via self-hosted sync. It does not provide trainer/client
+accounts, remote assignments, sharing between unrelated users, or wearable
+integrations.

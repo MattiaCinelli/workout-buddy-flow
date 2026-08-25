@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, BookOpen, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import CreateCourseModal from '@/components/CreateCourseModal';
 import CourseCard from '@/components/CourseCard';
 import { useData } from '@/contexts/DataContext';
@@ -10,7 +9,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 const CoursesPage = () => {
-  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [createCourseOpen, setCreateCourseOpen] = useState(false);
   
   const { courses, coursesLoading, startCourse, restartCourse } = useData();
@@ -28,7 +26,7 @@ const CoursesPage = () => {
   if (coursesLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
@@ -41,7 +39,7 @@ const CoursesPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
@@ -87,13 +85,7 @@ const CoursesPage = () => {
             </CardContent>
           </Card>
         )}
-      </main>
-      
-      <CreateWorkoutModal 
-        isOpen={createWorkoutOpen}
-        onClose={() => setCreateWorkoutOpen(false)}
-      />
-      
+      </main>      
       <CreateCourseModal 
         isOpen={createCourseOpen}
         onClose={() => setCreateCourseOpen(false)}

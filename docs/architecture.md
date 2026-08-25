@@ -119,6 +119,18 @@ mode and have caused real bugs in this project — do not reintroduce them.
 Theme switching lives in `src/hooks/useTheme.ts` and `src/components/ThemeToggle.tsx`
 (toggles the `dark` class on the document root, persisted locally).
 
+## Self-hosted sync (optional, in progress)
+
+`server/` is a separate Node.js/TypeScript project — its own `package.json`, not part
+of the Vite build — implementing an opt-in sync backend. It does not change anything
+described above: the app's default data layer is still IndexedDB via `src/lib/db.ts`,
+and the app works fully offline whether or not a sync server exists.
+
+Full design rationale, schema, and build status live in
+`docs/self-hosted-sync.md`. Summary: SQLite (`server/src/db`), admin-created accounts
+only, opaque session tokens, and a pull-since-timestamp/push sync protocol with
+last-write-wins conflict resolution per record.
+
 ## Completion flow
 
 ```text

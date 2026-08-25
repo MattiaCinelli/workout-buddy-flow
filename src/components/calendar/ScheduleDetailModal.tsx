@@ -55,13 +55,13 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
       case 'strength':
         return 'bg-workout-blue/20 text-workout-blue border-workout-blue';
       case 'cardio':
-        return 'bg-workout-orange/20 text-workout-orange border-workout-orange';
+        return 'bg-workout-red/20 text-workout-red border-workout-red';
       case 'flexibility':
         return 'bg-workout-green/20 text-workout-green border-workout-green';
       case 'balance':
         return 'bg-purple-500/20 text-purple-600 border-purple-500';
       default:
-        return 'bg-gray-200 text-gray-600 border-gray-400';
+        return 'bg-muted text-muted-foreground border-muted-foreground/40';
     }
   };
 

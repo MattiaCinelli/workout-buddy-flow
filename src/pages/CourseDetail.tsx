@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Play, RotateCcw, CheckCircle2, Circle, Pencil, Trash2, Calendar } from 'lucide-react';
+import { Loader2, ArrowLeft, Play, RotateCcw, CheckCircle2, Pencil, Trash2, Calendar } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -24,7 +23,6 @@ import CourseScheduleModal from '@/components/CourseScheduleModal';
 const CourseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [restartDialogOpen, setRestartDialogOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
@@ -50,7 +48,7 @@ const CourseDetail = () => {
   if (coursesLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -61,7 +59,7 @@ const CourseDetail = () => {
   if (!course) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-xl font-semibold mb-2">Course not found</h2>
@@ -98,7 +96,7 @@ const CourseDetail = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar onOpenCreateWorkout={() => setCreateWorkoutOpen(true)} />
+      <Navbar />
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
@@ -256,13 +254,7 @@ const CourseDetail = () => {
             );
           })}
         </div>
-      </main>
-      
-      <CreateWorkoutModal 
-        isOpen={createWorkoutOpen}
-        onClose={() => setCreateWorkoutOpen(false)}
-      />
-      <CourseScheduleModal course={course} open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen} />
+      </main>      <CourseScheduleModal course={course} open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen} />
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

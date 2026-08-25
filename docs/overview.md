@@ -12,9 +12,12 @@ with all data stored on the device.
 
 ## Aims and ideas behind the project
 
-1. **No account, no cloud, no tracking.** There is no login and no server. Everything
-   the user creates lives in the browser/WebView database (IndexedDB) on their own
-   device. The app works with the plane in airplane mode.
+1. **Local-first by default; no third-party cloud, ever.** Out of the box there is no
+   login and no server — everything lives in the browser/WebView database (IndexedDB)
+   on the user's own device, and the app works in airplane mode. An *optional*
+   self-hosted sync server (see `docs/self-hosted-sync.md`) lets someone use their own
+   library across their own devices, but it is infrastructure they run and control
+   themselves — never a vendor's cloud, never third-party tracking.
 2. **The user owns the content.** Instead of a fixed catalogue, the user creates and
    edits exercises (including photos taken from their phone), and composes them into
    workouts with their own sets, reps, durations and rest times.
@@ -68,8 +71,11 @@ History / Progress -> filter completed sessions, see streaks/charts, clear histo
 
 ## Non-goals
 
-- No multi-user features, sharing or social feed.
-- No server-side database or authentication.
+- No social feed, sharing between unrelated users, or trainer/client relationships.
+- No third-party cloud provider or vendor lock-in — self-hosted sync (in progress; see
+  `docs/self-hosted-sync.md`) is deliberately Docker + SQLite, deployable to anything
+  from a Raspberry Pi to a small VPS, with no managed-cloud APIs involved.
 - No wearable / health-platform integration.
-- No automatic cloud backup or cross-device synchronization. Manual JSON backup and
-  restore are available from Progress settings.
+- No public account self-signup on the sync server — accounts are admin-created only.
+- Manual JSON backup and restore remain available from Progress settings regardless of
+  whether sync is set up; they're the simplest path and require no server at all.

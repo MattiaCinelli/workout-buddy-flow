@@ -30,6 +30,20 @@ npx playwright install chromium
 End-to-end tests live in `e2e/`. The configuration starts Vite automatically on
 `127.0.0.1:4173` and uses a fresh browser context for each test.
 
+## Working on the sync server
+
+`server/` has its own `package.json` and test suite, independent of the app above:
+
+```sh
+cd server
+npm install
+npm test           # node:test via tsx
+npx tsc --noEmit
+```
+
+See `docs/self-hosted-sync.md` for what's built so far, what's next, and the design
+decisions behind it.
+
 ## Project layout
 
 ```text
@@ -44,6 +58,9 @@ src/
   data/          TypeScript types and seed data
   lib/db.ts      IndexedDB access helpers
   index.css      design tokens (colours, radii, dark theme)
+
+server/          optional self-hosted sync backend — separate package.json,
+                 not part of the Vite build. See docs/self-hosted-sync.md.
 ```
 
 ## How to add a feature

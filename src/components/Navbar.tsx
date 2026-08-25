@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Plus, Home, Menu, X, Library, Calendar, History, ListChecks, TrendingUp, BookOpen } from "lucide-react";
+import { Dumbbell, Home, Menu, X, Library, Calendar, History, ListChecks, TrendingUp, BookOpen } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-interface NavbarProps {
-  onOpenCreateWorkout: () => void;
-}
-
-const Navbar: React.FC<NavbarProps> = ({ onOpenCreateWorkout }) => {
+const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();

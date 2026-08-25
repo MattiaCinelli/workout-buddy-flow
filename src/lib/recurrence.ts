@@ -1,0 +1,67 @@
+import { addDays, isAfter, isBefore, isSameDay, parseISO, format } from 'date-fns';
+import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
+
+export interface ExpandedScheduledWorkout extends ScheduledWorkout {
+  displayDate: string; // The actual date this instance appears on
+}
+
+// Expands recurrence rules ('none' / 'daily' / 'weekly') into concrete dated
+// instances that fall within [startDate, endDate]. Nothing recurring is ever
+// written per-day to the DB; this is purely a read-time projection.
+export const expandScheduledWorkouts = (
+  scheduledWorkouts: ScheduledWorkout[],
+  startDate: Date,
+  endDate: Date
+): ExpandedScheduledWorkout[] => {
+  const expanded: ExpandedScheduledWorkout[] = [];
+
+  scheduledWorkouts.forEach(sw => {
+    const scheduleStartDate = parseISO(sw.startDate);
+    const scheduleEndDate = sw.endRecurrenceDate ? parseISO(sw.endRecurrenceDate) : null;
+
+    if (sw.recurrence === 'none') {
+      if (
+        (isSameDay(scheduleStartDate, startDate) || isAfter(scheduleStartDate, startDate)) &&
+        (isSameDay(scheduleStartDate, endDate) || isBefore(scheduleStartDate, endDate))
+      ) {
+        expanded.push({ ...sw, displayDate: sw.startDate });
+      }
+    } else if (sw.recurrence === 'daily') {
+      let currentDate = isBefore(scheduleStartDate, startDate) ? startDate : scheduleStartDate;
+
+      while (isBefore(currentDate, endDate) || isSameDay(currentDate, endDate)) {
+        if (scheduleEndDate && isAfter(currentDate, scheduleEndDate)) break;
+
+        if (isSameDay(currentDate, scheduleStartDate) || isAfter(currentDate, scheduleStartDate)) {
+          expanded.push({ ...sw, displayDate: format(currentDate, 'yyyy-MM-dd') });
+        }
+
+        currentDate = addDays(currentDate, 1);
+      }
+    } else if (sw.recurrence === 'weekly' && sw.recurrenceDay) {
+      let currentDate = isBefore(scheduleStartDate, startDate) ? startDate : scheduleStartDate;
+
+      while (isBefore(currentDate, endDate) || isSameDay(currentDate, endDate)) {
+        if (scheduleEndDate && isAfter(currentDate, scheduleEndDate)) break;
+
+        const dayOfWeek = getDayOfWeek(currentDate);
+        if (
+          dayOfWeek === sw.recurrenceDay &&
+          (isSameDay(currentDate, scheduleStartDate) || isAfter(currentDate, scheduleStartDate))
+        ) {
+          expanded.push({ ...sw, displayDate: format(currentDate, 'yyyy-MM-dd') });
+        }
+
+        currentDate = addDays(currentDate, 1);
+      }
+    }
+  });
+
+  expanded.sort((a, b) => {
+    const dateCompare = a.displayDate.localeCompare(b.displayDate);
+    if (dateCompare !== 0) return dateCompare;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
+  return expanded;
+};

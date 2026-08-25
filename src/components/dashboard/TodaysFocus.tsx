@@ -1,7 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Play, Clock, Dumbbell, Zap, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
