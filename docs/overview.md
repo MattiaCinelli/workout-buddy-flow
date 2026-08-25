@@ -21,9 +21,12 @@ with all data stored on the device.
 3. **From planning to doing.** The three loops of training are all covered:
    *plan* (calendar, courses) → *do* (full-screen workout presentation with timers) →
    *review* (history, progress charts, streaks).
-4. **Mobile first, native-capable.** Layouts work on a phone screen, and the whole app
+4. **Reliable during a real session.** Guided workouts use absolute deadlines so
+   timers catch up after backgrounding, request a screen wake lock, and persist the
+   active step locally for resume after interruption.
+5. **Mobile first, native-capable.** Layouts work on a phone screen, and the whole app
    can be wrapped by Capacitor into an APK without changing the data layer.
-5. **Simple, boring architecture.** Plain React + hooks + one context. No state
+6. **Simple, boring architecture.** Plain React + hooks + one context. No state
    machine libraries, no server sync logic. Easy to read and easy to change.
 
 ## Core concepts
@@ -68,4 +71,5 @@ History / Progress -> filter completed sessions, see streaks/charts, clear histo
 - No multi-user features, sharing or social feed.
 - No server-side database or authentication.
 - No wearable / health-platform integration.
-- No built-in export, backup or cross-device synchronization yet.
+- No automatic cloud backup or cross-device synchronization. Manual JSON backup and
+  restore are available from Progress settings.

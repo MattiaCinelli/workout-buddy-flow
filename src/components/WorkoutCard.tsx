@@ -76,6 +76,15 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
           {exercisePreview}
           {hasMoreExercises ? ` and ${uniqueExercises.length - 2} more` : ''}
         </div>
+        {'actualSets' in workout && workout.actualSets && (
+          <div className="mt-2 text-sm">
+            {workout.actualSets.filter(set => set.completed).length}/{workout.actualSets.length} sets completed
+            {workout.perceivedExertion ? ` • RPE ${workout.perceivedExertion}/10` : ''}
+          </div>
+        )}
+        {'completionNotes' in workout && workout.completionNotes && (
+          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{workout.completionNotes}</p>
+        )}
       </CardContent>
       
       <CardFooter className="pt-0 flex justify-between items-center text-sm text-muted-foreground">

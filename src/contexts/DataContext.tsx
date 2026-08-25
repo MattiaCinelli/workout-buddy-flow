@@ -9,6 +9,7 @@ import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course, CourseWorkout } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
+import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 
 interface DataContextType {
   sessions: WorkoutSession[];
@@ -100,9 +101,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     scheduledWorkouts,
     isLoading: scheduledWorkoutsLoading,
     error: scheduledWorkoutsError,
-    createScheduledWorkout,
-    updateScheduledWorkout,
-    deleteScheduledWorkout,
+    createScheduledWorkout: createScheduledWorkoutRaw,
+    updateScheduledWorkout: updateScheduledWorkoutRaw,
+    deleteScheduledWorkout: deleteScheduledWorkoutRaw,
     getScheduledWorkoutsForRange,
     getScheduledWorkoutsForDate,
     refreshScheduledWorkouts
@@ -139,6 +140,33 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error(`This workout is used by ${courseReferences} course item${courseReferences === 1 ? '' : 's'}, ${scheduleReferences} calendar item${scheduleReferences === 1 ? '' : 's'}, and ${historyReferences} completed session${historyReferences === 1 ? '' : 's'}. Remove those references first.`);
     }
     return deleteWorkoutRaw(id);
+  };
+
+  const createScheduledWorkout = async (data: Omit<ScheduledWorkout, 'id' | 'createdAt'>) => {
+    const created = await createScheduledWorkoutRaw(data);
+    const title = workouts.find(workout => workout.id === created.workoutId)?.title || 'Workout';
+    try { await scheduleWorkoutReminders(created, title); }
+    catch (error) { console.warn('Workout saved, but its reminder could not be scheduled:', error); }
+    return created;
+  };
+
+  const updateScheduledWorkout = async (id: string, updates: Partial<ScheduledWorkout>) => {
+    const updated = await updateScheduledWorkoutRaw(id, updates);
+    if (updated) {
+      const title = workouts.find(workout => workout.id === updated.workoutId)?.title || 'Workout';
+      try { await scheduleWorkoutReminders(updated, title); }
+      catch (error) { console.warn('Schedule updated, but its reminder could not be updated:', error); }
+    }
+    return updated;
+  };
+
+  const deleteScheduledWorkout = async (id: string) => {
+    const deleted = await deleteScheduledWorkoutRaw(id);
+    if (deleted) {
+      try { await cancelWorkoutReminders(id); }
+      catch (error) { console.warn('Schedule deleted, but its pending reminder could not be removed:', error); }
+    }
+    return deleted;
   };
 
   const value: DataContextType = {

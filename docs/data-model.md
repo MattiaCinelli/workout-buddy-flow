@@ -58,6 +58,16 @@ inserting rest steps from `restAfter` / `restBetweenExercises`.
 ## Workout session — `src/data/workoutSessions.ts`
 
 ```ts
+interface WorkoutSetResult {
+  exerciseId: string;
+  setIndex: number;
+  completed: boolean;
+  reps?: number;
+  weight?: number;
+  duration?: number;
+  distance?: number;
+}
+
 interface WorkoutSession extends WorkoutEntry {
   workoutId: string;           // source template
   completedAt: string;         // actual completion timestamp
@@ -65,6 +75,9 @@ interface WorkoutSession extends WorkoutEntry {
   courseId?: string;
   courseItemId?: string;
   scheduledWorkoutId?: string;
+  actualSets?: WorkoutSetResult[]; // actual values plus completed/skipped state
+  perceivedExertion?: number;      // RPE 1–10
+  completionNotes?: string;
 }
 ```
 
@@ -73,6 +86,14 @@ the actual completion timestamp and elapsed duration, and optionally links back 
 course item or scheduled workout. History, streaks, weekly goals and progress charts
 read only from sessions. Its inherited `date` is the completion timestamp and its
 inherited `duration` is the actual elapsed time in minutes.
+
+## Backup format — `src/lib/backup.ts`
+
+Backups are versioned JSON documents containing all five object-store collections.
+Restore validates the format, version, arrays and record IDs before opening one
+read/write transaction that replaces all stores together. On Android, the backup is
+written to the cache directory and handed to the native share sheet; on the web it is
+downloaded as a `.json` file.
 
 ## Scheduled workout — `src/data/scheduledWorkouts.ts`
 

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2 } from "lucide-react";
+import React, { useState, useMemo, useRef } from 'react';
+import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2, Download, Upload } from "lucide-react";
 import Navbar from '@/components/Navbar';
 import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import { useData } from '@/contexts/DataContext';
@@ -45,11 +45,16 @@ import {
   Area,
 } from 'recharts';
 import { format, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
+import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
+import { scheduleWorkoutReminders } from '@/lib/notifications';
 
 const ProgressPage = () => {
   const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [timeRange, setTimeRange] = useState('3months');
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [pendingBackup, setPendingBackup] = useState<WorkoutBuddyBackup | null>(null);
+  const backupInput = useRef<HTMLInputElement>(null);
   const { sessions: workouts, sessionsLoading: workoutsLoading, exercises, clearAllSessions: clearAllWorkouts } = useData();
 
   const dateRange = useMemo(() => {
@@ -193,6 +198,15 @@ const ProgressPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={async () => {
+                  try { await downloadBackup(); toast.success('Backup downloaded'); }
+                  catch { toast.error('Could not create backup'); }
+                }}>
+                  <Download className="h-4 w-4 mr-2" />Export Backup
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => backupInput.current?.click()}>
+                  <Upload className="h-4 w-4 mr-2" />Restore Backup
+                </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-destructive focus:text-destructive"
                   onClick={() => setClearHistoryOpen(true)}
@@ -203,6 +217,17 @@ const ProgressPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          <input ref={backupInput} type="file" accept="application/json,.json" className="hidden" onChange={async event => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file) return;
+            try {
+              setPendingBackup(parseBackup(await file.text()));
+              setRestoreOpen(true);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : 'Invalid backup file');
+            }
+          }} />
         </div>
 
         {/* Summary Cards */}
@@ -394,6 +419,22 @@ const ProgressPage = () => {
               Clear All
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={restoreOpen} onOpenChange={setRestoreOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Replace all local data?</AlertDialogTitle><AlertDialogDescription>This restores the selected backup and replaces exercises, templates, sessions, schedules and courses currently on this device. Export a backup first if you may need the current data.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={async () => {
+            if (!pendingBackup) return;
+            try {
+              await restoreBackup(pendingBackup);
+              await Promise.all(pendingBackup.data.scheduledWorkouts.map(schedule =>
+                scheduleWorkoutReminders(schedule, pendingBackup.data.workouts.find(workout => workout.id === schedule.workoutId)?.title || 'Workout')
+              ));
+              window.location.reload();
+            }
+            catch { toast.error('Restore failed; current data was not reloaded'); }
+          }}>Restore and replace</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

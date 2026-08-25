@@ -22,6 +22,10 @@ Runs in the browser and packages into an installable Android app with Capacitor.
   program start date.
 - **History & progress** — filterable session history, streaks, weekly goal and charts,
   plus a "clear all history" reset.
+- **Mobile reliability** — resumable guided workouts, deadline-based timers, screen
+  wake lock, local reminders and JSON backup/restore.
+- **Performance logging** — record actual sets, skipped work, perceived exertion and
+  post-session notes.
 - **Light & dark themes.**
 
 ## Quick start

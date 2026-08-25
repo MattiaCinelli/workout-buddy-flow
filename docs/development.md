@@ -94,6 +94,10 @@ workout templates are editable plans while workout sessions are historical snaps
 - Android SDK Build-Tools 35.0.0
 - Java 21 (Android Studio includes a compatible runtime)
 
+Native integrations currently use `@capacitor/local-notifications`,
+`@capacitor/filesystem`, and `@capacitor/share`. Run `npx cap sync android` after any
+plugin installation or web build so Gradle and native assets stay synchronized.
+
 On macOS, expose Android Studio's Java runtime to Gradle:
 
 ```sh
