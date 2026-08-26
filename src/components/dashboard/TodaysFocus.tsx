@@ -71,7 +71,7 @@ const TodaysFocus: React.FC = () => {
               <Button 
                 size="sm" 
                 className="gap-1"
-                onClick={() => navigate(`/workout/${workout.id}/present`)}
+                onClick={() => navigate(`/workouts/${workout.id}/session`)}
               >
                 <Play className="h-4 w-4" />
                 Start

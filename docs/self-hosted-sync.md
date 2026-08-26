@@ -20,6 +20,8 @@ not an idealized end state — update the checklist below as things change.
 | Automatic background sync | ✅ built, verified (see "Client integration" below) |
 | Survives process crash | ✅ verified — killed the server process with SIGKILL, systemd restarted it, data intact |
 | Survives a full laptop reboot | ✅ verified — see "Running deployment" below |
+| Account UI (navbar indicator, not buried in a page settings menu) | ✅ built, verified — `src/components/AccountButton.tsx` |
+| Self-service account management (display name, email, password) | ✅ built, tested, verified live — see "Account management" below |
 
 ## Why this exists
 
@@ -173,6 +175,7 @@ workout_sessions    id, user_id, workout_id, date, title, duration,
                     course_item_id, scheduled_workout_id,
                     actual_sets, perceived_exertion,
                     completion_notes, updated_at, deleted_at       (002)
+users               + display_name (nullable)                     (004)
 ```
 
 One subtlety worth calling out: `scheduled_workouts` and `courses` each
@@ -200,6 +203,10 @@ Endpoints that exist right now:
 | `GET /health` | none | `{ status: 'ok' }` after a live DB check. Used by the Docker `HEALTHCHECK`. |
 | `POST /auth/login` | none | `{ email, password }` → `{ token, expiresAt }`. Wrong password and unknown email get an identical 401 response, so a caller can't use this to enumerate registered emails. |
 | `POST /auth/logout` | `Authorization: Bearer <token>` | Deletes the session row; the token is immediately unusable, not just expired. |
+| `GET /account` | `Authorization: Bearer <token>` | The caller's own `id`, `email`, `displayName`. |
+| `PATCH /account/profile` | `Authorization: Bearer <token>` | `{ displayName }` — no password required, purely cosmetic. |
+| `PATCH /account/email` | `Authorization: Bearer <token>` | `{ currentPassword, email }` — rejects if the new email is already taken by another account. |
+| `POST /account/password` | `Authorization: Bearer <token>` | `{ currentPassword, newPassword }` (min 8 chars) — deletes every other session for the user (other devices are signed out and must reconnect with the new password), returns `204` with no body. |
 | `GET /sync/<collection>?since=<ISO timestamp>` | `Authorization: Bearer <token>` | Rows for the caller changed after `since` (all of them if omitted), plus `serverTime`. Includes soft-deleted rows. |
 | `POST /sync/<collection>` | `Authorization: Bearer <token>` | `{ <collection>: [...] }`, up to 1000 per request, validated by JSON schema. Applies each with last-write-wins in one transaction and returns the post-merge state — a caller whose write lost a conflict gets told what actually won, not an echo of what it sent. |
 
@@ -224,8 +231,13 @@ readable rather than generated from column config.
   re-pushing unchanged rows is harmless at personal-library scale), saves
   back whatever the server says actually won each conflict, then pulls
   anything changed since the last watermark and merges it in.
-- UI lives in `src/components/SyncSettingsModal.tsx`, reachable from
-  Progress → ⚙️ → **Self-Hosted Sync**. Connect (server URL + email +
+- UI lives in `src/components/SyncSettingsModal.tsx`, opened via the
+  account icon in the navbar (`src/components/AccountButton.tsx`) — a
+  single, always-visible entry point rather than a page-specific settings
+  menu, so "am I connected" is discoverable from anywhere in the app. The
+  icon itself is the connection indicator: outline when disconnected,
+  filled when connected — chosen over a separate dot/badge so there's one
+  less element to keep in sync with state. Connect (server URL + email +
   password); once connected, sync happens automatically — **Sync now** is
   only for forcing it immediately rather than waiting for the next
   automatic pass.
@@ -252,7 +264,38 @@ readable rather than generated from column config.
   tombstone, so a record deleted on one device won't disappear from
   another after a sync. Creates and edits sync correctly.
 
-### Three real bugs this surfaced (found by actually running it, not by review)
+## Account management (`src/components/AccountProfileTab.tsx`)
+
+Once connected, the sync dialog's **Profile** tab lets a user manage their
+own account — display name, email, password — without needing shell/CLI
+access to the server. Three independent mini-forms, each with its own save
+button and error state:
+
+- **Display name**: purely cosmetic, no password required. Shown in place
+  of the raw email in the dialog title and anywhere else the app displays
+  "who's connected." `PATCH /account/profile`.
+- **Email**: requires the current password to confirm, server-side checks
+  the new email isn't already taken by another account. `PATCH
+  /account/email`.
+- **Password**: requires the current password, enforces an 8-character
+  minimum, and — since sessions are opaque server-side tokens, not
+  JWTs — deletes every *other* session for that user on success, so a
+  stolen or stale token on another device stops working immediately rather
+  than staying valid until it happens to expire. That device has to
+  reconnect with the new password. `POST /account/password`, returns `204`
+  with no body (the client's `authorizedRequest` had to special-case this:
+  calling `.json()` on an empty 204 body throws "Unexpected end of JSON
+  input" rather than returning something falsy, so the 204 status is
+  checked explicitly before parsing).
+
+Verified live end-to-end against a running server, not just via the unit
+tests in `server/src/test/http-account.test.ts`: connected, set a display
+name, confirmed the dialog title picked it up, changed the email, changed
+the password, then confirmed directly against `/auth/login` that the new
+email/password combination logs in successfully and the old combination is
+rejected with 401.
+
+### Four real bugs this surfaced (found by actually running it, not by review)
 
 1. **The server had no CORS configuration at all.** A browser-based
    `fetch()` from the app to the sync server would have been blocked
@@ -301,6 +344,22 @@ readable rather than generated from column config.
    permanently. Regression tests locking this in:
    `server/src/test/db.test.ts` ("a record shows up even if its updatedAt
    predates the watermark") and the equivalent in `http-sync.test.ts`.
+4. **`@fastify/cors`'s default `methods` list silently excludes PATCH.**
+   Adding the account-management endpoints (`PATCH /account/profile`,
+   `PATCH /account/email`) surfaced this: the display name and email forms
+   failed with no server-side error at all — the browser's CORS preflight
+   for the PATCH request was refused before the request ever reached
+   Fastify. `@fastify/cors` defaults `methods` to `'GET,HEAD,POST'` only;
+   confirmed by reading `node_modules/@fastify/cors/index.js` directly.
+   Fixed by listing the verbs explicitly:
+   `app.register(cors, { origin: true, methods: ['GET', 'POST', 'PATCH'] })`
+   (`server/src/http/app.ts`). The real lesson here is a gap in the test
+   harness, not just the bug: every existing test drives routes through
+   Fastify's `app.inject()`, which calls route handlers in-process and
+   never goes through a real HTTP preflight — so this entire class of CORS
+   bug is invisible to the 58-test suite no matter how thorough it is.
+   Only caught by driving a real browser (Playwright, in this case) through
+   the actual UI and reading its console errors.
 
 ### Android-specific requirement (two separate settings, both needed)
 

@@ -1,7 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { addDays, isAfter, isSameDay, parseISO, set } from 'date-fns';
+import { addDays, isAfter, isSameDay, parseISO, set, subMinutes } from 'date-fns';
 import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
+import { getNotificationSettings } from '@/lib/notificationSettings';
 
 const notificationId = (value: string) => {
   let hash = 0;
@@ -45,15 +46,47 @@ export const cancelWorkoutReminders = async (scheduleId: string) => {
 
 export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, workoutTitle: string) => {
   if (!Capacitor.isNativePlatform()) return;
+  await cancelWorkoutReminders(schedule.id);
+
+  // Disabling reminders altogether just means: cancel whatever was there
+  // (above) and schedule nothing new. Existing calendar data is untouched
+  // either way — this only ever affects the OS-level alarms.
+  const settings = getNotificationSettings();
+  if (!settings.enabled) return;
+
   const permission = await LocalNotifications.requestPermissions();
   if (permission.display !== 'granted') return;
-  await cancelWorkoutReminders(schedule.id);
-  const notifications = occurrences(schedule).map((at, index) => ({
-    id: notificationId(`${schedule.id}:${at.toISOString()}`),
-    title: 'Workout reminder',
-    body: `${workoutTitle} starts now`,
-    schedule: { at, allowWhileIdle: true },
-    extra: { scheduleId: schedule.id, workoutId: schedule.workoutId, occurrence: index }
-  }));
+  const notifications = occurrences(schedule)
+    .map((at, index) => ({ at, fireAt: subMinutes(at, settings.leadMinutes), index }))
+    // A long lead time on a near-term occurrence (e.g. a 60-minute lead
+    // just enabled for a workout starting in 10 minutes) can push the
+    // adjusted fire time into the past — occurrences() only checked the
+    // workout's own start time, not the lead-adjusted one. Scheduling a
+    // past time would fire immediately rather than skip it, so drop those.
+    .filter(({ fireAt }) => isAfter(fireAt, new Date()))
+    .map(({ at, fireAt, index }) => ({
+      id: notificationId(`${schedule.id}:${at.toISOString()}`),
+      title: 'Workout reminder',
+      body: settings.leadMinutes > 0
+        ? `${workoutTitle} starts in ${settings.leadMinutes} minute${settings.leadMinutes === 1 ? '' : 's'}`
+        : `${workoutTitle} starts now`,
+      schedule: { at: fireAt, allowWhileIdle: true },
+      extra: { scheduleId: schedule.id, workoutId: schedule.workoutId, occurrence: index }
+    }));
   if (notifications.length) await LocalNotifications.schedule({ notifications });
+};
+
+// Re-derives every reminder from the current calendar data — used when
+// notification settings change, since already-scheduled alarms were
+// computed under the OLD lead time / enabled state and won't update
+// themselves.
+export const rescheduleAllReminders = async (
+  scheduledWorkouts: ScheduledWorkout[],
+  getWorkoutTitle: (workoutId: string) => string | undefined
+) => {
+  if (!Capacitor.isNativePlatform()) return;
+  for (const schedule of scheduledWorkouts) {
+    if (schedule.deletedAt) continue;
+    await scheduleWorkoutReminders(schedule, getWorkoutTitle(schedule.workoutId) ?? 'Workout');
+  }
 };

@@ -21,6 +21,12 @@ import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 
+const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
+  if (!value?.trim()) return true;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= min && number <= max;
+}, `${label} must be between ${min} and ${max}.`);
+
 const formSchema = z.object({
   name: z.string().min(2, {
     message: "Exercise name must be at least 2 characters.",
@@ -29,12 +35,12 @@ const formSchema = z.object({
   muscleGroups: z.array(z.string()).default([]),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   logType: z.enum(['reps', 'time']),
-  defaultSets: z.string().optional(),
-  defaultReps: z.string().optional(),
-  defaultDuration: z.string().optional(),
-  defaultWeight: z.string().optional(),
-  defaultDistance: z.string().optional(),
-  secondsPerRep: z.string().optional(),
+  defaultSets: optionalNumber('Sets', 1, 100),
+  defaultReps: optionalNumber('Reps', 0, 1000),
+  defaultDuration: optionalNumber('Duration', 0, 86400),
+  defaultWeight: optionalNumber('Weight', 0, 1000),
+  defaultDistance: optionalNumber('Distance', 0, 1000000),
+  secondsPerRep: optionalNumber('Seconds per rep', 1, 60),
   instructions: z.string().optional(),
   imageUrl: z.string().optional(),
 });
@@ -290,26 +296,26 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           </div>
           <div className="space-y-1">
             <label htmlFor="defaultSets" className="text-xs text-muted-foreground">Default sets</label>
-            <Input id="defaultSets" type="number" min="1" className="bg-background" {...form.register("defaultSets")} disabled={isSubmitting} />
+            <Input id="defaultSets" type="number" min="1" max="100" className="bg-background" {...form.register("defaultSets")} disabled={isSubmitting} />
           </div>
           {logType === 'reps' ? (
             <div className="space-y-1">
               <label htmlFor="defaultReps" className="text-xs text-muted-foreground">Default reps</label>
-              <Input id="defaultReps" type="number" min="0" className="bg-background" {...form.register("defaultReps")} disabled={isSubmitting} />
+              <Input id="defaultReps" type="number" min="0" max="1000" className="bg-background" {...form.register("defaultReps")} disabled={isSubmitting} />
             </div>
           ) : (
             <div className="space-y-1">
               <label htmlFor="defaultDuration" className="text-xs text-muted-foreground">Default duration (sec)</label>
-              <Input id="defaultDuration" type="number" min="0" className="bg-background" {...form.register("defaultDuration")} disabled={isSubmitting} />
+              <Input id="defaultDuration" type="number" min="0" max="86400" className="bg-background" {...form.register("defaultDuration")} disabled={isSubmitting} />
             </div>
           )}
           <div className="space-y-1">
-            <label htmlFor="defaultWeight" className="text-xs text-muted-foreground">Default weight (optional)</label>
-            <Input id="defaultWeight" type="number" min="0" step="0.5" className="bg-background" {...form.register("defaultWeight")} disabled={isSubmitting} />
+            <label htmlFor="defaultWeight" className="text-xs text-muted-foreground">Default weight in kilograms (optional)</label>
+            <Input id="defaultWeight" type="number" min="0" max="1000" step="0.5" className="bg-background" {...form.register("defaultWeight")} disabled={isSubmitting} />
           </div>
           <div className="space-y-1">
             <label htmlFor="defaultDistance" className="text-xs text-muted-foreground">Default distance in meters (optional)</label>
-            <Input id="defaultDistance" type="number" min="0" className="bg-background" {...form.register("defaultDistance")} disabled={isSubmitting} />
+            <Input id="defaultDistance" type="number" min="0" max="1000000" className="bg-background" {...form.register("defaultDistance")} disabled={isSubmitting} />
           </div>
 
           {logType === 'reps' && (
@@ -327,7 +333,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                     Seconds per rep — paces the countdown during a workout (default {DEFAULT_SECONDS_PER_REP}s)
                   </label>
                   <Input
-                    id="secondsPerRep" type="number" min="1" className="bg-background w-32"
+                    id="secondsPerRep" type="number" min="1" max="60" className="bg-background w-32"
                     placeholder={String(DEFAULT_SECONDS_PER_REP)}
                     {...form.register("secondsPerRep")} disabled={isSubmitting}
                   />
@@ -336,6 +342,14 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             </div>
           )}
         </div>
+
+        {Object.values(form.formState.errors).length > 0 && (
+          <div className="text-sm text-destructive" role="alert">
+            {Object.values(form.formState.errors).map((error, index) =>
+              error?.message ? <p key={index}>{String(error.message)}</p> : null
+            )}
+          </div>
+        )}
 
         <div className="grid gap-2">
           <label htmlFor="instructions" className="text-right inline-block w-32 pr-2">

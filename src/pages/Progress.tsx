@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import {
   LineChart,
@@ -45,8 +46,11 @@ import {
 import { format, parseISO, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
 import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
 import { scheduleWorkoutReminders } from '@/lib/notifications';
+import { BodyWeightCard } from '@/components/dashboard/BodyWeightCard';
+import { PersonalRecordsCard } from '@/components/dashboard/PersonalRecordsCard';
 
 const ProgressPage = () => {
+  const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState('3months');
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -386,10 +390,16 @@ const ProgressPage = () => {
               <p className="text-muted-foreground">
                 Complete some workouts to see your progress charts here
               </p>
+              <Button className="mt-4" onClick={() => navigate('/workouts')}>Choose a workout</Button>
             </CardContent>
           </Card>
         )}
-      </main>      
+
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <PersonalRecordsCard />
+          <BodyWeightCard />
+        </div>
+      </main>
       <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

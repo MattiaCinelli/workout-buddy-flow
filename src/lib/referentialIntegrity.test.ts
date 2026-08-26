@@ -27,13 +27,13 @@ describe('checkExerciseDeletion', () => {
     const result = checkExerciseDeletion('squat', [workout()], []);
     expect(result.blocked).toBe(true);
     expect(result.reason).toContain('1 template set');
-    expect(result.reason).toContain('0 completed sets');
+    expect(result.reason).not.toContain('completed set');
   });
 
   it('blocks deletion when completed session history references it', () => {
     const result = checkExerciseDeletion('squat', [], [session()]);
     expect(result.blocked).toBe(true);
-    expect(result.reason).toContain('0 template sets');
+    expect(result.reason).not.toContain('template set');
     expect(result.reason).toContain('1 completed set');
   });
 
@@ -68,7 +68,9 @@ describe('checkWorkoutDeletion', () => {
   it('blocks deletion when a calendar entry references it', () => {
     const result = checkWorkoutDeletion('w-1', [scheduledWorkout], [], []);
     expect(result.blocked).toBe(true);
-    expect(result.reason).toContain('1 calendar item');
+    expect(result.reason).toContain('scheduled 1 time');
+    expect(result.reason).not.toContain('course item');
+    expect(result.reason).not.toContain('completed session');
   });
 
   it('blocks deletion when a course item references it', () => {

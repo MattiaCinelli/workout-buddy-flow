@@ -218,3 +218,19 @@ test('a push missing required fields is rejected with 400, not stored', async ()
   const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
   assert.deepEqual(pull.json().exercises, []);
 });
+
+test('body metrics push and pull round-trip, isolated per user', async () => {
+  const { app, aliceToken, bobToken } = await setup();
+  const aliceHeaders = { authorization: `Bearer ${aliceToken}` };
+  const bobHeaders = { authorization: `Bearer ${bobToken}` };
+
+  const metric = { id: 'bm-1', date: '2026-01-01', weight: 82.5, updatedAt: '2026-01-01T00:00:00.000Z' };
+  await app.inject({ method: 'POST', url: '/sync/bodyMetrics', headers: aliceHeaders, payload: { bodyMetrics: [metric] } });
+
+  const alicePull = await app.inject({ method: 'GET', url: '/sync/bodyMetrics', headers: aliceHeaders });
+  assert.equal(alicePull.json().bodyMetrics.length, 1);
+  assert.equal(alicePull.json().bodyMetrics[0].weight, 82.5);
+
+  const bobPull = await app.inject({ method: 'GET', url: '/sync/bodyMetrics', headers: bobHeaders });
+  assert.deepEqual(bobPull.json().bodyMetrics, []);
+});

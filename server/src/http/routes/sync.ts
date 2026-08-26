@@ -6,6 +6,7 @@ import * as scheduledWorkouts from '../../db/scheduledWorkouts';
 import * as courses from '../../db/courses';
 import * as workoutSessions from '../../db/workoutSessions';
 import * as muscleGroups from '../../db/muscleGroups';
+import * as bodyMetrics from '../../db/bodyMetrics';
 
 const workoutSetSchema = {
   type: 'object',
@@ -168,6 +169,19 @@ const muscleGroupSchema = {
   },
 };
 
+const bodyMetricSchema = {
+  type: 'object',
+  required: ['id', 'date', 'weight', 'updatedAt'],
+  properties: {
+    id: { type: 'string', minLength: 1 },
+    date: { type: 'string' },
+    weight: { type: 'number' },
+    notes: { type: 'string' },
+    updatedAt: { type: 'string' },
+    deletedAt: { type: 'string' },
+  },
+};
+
 export const registerSyncRoutes = (app: FastifyInstance) => {
   registerSyncCollection(app, {
     path: 'exercises',
@@ -209,5 +223,12 @@ export const registerSyncRoutes = (app: FastifyInstance) => {
     listChangedSince: muscleGroups.listChangedSince,
     upsertBatch: muscleGroups.upsertMuscleGroupsBatch,
     itemSchema: muscleGroupSchema,
+  });
+
+  registerSyncCollection(app, {
+    path: 'bodyMetrics',
+    listChangedSince: bodyMetrics.listChangedSince,
+    upsertBatch: bodyMetrics.upsertBodyMetricsBatch,
+    itemSchema: bodyMetricSchema,
   });
 };

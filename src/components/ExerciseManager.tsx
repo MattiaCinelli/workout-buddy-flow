@@ -173,7 +173,7 @@ const ExerciseManager: React.FC = () => {
   if (exercisesLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-center">
+        <div className="text-center" role="status" aria-live="polite">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-workout-blue" />
           <p className="text-muted-foreground">Loading exercises...</p>
         </div>
@@ -197,6 +197,7 @@ const ExerciseManager: React.FC = () => {
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search exercises..."
+          aria-label="Search exercises"
           className="pl-8"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}

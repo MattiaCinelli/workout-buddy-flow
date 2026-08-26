@@ -27,11 +27,13 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 type CategoryFilter = 'all' | 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
 type SortOption = 'newest' | 'oldest' | 'duration-high' | 'duration-low';
 
 const HistoryPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -275,6 +277,9 @@ const HistoryPage: React.FC = () => {
               <Button variant="outline" className="mt-4" onClick={clearFilters}>
                 Clear all filters
               </Button>
+            )}
+            {!hasActiveFilters && (
+              <Button className="mt-4" onClick={() => navigate('/workouts')}>Choose a workout</Button>
             )}
           </div>
         ) : (

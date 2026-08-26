@@ -32,7 +32,7 @@ const WorkoutsPage = () => {
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
+          <div className="text-center" role="status" aria-live="polite">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-muted-foreground">Loading workouts...</p>
           </div>
@@ -69,6 +69,7 @@ const WorkoutsPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search workouts..."
+              aria-label="Search workouts"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"

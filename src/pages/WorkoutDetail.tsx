@@ -214,7 +214,7 @@ const WorkoutDetail = () => {
           <Button
             size="sm"
             className="ml-auto bg-workout-green hover:bg-green-600 text-white flex items-center gap-1"
-            onClick={() => navigate(`/workout/${id}/start`)}
+            onClick={() => navigate(`/workouts/${id}/session`)}
           >
             <Play className="h-4 w-4" />
             <span>Start Workout</span>
@@ -350,7 +350,7 @@ const WorkoutDetail = () => {
                                   <div className="flex items-center">
                                     <Label htmlFor={`reps-${exIndex}-${setIndex}`} className="mr-2 text-xs">Reps:</Label>
                                     <Input
-                                      id={`reps-${exIndex}-${setIndex}`} type="number" min="1" className="h-8 w-16"
+                                      id={`reps-${exIndex}-${setIndex}`} type="number" min="1" max="1000" className="h-8 w-16"
                                       value={set.reps || ''}
                                       onChange={e => updateSetValue(exIndex, setIndex, 'reps', e.target.value ? Number(e.target.value) : undefined)}
                                       disabled={isSubmitting}
@@ -360,7 +360,7 @@ const WorkoutDetail = () => {
                                   <div className="flex items-center">
                                     <Label htmlFor={`duration-${exIndex}-${setIndex}`} className="mr-2 text-xs">Duration (sec):</Label>
                                     <Input
-                                      id={`duration-${exIndex}-${setIndex}`} type="number" min="1" className="h-8 w-16"
+                                      id={`duration-${exIndex}-${setIndex}`} type="number" min="1" max="86400" className="h-8 w-16"
                                       value={set.duration || ''}
                                       onChange={e => updateSetValue(exIndex, setIndex, 'duration', e.target.value ? Number(e.target.value) : undefined)}
                                       disabled={isSubmitting}
@@ -369,9 +369,9 @@ const WorkoutDetail = () => {
                                 )}
 
                                 <div className="flex items-center">
-                                  <Label htmlFor={`weight-${exIndex}-${setIndex}`} className="mr-2 text-xs">Weight (optional):</Label>
+                                  <Label htmlFor={`weight-${exIndex}-${setIndex}`} className="mr-2 text-xs">Weight (kg, optional):</Label>
                                   <Input
-                                    id={`weight-${exIndex}-${setIndex}`} type="number" min="0" step="2.5" className="h-8 w-16"
+                                    id={`weight-${exIndex}-${setIndex}`} type="number" min="0" max="1000" step="0.5" className="h-8 w-16"
                                     value={set.weight || ''}
                                     onChange={e => updateSetValue(exIndex, setIndex, 'weight', e.target.value ? Number(e.target.value) : undefined)}
                                     disabled={isSubmitting}
@@ -381,9 +381,19 @@ const WorkoutDetail = () => {
                                 <div className="flex items-center">
                                   <Label htmlFor={`distance-${exIndex}-${setIndex}`} className="mr-2 text-xs">Distance (m, optional):</Label>
                                   <Input
-                                    id={`distance-${exIndex}-${setIndex}`} type="number" min="0" step="100" className="h-8 w-20"
+                                    id={`distance-${exIndex}-${setIndex}`} type="number" min="0" max="1000000" step="100" className="h-8 w-20"
                                     value={set.distance || ''}
                                     onChange={e => updateSetValue(exIndex, setIndex, 'distance', e.target.value ? Number(e.target.value) : undefined)}
+                                    disabled={isSubmitting}
+                                  />
+                                </div>
+
+                                <div className="flex items-center">
+                                  <Label htmlFor={`rest-${exIndex}-${setIndex}`} className="mr-2 text-xs">Rest (sec):</Label>
+                                  <Input
+                                    id={`rest-${exIndex}-${setIndex}`} type="number" min="0" max="3600" className="h-8 w-20"
+                                    value={set.restAfter ?? 30}
+                                    onChange={e => updateSetValue(exIndex, setIndex, 'restAfter', e.target.value ? Number(e.target.value) : undefined)}
                                     disabled={isSubmitting}
                                   />
                                 </div>
@@ -391,6 +401,7 @@ const WorkoutDetail = () => {
                                 <Button
                                   type="button" variant="ghost" size="icon" className="h-8 w-8 ml-auto"
                                   onClick={() => handleRemoveSet(exIndex, setIndex)} disabled={isSubmitting}
+                                  aria-label={`Remove set ${setIndex + 1} from ${selectedEx.exercise.name}`}
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>

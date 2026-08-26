@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Pause, Play, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { ChevronLeft, Minus, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,10 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
 import { buildWorkoutSteps, remainingSeconds } from '@/lib/workoutRuntime';
+import { detectNewPersonalRecords, PRKind } from '@/lib/personalRecords';
+
+const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
+const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
 
 type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; timeLeft: number;
   deadline: number | null; paused: boolean };
@@ -24,7 +31,7 @@ const WorkoutPresentation = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { workouts, exercises, workoutsLoading, createSession, completeWorkoutInCourse } = useData();
+  const { workouts, exercises, sessions, workoutsLoading, createSession, completeWorkoutInCourse } = useData();
   const workout = workouts.find(item => item.id === id);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
   const startedAt = useRef(Date.now());
@@ -36,13 +43,31 @@ const WorkoutPresentation = () => {
   const [paused, setPaused] = useState(false);
   const [restored, setRestored] = useState(false);
   const [completionOpen, setCompletionOpen] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [restartConfirmOpen, setRestartConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actualSets, setActualSets] = useState<WorkoutSetResult[]>([]);
   const [rpe, setRpe] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(() => localStorage.getItem(VOICE_PREF_KEY) !== 'false');
+  const [voicesReady, setVoicesReady] = useState(false);
   const lastSpokenRepRef = useRef<number | null>(null);
   const lastSpokenCountdownRef = useRef<number | null>(null);
+  // Retain the utterance until it finishes. Some WebView implementations
+  // can stop an utterance if the JavaScript object is garbage-collected.
+  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechWatchdogRef = useRef<number | null>(null);
+
+  // A step transition is announced by voice AND felt as a vibration, so
+  // the workout stays followable even when speech synthesis is unreliable
+  // (browser/OS-dependent — see the voice troubleshooting from earlier).
+  // Capacitor's web implementation of Haptics.impact() uses the Vibration
+  // API, which works on mobile browsers and the Android WebView but
+  // rejects on desktop (no vibration hardware) — the catch is that, not an
+  // error worth surfacing.
+  const vibrate = useCallback((style: ImpactStyle) => {
+    Haptics.impact({ style }).catch(() => undefined);
+  }, []);
 
   // Drops the announcement (rather than cancelling whatever's currently
   // speaking) when the engine is busy. The "Begin!" cue and the first rep
@@ -54,8 +79,13 @@ const WorkoutPresentation = () => {
   // instead of dropping was tried too, but then announcements pile up and
   // drift further and further behind the actual countdown.
   const speak = useCallback((text: string) => {
-    if (!voiceEnabled || typeof window === 'undefined' || !window.speechSynthesis) return;
-    if (window.speechSynthesis.speaking) return;
+    if (!voiceEnabled || !voicesReady || typeof window === 'undefined' || !window.speechSynthesis) return;
+    // Use our own lifecycle flag instead of SpeechSynthesis.speaking. On
+    // Android WebView that browser flag can remain stuck after an engine
+    // failure, which used to suppress every later cue.
+    if (activeUtteranceRef.current) return;
+
+    const synthesis = window.speechSynthesis;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.15;
     // Prefer a local (on-device) voice over a network-backed one — some
@@ -63,29 +93,67 @@ const WorkoutPresentation = () => {
     // English" that synthesizes audio via a network call) whose events
     // still fire normally even when that network call is blocked or fails,
     // producing complete silence with no error anywhere.
-    const localVoice = window.speechSynthesis.getVoices().find(voice => voice.localService);
+    const voices = synthesis.getVoices();
+    const language = navigator.language.toLowerCase();
+    const localVoice = voices.find(voice => voice.localService && voice.lang.toLowerCase() === language)
+      ?? voices.find(voice => voice.localService && voice.lang.toLowerCase().startsWith(language.split('-')[0]))
+      ?? voices.find(voice => voice.localService);
     if (localVoice) utterance.voice = localVoice;
-    window.speechSynthesis.speak(utterance);
-  }, [voiceEnabled]);
+
+    const finish = () => {
+      if (speechWatchdogRef.current !== null) window.clearTimeout(speechWatchdogRef.current);
+      speechWatchdogRef.current = null;
+      if (activeUtteranceRef.current === utterance) activeUtteranceRef.current = null;
+    };
+    utterance.onend = finish;
+    utterance.onerror = event => {
+      console.error(`Speech synthesis failed for "${text}":`, event.error, event);
+      finish();
+    };
+
+    activeUtteranceRef.current = utterance;
+    // Recover if a WebView/TTS engine accepts the request but never emits
+    // an end or error event. Short workout cues should never take this long.
+    speechWatchdogRef.current = window.setTimeout(() => {
+      if (activeUtteranceRef.current === utterance) {
+        console.warn(`Speech synthesis timed out for "${text}".`);
+        synthesis.cancel();
+        finish();
+      }
+    }, 5000);
+    synthesis.speak(utterance);
+  }, [voiceEnabled, voicesReady]);
 
   const toggleVoice = () => {
     setVoiceEnabled(prev => {
       const next = !prev;
       localStorage.setItem(VOICE_PREF_KEY, String(next));
-      if (!next) window.speechSynthesis?.cancel();
+      if (!next) {
+        window.speechSynthesis?.cancel();
+        activeUtteranceRef.current = null;
+        if (speechWatchdogRef.current !== null) window.clearTimeout(speechWatchdogRef.current);
+        speechWatchdogRef.current = null;
+      }
       return next;
     });
   };
 
-  // getVoices() often returns an empty list until the browser finishes
-  // loading them asynchronously — calling it once up front (and again once
-  // the list is actually ready) means the very first speak() call, which
-  // fires almost immediately on mount, has a real voice list to pick from.
+  // Voice discovery is asynchronous in Chromium/WebView. Do not send the
+  // first cue into an empty engine: retry it after voiceschanged instead.
+  // A fallback keeps browsers that provide only a default voice usable even
+  // when they never expose a voice list or dispatch voiceschanged.
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-    return () => { window.speechSynthesis.onvoiceschanged = null; };
+    const loadVoices = () => {
+      if (window.speechSynthesis.getVoices().length > 0) setVoicesReady(true);
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+    const fallback = window.setTimeout(() => setVoicesReady(true), 2000);
+    return () => {
+      window.clearTimeout(fallback);
+      window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+    };
   }, []);
 
   const requestWakeLock = useCallback(async () => {
@@ -149,6 +217,13 @@ const WorkoutPresentation = () => {
     localStorage.setItem(runtimeKey(workout.id), JSON.stringify(value));
   }, [workout, restored, activeStep, timeLeft, deadline, paused, completionOpen]);
 
+  useEffect(() => {
+    if (!restored) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [restored]);
+
   const startStep = useCallback((index: number) => {
     const duration = steps[index]?.duration || 0;
     setActiveStep(index); setTimeLeft(duration); setPaused(false);
@@ -161,22 +236,43 @@ const WorkoutPresentation = () => {
     lastSpokenCountdownRef.current = null;
   }, [activeStep]);
 
-  // Announces the exercise whenever a new one starts (including the very
-  // first, once initial restore/setup has picked the right starting step).
+  // Announces whenever a new step starts (including the very first, once
+  // initial restore/setup has picked the right starting step) — "Get
+  // ready" for the leading prep pause, "Start rest" for an ordinary rest,
+  // "Begin" for an exercise. This is the only place any of these fire, so
+  // there's exactly one announcement per step, never a duplicate.
+  useEffect(() => {
+    if (!restored || !voicesReady) return;
+    const step = steps[activeStep];
+    if (step?.type === 'exercise') {
+      const ex = exercises.find(item => item.id === step.exerciseId);
+      // Deliberately just "Begin", not the exercise name too — the name is
+      // already the on-screen heading, and every extra word here is time
+      // the engine spends "speaking" (see speak()'s busy check above)
+      // during which real rep-count announcements get silently dropped.
+      if (ex) speak('Begin');
+    } else if (step?.type === 'rest') {
+      speak(step.kind === 'prep' ? 'Get ready' : 'Start rest');
+    }
+  }, [activeStep, restored, voicesReady, steps, exercises, speak]);
+
+  // A distinct buzz per step type, independent of voice readiness — this
+  // is the fallback, so it shouldn't wait on anything voice-related.
   useEffect(() => {
     if (!restored) return;
     const step = steps[activeStep];
-    if (step?.type !== 'exercise') return;
-    const ex = exercises.find(item => item.id === step.exerciseId);
-    // Deliberately just "Begin", not the exercise name too — the name is
-    // already the on-screen heading, and every extra word here is time the
-    // engine spends "speaking" (see speak()'s busy check above) during
-    // which real rep-count announcements get silently dropped.
-    if (ex) speak('Begin');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStep, restored]);
+    if (step?.type === 'exercise') vibrate(ImpactStyle.Heavy);
+    else if (step?.type === 'rest') vibrate(step.kind === 'prep' ? ImpactStyle.Light : ImpactStyle.Medium);
+  }, [activeStep, restored, steps, vibrate]);
 
-  useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
+  useEffect(() => () => {
+    // Only cancel an utterance created by this screen. A global cancel here
+    // also kills the click-triggered "Begin" cue during React Strict Mode's
+    // development-only setup/cleanup replay.
+    if (activeUtteranceRef.current) window.speechSynthesis?.cancel();
+    activeUtteranceRef.current = null;
+    if (speechWatchdogRef.current !== null) window.clearTimeout(speechWatchdogRef.current);
+  }, []);
   // Reaching the end opens the completion dialog without changing
   // activeStep, so the effect above never fires to release this guard —
   // closing the dialog (without saving) and pressing Next again would
@@ -193,6 +289,13 @@ const WorkoutPresentation = () => {
     startStep(next);
   }, [activeStep, steps.length, startStep]);
 
+  const previousStep = () => {
+    if (activeStep === 0) return;
+    window.speechSynthesis?.cancel();
+    activeUtteranceRef.current = null;
+    startStep(activeStep - 1);
+  };
+
   useEffect(() => {
     if (paused || !deadline || completionOpen) return;
     const update = () => {
@@ -201,9 +304,12 @@ const WorkoutPresentation = () => {
 
       const step = steps[activeStep];
       const isRepsBased = step?.type === 'exercise' && !!step.secondsPerRep && !!step.reps;
-      // remaining >= 1 excludes the terminal tick: at exactly 0 the set is
-      // already over, so there's nothing left to announce.
-      if (step?.type === 'exercise' && step.duration && remaining >= 1) {
+      // remaining >= 1 excludes the terminal tick: at exactly 0 the step is
+      // already over, so there's nothing left to announce. Applies to any
+      // step with a real duration to count down — a timed exercise, a rest,
+      // or the leading prep pause — reps-based exercises are the only
+      // exception (handled separately below).
+      if (step?.duration && remaining >= 1) {
         if (isRepsBased) {
           // Reps are always counted up (1, 2, 3…) — never switched to a
           // numeric countdown near the end. A countdown voice implies a
@@ -215,8 +321,8 @@ const WorkoutPresentation = () => {
             speak(String(repIndex + 1));
           }
         } else if (remaining <= 5) {
-          // Genuine time-based exercise (a real hold/duration) — count down
-          // the last 5 seconds.
+          // Genuine time-based exercise, rest, or the prep pause — count
+          // down the last 5 seconds.
           if (lastSpokenCountdownRef.current !== remaining) {
             lastSpokenCountdownRef.current = remaining;
             speak(String(remaining));
@@ -243,24 +349,34 @@ const WorkoutPresentation = () => {
     }
   };
 
+  // Only meaningful during rest/prep — adjusts however much time is left
+  // rather than the step's original duration, so repeated taps keep
+  // stacking correctly whether the timer is running or paused.
+  const adjustRestTime = (deltaSeconds: number) => {
+    if (paused) {
+      setTimeLeft(prev => Math.max(0, prev + deltaSeconds));
+    } else {
+      setDeadline(prev => (prev === null ? prev : prev + deltaSeconds * 1000));
+    }
+  };
+
   const updateResult = (index: number, updates: Partial<WorkoutSetResult>) =>
     setActualSets(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...updates } : item));
 
   const restartWorkout = () => {
-    if (!window.confirm('Start this workout over from the first step?')) return;
     localStorage.removeItem(runtimeKey(workout?.id || id));
     startedAt.current = Date.now();
     startStep(0);
+    setRestartConfirmOpen(false);
   };
 
   // Backs out of the whole workout without saving a session — used by both
   // the completion dialog's "Don't save" button and closing that dialog via
   // its X (they're the same action, not "close the dialog but stay").
   const discardAndExit = () => {
-    if (!window.confirm("Discard this workout? Your results won't be saved.")) return;
     localStorage.removeItem(runtimeKey(workout?.id || id));
     window.speechSynthesis?.cancel();
-    navigate(`/workout/${id}`);
+    navigate(`/workouts/${id}`);
   };
 
   const saveCompletion = async () => {
@@ -277,7 +393,32 @@ const WorkoutPresentation = () => {
         perceivedExertion: rpe ? Number(rpe) : undefined, completionNotes: completionNotes.trim() || undefined });
       if (courseId && courseItemId) await completeWorkoutInCourse(courseId, courseItemId);
       localStorage.removeItem(runtimeKey(workout.id));
-      toast({ title: 'Workout saved', description: 'Your performance was added to history.' });
+
+      // Compare against sessions as they stood BEFORE this one was added —
+      // `sessions` here is still the pre-save snapshot, since the context
+      // hasn't refreshed yet at this point in the same tick. All PRs (and
+      // the save confirmation) go into ONE toast call — this app's toast
+      // hook caps display at a single toast (TOAST_LIMIT = 1 in
+      // use-toast.ts), so separate sequential calls would just have each
+      // one instantly replace the last, silently dropping every PR.
+      const newRecords = detectNewPersonalRecords(actualSets, sessions);
+      toast({
+        title: newRecords.length > 0 ? 'Workout saved — new personal record!' : 'Workout saved',
+        description: newRecords.length === 0 ? 'Your performance was added to history.' : (
+          <div className="space-y-1">
+            <p>Your performance was added to history.</p>
+            {newRecords.map(record => {
+              const exerciseName = exercises.find(item => item.id === record.exerciseId)?.name ?? 'Exercise';
+              return (
+                <p key={`${record.exerciseId}-${record.kind}`}>
+                  {exerciseName} {PR_LABEL[record.kind]}: {record.value} {PR_UNIT[record.kind]}
+                  {' '}(previous best {record.previousValue} {PR_UNIT[record.kind]})
+                </p>
+              );
+            })}
+          </div>
+        ),
+      });
       navigate(courseId ? `/courses/${courseId}` : '/history');
     } catch (error) {
       console.error('Failed to save workout:', error);
@@ -287,47 +428,88 @@ const WorkoutPresentation = () => {
   };
 
   const current = steps[activeStep];
+  const upcoming = steps[activeStep + 1];
   const exercise = current?.exerciseId ? exercises.find(item => item.id === current.exerciseId) : undefined;
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+  const remainingWorkoutSeconds = timeLeft + steps.slice(activeStep + 1)
+    .reduce((total, step) => total + (step.duration || 0), 0);
+  const activeSetNumber = ((current?.sourceSetIndex ?? steps[activeStep - 1]?.sourceSetIndex) ?? 0) + 1;
+  const upcomingLabel = upcoming?.type === 'rest'
+    ? `Rest · ${formatTime(upcoming.duration || 0)}`
+    : upcoming?.exerciseId
+      ? exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'
+      : 'Finish workout';
   const currentRepNumber = current?.secondsPerRep && current.reps && current.duration
     ? Math.min(current.reps, Math.floor((current.duration - timeLeft) / current.secondsPerRep) + 1)
     : undefined;
+  const resultsValid = actualSets.every(result =>
+    (result.reps === undefined || (result.reps >= 0 && result.reps <= 1000)) &&
+    (result.weight === undefined || (result.weight >= 0 && result.weight <= 1000)) &&
+    (result.duration === undefined || (result.duration >= 0 && result.duration <= 86400)) &&
+    (result.distance === undefined || (result.distance >= 0 && result.distance <= 1000000))
+  );
   if (!workout || !current) return null;
 
-  return <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-    <header className="p-4 flex items-center justify-between">
-      <Button variant="ghost" size="sm" className="text-white" onClick={() => navigate(`/workout/${id}`)}><X className="h-6 w-6" /></Button>
-      <h1 className="text-xl font-bold">{workout.title}</h1>
+  return <div className="min-h-[100dvh] flex flex-col bg-gray-900 text-white">
+    <header className="p-3 sm:p-4 flex items-center justify-between gap-2">
+      <Button variant="ghost" size="icon" className="text-white shrink-0" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-6 w-6" /></Button>
+      <h1 className="text-lg sm:text-xl font-bold truncate">{workout.title}</h1>
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute voice' : 'Unmute voice'}>
+        <Button variant="ghost" size="icon" className="text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
           {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </Button>
-        <Button variant="ghost" size="sm" className="text-white" onClick={restartWorkout}>Start over</Button>
+        <Button variant="ghost" size="sm" className="text-white" onClick={() => setRestartConfirmOpen(true)}>Restart</Button>
       </div>
     </header>
-    <div className="px-4"><Progress value={(activeStep / steps.length) * 100} className="h-2" /></div>
-    <main className="flex-1 flex flex-col items-center justify-center p-4">
+    <section className="px-4 space-y-2" aria-label="Workout progress">
+      <div className="flex justify-between text-xs sm:text-sm text-gray-300">
+        <span>{current.kind === 'prep' ? 'Getting started' : `Set ${activeSetNumber} of ${workout.sets.length}`}</span>
+        <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
+      </div>
+      <Progress value={((activeStep + 1) / steps.length) * 100} className="h-2" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
+      <p className="text-center text-sm text-gray-300">Next: {upcomingLabel}</p>
+    </section>
+    <main className="flex-1 flex flex-col items-center justify-center p-4 pb-28">
       {current.type === 'exercise' && exercise ? <>
         {exercise.imageUrl && <img src={exercise.imageUrl} alt={exercise.name} className="mb-6 w-full max-w-xs h-48 object-contain rounded-lg" />}
-        <div className="text-center mb-8"><h2 className="text-3xl font-bold">{exercise.name}</h2><p className="text-xl text-gray-400">Set {(current.setIndex || 0) + 1}</p>
+        <div className="text-center mb-8"><h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}</h2><p className="text-xl text-gray-400">Exercise set {(current.setIndex || 0) + 1}</p>
           {exercise.instructions && <p className="mt-3 max-w-md text-sm text-gray-300">{exercise.instructions}</p>}
           {currentRepNumber !== undefined ? (
-            <p className="my-4 text-4xl font-bold">Rep {currentRepNumber} of {current.reps} {current.weight ? `at ${current.weight} lbs` : ''}</p>
+            <p className="my-4 text-4xl font-bold">Rep {currentRepNumber} of {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : current.reps ? (
-            <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} lbs` : ''}</p>
+            <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : null}
-          {current.duration && <p className="my-4 text-5xl font-bold flex items-center gap-2"><Timer className="h-8 w-8" />{formatTime(timeLeft)}</p>}
+          {current.duration && <p className="my-4 text-5xl font-bold flex items-center gap-2" role="timer" aria-label={`${timeLeft} seconds remaining`}><Timer className="h-8 w-8" aria-hidden="true" />{formatTime(timeLeft)}</p>}
         </div>
-        <Button size="lg" className="bg-workout-green hover:bg-green-600 text-white" onClick={nextStep}><SkipForward className="h-5 w-5 mr-2" />Next</Button>
-      </> : <><h2 className="text-3xl font-bold mb-6">Rest</h2><div className="text-7xl font-bold mb-8">{formatTime(timeLeft)}</div><div className="flex gap-3"><Button size="lg" className="bg-workout-purple text-white" onClick={togglePause}>{paused ? <Play className="mr-2" /> : <Pause className="mr-2" />}{paused ? 'Resume' : 'Pause'}</Button><Button size="lg" variant="outline" className="border-white text-white" onClick={nextStep}>Skip<SkipForward className="ml-2" /></Button></div></>}
+      </> : <>
+        <h2 className="text-3xl font-bold mb-2" aria-live="polite">{current.kind === 'prep' ? 'Get Ready' : 'Rest'}</h2>
+        {current.kind === 'prep' && <p className="text-gray-400 mb-4">Get into position — your workout starts in a moment.</p>}
+        <div className="text-7xl font-bold mb-8" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="border-white/40 bg-transparent text-white" onClick={() => adjustRestTime(-15)} aria-label="Subtract 15 seconds">
+            <Minus className="mr-1 h-4 w-4" />15s
+          </Button>
+          <Button variant="outline" className="border-white/40 bg-transparent text-white" onClick={() => adjustRestTime(15)} aria-label="Add 15 seconds">
+            <Plus className="mr-1 h-4 w-4" />15s
+          </Button>
+        </div>
+      </>}
     </main>
-    <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) discardAndExit(); }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>Log your workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
-      <div className="space-y-3">{actualSets.map((result, index) => { const planned = workout.sets[index]; const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise'; return <div key={index} className="border rounded-md p-3"><div className="flex items-center gap-2 mb-2"><Checkbox checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} /><span className="font-medium flex-1">{name} · Set {result.setIndex + 1}</span><span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2">{planned.reps !== undefined && <div><Label>Reps</Label><Input type="number" min="0" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}{planned.weight !== undefined && <div><Label>Weight</Label><Input type="number" min="0" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}{planned.duration !== undefined && <div><Label>Seconds</Label><Input type="number" min="0" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}{planned.distance !== undefined && <div><Label>Meters</Label><Input type="number" min="0" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}</div></div>; })}</div>
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-2 border-t border-white/15 bg-gray-900/95 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur" aria-label="Workout controls">
+      <Button size="lg" variant="outline" className="h-14 border-white/40 bg-transparent text-white" onClick={previousStep} disabled={activeStep === 0}><ChevronLeft className="mr-1 h-5 w-5" />Previous</Button>
+      <Button size="lg" className="h-14 bg-workout-purple text-white" onClick={togglePause}>{paused ? <Play className="mr-1 h-5 w-5" /> : <Pause className="mr-1 h-5 w-5" />}{paused ? 'Resume' : 'Pause'}</Button>
+      <Button size="lg" className="h-14 bg-workout-green text-white hover:bg-green-600" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
+    </nav>
+    <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle>Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
+      <div className="space-y-3">{actualSets.map((result, index) => { const planned = workout.sets[index]; const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise'; return <div key={index} className="border rounded-md p-3"><div className="flex items-center gap-2 mb-2"><Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} /><Label htmlFor={`completed-${index}`} className="font-medium flex-1">{name} · Set {result.setIndex + 1}</Label><span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2">{planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>Reps</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}{planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}{planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}{planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}</div></div>; })}</div>
       <div className="space-y-2"><Label htmlFor="rpe">Perceived exertion (1–10)</Label><Input id="rpe" type="number" min="1" max="10" value={rpe} onChange={e => setRpe(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="completion-notes">Session notes</Label><Textarea id="completion-notes" value={completionNotes} onChange={e => setCompletionNotes(e.target.value)} placeholder="Energy, pain, achievements, substitutions…" /></div>
-      <DialogFooter>
-        <Button variant="outline" onClick={discardAndExit} disabled={saving}>Don't save</Button>
-        <Button onClick={saveCompletion} disabled={saving || (!!rpe && (Number(rpe) < 1 || Number(rpe) > 10))}>{saving ? 'Saving…' : 'Save workout'}</Button>
+      {!resultsValid && <p className="text-sm text-destructive" role="alert">Check the entered workout values before saving.</p>}
+      <DialogFooter className="sticky bottom-0 bg-background py-3">
+        <Button variant="outline" onClick={() => setExitConfirmOpen(true)} disabled={saving}>Discard</Button>
+        <Button onClick={saveCompletion} disabled={saving || !resultsValid || (!!rpe && (Number(rpe) < 1 || Number(rpe) > 10))}>{saving ? 'Saving…' : 'Save workout'}</Button>
       </DialogFooter></DialogContent></Dialog>
+    <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard this workout?</AlertDialogTitle><AlertDialogDescription>Your progress and results for this active workout will not be saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Continue workout</AlertDialogCancel><AlertDialogAction onClick={discardAndExit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard and exit</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    <AlertDialog open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Restart workout?</AlertDialogTitle><AlertDialogDescription>This returns to the first set and resets the workout timer.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restartWorkout}>Restart</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 };
 

@@ -43,7 +43,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete }) => {
 
   // Handle click to navigate to workout detail page
   const handleCardClick = () => {
-    navigate(`/workout/${'workoutId' in workout ? workout.workoutId : workout.id}`);
+    navigate(`/workouts/${'workoutId' in workout ? workout.workoutId : workout.id}`);
   };
 
   return (
@@ -54,6 +54,14 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete }) => {
                                workout.category === 'flexibility' ? '#8B5CF6' :
                                workout.category === 'balance' ? '#F59E0B' : '#10B981' }}
       onClick={handleCardClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleCardClick();
+        }
+      }}
     >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">

@@ -28,7 +28,7 @@ const CoursesPage = () => {
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
+          <div className="text-center" role="status" aria-live="polite">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-muted-foreground">Loading courses...</p>
           </div>

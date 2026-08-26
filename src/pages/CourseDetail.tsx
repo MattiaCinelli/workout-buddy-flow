@@ -228,15 +228,18 @@ const CourseDetail = () => {
                           {!isRest && <Button
                             size="sm" 
                             variant="outline"
-                            onClick={() => workout && navigate(`/workout/${workout.id}`)}
+                            onClick={() => workout && navigate(`/workouts/${workout.id}`)}
                           >
                             View
                           </Button>}
                           <Button 
                             size="sm"
-                            onClick={() => isRest
-                              ? handleCompleteWorkout(courseWorkout.id, true)
-                              : workout && navigate(`/workout/${workout.id}/start?courseId=${course.id}&courseItemId=${courseWorkout.id}`)}
+                            onClick={() => {
+                              if (isRest) handleCompleteWorkout(courseWorkout.id, true);
+                              else if (workout) {
+                                navigate(`/workouts/${workout.id}/session?courseId=${course.id}&courseItemId=${courseWorkout.id}`);
+                              }
+                            }}
                           >
                             {isRest ? <CheckCircle2 className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
                             {isRest ? 'Finish Rest Day' : 'Start'}

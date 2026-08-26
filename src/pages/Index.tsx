@@ -18,7 +18,7 @@ const Index = () => {
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
+          <div className="text-center" role="status" aria-live="polite">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-muted-foreground">Loading your workout data...</p>
           </div>
@@ -44,7 +44,7 @@ const Index = () => {
         {/* Main Dashboard Grid */}
         <div className="space-y-6">
           {/* Calendar Preview - Full Width */}
-          <CalendarPreview onStartWorkout={(id) => navigate(`/workout/${id}/start`)} />
+          <CalendarPreview onStartWorkout={(id) => navigate(`/workouts/${id}/session`)} />
           
           {/* Today's Focus + Streak/Goal Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

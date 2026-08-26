@@ -4,6 +4,7 @@ import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
+import { BodyMetric } from '@/data/bodyMetrics';
 import {
   getAllExercisesFromDB, saveExerciseToDB,
   getAllWorkoutsFromDB, saveWorkoutToDB,
@@ -11,6 +12,7 @@ import {
   getAllCoursesFromDB, saveCourseToDB,
   getAllWorkoutSessionsFromDB, saveWorkoutSessionToDB,
   getAllMuscleGroupsFromDB, saveMuscleGroupToDB,
+  getAllBodyMetricsFromDB, saveBodyMetricToDB,
 } from './db';
 
 // Talks to the optional self-hosted sync server (server/). See
@@ -62,7 +64,7 @@ export const login = async (serverUrl: string, email: string, password: string):
   else localStorage.removeItem(displayNameKey);
 };
 
-const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions', 'muscleGroups'];
+const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions', 'muscleGroups', 'bodyMetrics'];
 
 export const logout = async (): Promise<void> => {
   const url = localStorage.getItem(serverUrlKey);
@@ -177,6 +179,7 @@ export const syncAll = async (): Promise<CollectionSyncResult[]> => {
     await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB }),
     await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB }),
     await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB }),
+    await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB }),
   ];
   localStorage.setItem(lastSyncedAtKey, new Date().toISOString());
   return results;

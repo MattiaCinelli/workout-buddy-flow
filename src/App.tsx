@@ -38,6 +38,9 @@ const App = () => (
             <Route path="/courses" element={<CoursesPage />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses/:id/edit" element={<EditCourse />} />
+            <Route path="/workouts/:id" element={<WorkoutDetail />} />
+            <Route path="/workouts/:id/session" element={<WorkoutPresentation />} />
+            {/* Legacy URLs remain available for bookmarks and old schedules. */}
             <Route path="/workout/:id" element={<WorkoutDetail />} />
             <Route path="/workout/:id/start" element={<WorkoutPresentation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

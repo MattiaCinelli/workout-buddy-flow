@@ -34,6 +34,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [restBetweenExercises, setRestBetweenExercises] = useState(30);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('exercises');
@@ -78,7 +79,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
         date: new Date().toISOString().split('T')[0],
         duration: estimatedDuration,
         sets: allSets,
-        restBetweenExercises: 30,
+        restBetweenExercises,
         notes: notes.trim() || undefined
       };
       
@@ -94,6 +95,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setCategory('');
       setDescription('');
       setNotes('');
+      setRestBetweenExercises(30);
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
@@ -132,7 +134,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       weight: exercise.defaultWeight,
       duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
       distance: exercise.defaultDistance,
-      restAfter: 30
+      restAfter: restBetweenExercises
     }));
 
     // Add exercise with default sets
@@ -182,7 +184,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       weight: lastSet.weight,
       duration: lastSet.duration,
       distance: lastSet.distance,
-      restAfter: 30
+      restAfter: restBetweenExercises
     };
     
     updatedExercises[exerciseIndex].sets.push(newSet);
@@ -225,6 +227,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setCategory('');
       setDescription('');
       setNotes('');
+      setRestBetweenExercises(30);
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
@@ -279,6 +282,25 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                   <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="workout-rest" className="text-right">
+                Rest Between Exercises
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="workout-rest"
+                  type="number"
+                  min="0"
+                  max="3600"
+                  className="w-24"
+                  value={restBetweenExercises}
+                  onChange={(e) => setRestBetweenExercises(e.target.value ? Number(e.target.value) : 0)}
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm text-muted-foreground">seconds — used as the default for each exercise you add below</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-4 items-start gap-4">
@@ -402,6 +424,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                       id={`reps-${exIndex}-${setIndex}`}
                                       type="number"
                                       min="1"
+                                      max="1000"
                                       className="h-8 w-16"
                                       value={set.reps || ''}
                                       onChange={(e) => updateSetValue(
@@ -422,6 +445,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                       id={`duration-${exIndex}-${setIndex}`}
                                       type="number"
                                       min="1"
+                                      max="86400"
                                       className="h-8 w-16"
                                       value={set.duration || ''}
                                       onChange={(e) => updateSetValue(
@@ -437,13 +461,14 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
 
                                 <div className="flex items-center">
                                   <Label htmlFor={`weight-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                    Weight (optional):
+                                    Weight (kg, optional):
                                   </Label>
                                   <Input
                                     id={`weight-${exIndex}-${setIndex}`}
                                     type="number"
                                     min="0"
-                                    step="2.5"
+                                    max="1000"
+                                    step="0.5"
                                     className="h-8 w-16"
                                     value={set.weight || ''}
                                     onChange={(e) => updateSetValue(
@@ -464,6 +489,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                     id={`distance-${exIndex}-${setIndex}`}
                                     type="number"
                                     min="0"
+                                    max="1000000"
                                     step="100"
                                     className="h-8 w-20"
                                     value={set.distance || ''}
@@ -471,6 +497,25 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                       exIndex,
                                       setIndex,
                                       'distance',
+                                      e.target.value ? Number(e.target.value) : undefined
+                                    )}
+                                    disabled={isSubmitting}
+                                  />
+                                </div>
+
+                                <div className="flex items-center">
+                                  <Label htmlFor={`rest-${exIndex}-${setIndex}`} className="mr-2 text-xs">Rest (sec):</Label>
+                                  <Input
+                                    id={`rest-${exIndex}-${setIndex}`}
+                                    type="number"
+                                    min="0"
+                                    max="3600"
+                                    className="h-8 w-20"
+                                    value={set.restAfter ?? 30}
+                                    onChange={(e) => updateSetValue(
+                                      exIndex,
+                                      setIndex,
+                                      'restAfter',
                                       e.target.value ? Number(e.target.value) : undefined
                                     )}
                                     disabled={isSubmitting}
@@ -484,6 +529,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                   className="h-8 w-8 ml-auto"
                                   onClick={() => handleRemoveSet(exIndex, setIndex)}
                                   disabled={isSubmitting}
+                                  aria-label={`Remove set ${setIndex + 1} from ${selectedEx.exercise.name}`}
                                 >
                                   <Minus className="h-4 w-4" />
                                 </Button>

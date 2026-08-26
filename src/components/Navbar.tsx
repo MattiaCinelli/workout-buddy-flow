@@ -4,6 +4,7 @@ import { Dumbbell, Home, Menu, X, Library, Calendar, History, ListChecks, Trendi
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccountButton } from "@/components/AccountButton";
+import { RemindersButton } from "@/components/RemindersButton";
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -88,12 +89,14 @@ const Navbar: React.FC = () => {
             <span>Courses</span>
           </Button>
           
+          <RemindersButton />
           <AccountButton />
           <ThemeToggle />
         </div>
 
         {/* Mobile menu button */}
         <div className="md:hidden flex items-center gap-2">
+          <RemindersButton />
           <AccountButton />
           <ThemeToggle />
           <Button

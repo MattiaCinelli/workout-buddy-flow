@@ -4,12 +4,14 @@ import { useWorkouts } from '@/hooks/useWorkouts';
 import { useScheduledWorkouts, ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { useCourses } from '@/hooks/useCourses';
 import { useMuscleGroups } from '@/hooks/useMuscleGroups';
+import { useBodyMetrics } from '@/hooks/useBodyMetrics';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course, CourseWorkout } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
+import { BodyMetric } from '@/data/bodyMetrics';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
@@ -78,6 +80,15 @@ interface DataContextType {
   updateMuscleGroup: (id: string, updates: Partial<MuscleGroup>) => Promise<MuscleGroup | null>;
   deleteMuscleGroup: (id: string) => Promise<MuscleGroup | null>;
   refreshMuscleGroups: () => Promise<void>;
+
+  // Body metrics
+  bodyMetrics: BodyMetric[];
+  bodyMetricsLoading: boolean;
+  bodyMetricsError: string | null;
+  createBodyMetric: (data: Omit<BodyMetric, 'id'>) => Promise<BodyMetric>;
+  updateBodyMetric: (id: string, updates: Partial<BodyMetric>) => Promise<BodyMetric | null>;
+  deleteBodyMetric: (id: string) => Promise<BodyMetric | null>;
+  refreshBodyMetrics: () => Promise<void>;
 
   // Combined loading state
   isLoading: boolean;
@@ -148,6 +159,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     deleteMuscleGroup: deleteMuscleGroupRaw,
     refreshMuscleGroups
   } = useMuscleGroups();
+
+  const {
+    bodyMetrics,
+    isLoading: bodyMetricsLoading,
+    error: bodyMetricsError,
+    createBodyMetric,
+    updateBodyMetric,
+    deleteBodyMetric,
+    refreshBodyMetrics
+  } = useBodyMetrics();
 
   const deleteExercise = async (id: string) => {
     const { blocked, reason } = checkExerciseDeletion(id, workouts, sessions);
@@ -263,7 +284,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     deleteMuscleGroup,
     refreshMuscleGroups,
 
-    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading || muscleGroupsLoading
+    bodyMetrics,
+    bodyMetricsLoading,
+    bodyMetricsError,
+    createBodyMetric,
+    updateBodyMetric,
+    deleteBodyMetric,
+    refreshBodyMetrics,
+
+    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading || muscleGroupsLoading || bodyMetricsLoading
   };
 
   return (
