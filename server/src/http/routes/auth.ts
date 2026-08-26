@@ -29,7 +29,7 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
     }
 
     const session = createSession(app.db, user.id);
-    reply.send({ token: session.token, expiresAt: session.expiresAt });
+    reply.send({ token: session.token, expiresAt: session.expiresAt, displayName: user.displayName });
   });
 
   app.post('/auth/logout', { preHandler: requireAuth }, async (request, reply) => {

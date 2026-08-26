@@ -3,12 +3,14 @@ import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
+import { MuscleGroup } from '@/data/muscleGroups';
 import {
   getAllExercisesFromDB, saveExerciseToDB,
   getAllWorkoutsFromDB, saveWorkoutToDB,
   getAllScheduledWorkoutsFromDB, saveScheduledWorkoutToDB,
   getAllCoursesFromDB, saveCourseToDB,
   getAllWorkoutSessionsFromDB, saveWorkoutSessionToDB,
+  getAllMuscleGroupsFromDB, saveMuscleGroupToDB,
 } from './db';
 
 // Talks to the optional self-hosted sync server (server/). See
@@ -20,11 +22,15 @@ const STORAGE_PREFIX = 'workout-buddy-sync';
 const serverUrlKey = `${STORAGE_PREFIX}:serverUrl`;
 const tokenKey = `${STORAGE_PREFIX}:token`;
 const emailKey = `${STORAGE_PREFIX}:email`;
+const displayNameKey = `${STORAGE_PREFIX}:displayName`;
 const watermarkKey = (collection: string) => `${STORAGE_PREFIX}:watermark:${collection}`;
 const lastSyncedAtKey = `${STORAGE_PREFIX}:lastSyncedAt`;
 
 export const getServerUrl = (): string | null => localStorage.getItem(serverUrlKey);
 export const getLoggedInEmail = (): string | null => localStorage.getItem(emailKey);
+// Falls back to the email in the UI when unset — this is purely cosmetic,
+// there's always an email underneath as the actual login identifier.
+export const getDisplayName = (): string | null => localStorage.getItem(displayNameKey);
 export const isConnected = (): boolean => !!(localStorage.getItem(serverUrlKey) && localStorage.getItem(tokenKey));
 // Persisted (not just component state) so a background sync — which runs
 // independent of whatever page/dialog happens to be mounted — still shows
@@ -48,13 +54,15 @@ export const login = async (serverUrl: string, email: string, password: string):
   });
   if (!response.ok) throw new Error(await errorMessageFrom(response));
 
-  const { token } = await response.json() as { token: string };
+  const { token, displayName } = await response.json() as { token: string; displayName?: string };
   localStorage.setItem(serverUrlKey, url);
   localStorage.setItem(tokenKey, token);
   localStorage.setItem(emailKey, email);
+  if (displayName) localStorage.setItem(displayNameKey, displayName);
+  else localStorage.removeItem(displayNameKey);
 };
 
-const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions'];
+const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions', 'muscleGroups'];
 
 export const logout = async (): Promise<void> => {
   const url = localStorage.getItem(serverUrlKey);
@@ -72,6 +80,7 @@ export const logout = async (): Promise<void> => {
   localStorage.removeItem(serverUrlKey);
   localStorage.removeItem(tokenKey);
   localStorage.removeItem(emailKey);
+  localStorage.removeItem(displayNameKey);
   localStorage.removeItem(lastSyncedAtKey);
   COLLECTION_PATHS.forEach(path => localStorage.removeItem(watermarkKey(path)));
 };
@@ -92,6 +101,10 @@ const authorizedRequest = async <T>(path: string, options: RequestInit = {}): Pr
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers ?? {}) },
   });
   if (!response.ok) throw new Error(await errorMessageFrom(response));
+  // A 204 (e.g. /account/password) has no body — response.json() throws
+  // ("Unexpected end of JSON input") on an empty body rather than
+  // returning something falsy, so this has to be checked explicitly.
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 };
 
@@ -163,7 +176,37 @@ export const syncAll = async (): Promise<CollectionSyncResult[]> => {
     await syncCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB }),
     await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB }),
     await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB }),
+    await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB }),
   ];
   localStorage.setItem(lastSyncedAtKey, new Date().toISOString());
   return results;
+};
+
+// Cosmetic — no current-password confirmation, matching the server route.
+export const updateDisplayName = async (displayName: string): Promise<void> => {
+  await authorizedRequest('/account/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ displayName }),
+  });
+  localStorage.setItem(displayNameKey, displayName);
+};
+
+// Changes the login identity, so the server requires currentPassword — see
+// server/src/http/routes/account.ts. Updates the locally stored email too,
+// so subsequent syncs/logins reflect it without needing to reconnect.
+export const updateEmail = async (currentPassword: string, newEmail: string): Promise<void> => {
+  await authorizedRequest('/account/email', {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, email: newEmail }),
+  });
+  localStorage.setItem(emailKey, newEmail);
+};
+
+// The server signs out every other session on a password change but keeps
+// this one valid (see account.ts) — no local state needs to change here.
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  await authorizedRequest('/account/password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 };

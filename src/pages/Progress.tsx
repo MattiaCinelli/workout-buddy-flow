@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2, Download, Upload, RefreshCw } from "lucide-react";
+import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Settings2, Trash2, Download, Upload } from "lucide-react";
 import Navbar from '@/components/Navbar';
-import SyncSettingsModal from '@/components/SyncSettingsModal';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,7 +50,6 @@ const ProgressPage = () => {
   const [timeRange, setTimeRange] = useState('3months');
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
-  const [syncSettingsOpen, setSyncSettingsOpen] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<WorkoutBuddyBackup | null>(null);
   const backupInput = useRef<HTMLInputElement>(null);
   const { sessions: workouts, sessionsLoading: workoutsLoading, clearAllSessions: clearAllWorkouts } = useData();
@@ -205,9 +203,6 @@ const ProgressPage = () => {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => backupInput.current?.click()}>
                   <Upload className="h-4 w-4 mr-2" />Restore Backup
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSyncSettingsOpen(true)}>
-                  <RefreshCw className="h-4 w-4 mr-2" />Self-Hosted Sync
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
@@ -433,7 +428,6 @@ const ProgressPage = () => {
           }}>Restore and replace</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <SyncSettingsModal isOpen={syncSettingsOpen} onClose={() => setSyncSettingsOpen(false)} />
     </div>
   );
 };

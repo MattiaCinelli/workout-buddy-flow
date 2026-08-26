@@ -2,7 +2,7 @@ import React from 'react';
 import { format, startOfWeek, addDays, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { cn } from '@/lib/utils';
@@ -113,7 +113,10 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                         getCategoryColor(workout.category)
                       )}
                     >
-                      <div className="font-medium truncate">{workout.title}</div>
+                      <div className="font-medium truncate flex items-center gap-1">
+                        {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0" />}
+                        <span className="truncate">{workout.title}</span>
+                      </div>
                       <div className="text-[10px] opacity-70">{schedule.startTime}</div>
                     </button>
                   );

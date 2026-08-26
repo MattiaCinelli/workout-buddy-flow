@@ -11,7 +11,7 @@ import {
   isToday,
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { cn } from '@/lib/utils';
@@ -165,6 +165,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                               getCategoryDot(workout.category)
                             )}
                           />
+                          {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0 text-muted-foreground" />}
                           <span className="truncate">{workout.title}</span>
                         </button>
                       );

@@ -4,6 +4,7 @@ import { Db } from '../db';
 import { registerAuthRoutes } from './routes/auth';
 import { registerSyncRoutes } from './routes/sync';
 import { registerHealthRoute } from './routes/health';
+import { registerAccountRoutes } from './routes/account';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -27,10 +28,17 @@ export const buildApp = (db: Db): FastifyInstance => {
   // automatically, so CORS isn't the security boundary; it just needs to
   // not block the app's own fetch() calls, whichever origin it's served
   // from: a Vite dev server, a static build, or a Capacitor WebView).
-  app.register(cors, { origin: true });
+  //
+  // methods must be listed explicitly: @fastify/cors defaults to
+  // 'GET,HEAD,POST' only, which silently blocks every PATCH request (the
+  // account profile/email endpoints) with no server-side error — the
+  // browser just refuses the preflight. Keep this in sync with whatever
+  // verbs the routes below actually use.
+  app.register(cors, { origin: true, methods: ['GET', 'POST', 'PATCH'] });
 
   registerHealthRoute(app);
   registerAuthRoutes(app);
+  registerAccountRoutes(app);
   registerSyncRoutes(app);
 
   return app;

@@ -15,11 +15,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, Search, X, Filter, Dumbbell } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { CalendarIcon, Search, X, Filter, Dumbbell, Loader2 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import WorkoutCard from '@/components/WorkoutCard';
 import { useData } from '@/contexts/DataContext';
+import { useToast } from '@/hooks/use-toast';
+import { WorkoutSession } from '@/data/workoutSessions';
 import { cn } from '@/lib/utils';
 
 type CategoryFilter = 'all' | 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
@@ -32,7 +38,25 @@ const HistoryPage: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   
-  const { sessions: workouts } = useData();
+  const { sessions: workouts, deleteSession } = useData();
+  const { toast } = useToast();
+  const [pendingDelete, setPendingDelete] = useState<WorkoutSession | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteSession(pendingDelete.id);
+      toast({ title: 'Removed from history', description: `"${pendingDelete.title}" was deleted.` });
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      toast({ title: 'Error', description: 'Failed to delete. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setPendingDelete(null);
+    }
+  };
 
   const filteredAndSortedWorkouts = useMemo(() => {
     let result = [...workouts];
@@ -256,11 +280,35 @@ const HistoryPage: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {filteredAndSortedWorkouts.map((workout) => (
-              <WorkoutCard key={workout.id} workout={workout} />
+              <WorkoutCard key={workout.id} workout={workout} onDelete={() => setPendingDelete(workout)} />
             ))}
           </div>
         )}
-      </main>    </div>
+      </main>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={open => !isDeleting && !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove "{pendingDelete?.title}" from history?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This only removes the logged record — it won't affect the workout template or anything scheduled.
+              This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };
 

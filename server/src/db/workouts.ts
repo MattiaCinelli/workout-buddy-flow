@@ -15,6 +15,7 @@ export interface SyncedWorkout {
   title: string;
   duration: number;
   category: string;
+  description?: string;
   sets: SyncedWorkoutSet[];
   restBetweenExercises?: number;
   notes?: string;
@@ -28,6 +29,7 @@ interface WorkoutRow {
   title: string;
   duration: number;
   category: string;
+  description: string | null;
   sets: string;
   rest_between_exercises: number | null;
   notes: string | null;
@@ -41,6 +43,7 @@ const fromRow = (row: WorkoutRow): SyncedWorkout => ({
   title: row.title,
   duration: row.duration,
   category: row.category,
+  description: row.description ?? undefined,
   sets: JSON.parse(row.sets),
   restBetweenExercises: row.rest_between_exercises ?? undefined,
   notes: row.notes ?? undefined,
@@ -62,13 +65,14 @@ export const listChangedSince = (db: Db, userId: string, since?: string): Synced
 export const upsertWorkout = (db: Db, userId: string, workout: SyncedWorkout): SyncedWorkout => {
   const syncedAt = new Date().toISOString();
   db.prepare(`
-    INSERT INTO workouts (id, user_id, date, title, duration, category, sets, rest_between_exercises, notes, updated_at, deleted_at, synced_at)
-    VALUES (@id, @userId, @date, @title, @duration, @category, @sets, @restBetweenExercises, @notes, @updatedAt, @deletedAt, @syncedAt)
+    INSERT INTO workouts (id, user_id, date, title, duration, category, description, sets, rest_between_exercises, notes, updated_at, deleted_at, synced_at)
+    VALUES (@id, @userId, @date, @title, @duration, @category, @description, @sets, @restBetweenExercises, @notes, @updatedAt, @deletedAt, @syncedAt)
     ON CONFLICT(id, user_id) DO UPDATE SET
       date = excluded.date,
       title = excluded.title,
       duration = excluded.duration,
       category = excluded.category,
+      description = excluded.description,
       sets = excluded.sets,
       rest_between_exercises = excluded.rest_between_exercises,
       notes = excluded.notes,
@@ -83,6 +87,7 @@ export const upsertWorkout = (db: Db, userId: string, workout: SyncedWorkout): S
     title: workout.title,
     duration: workout.duration,
     category: workout.category,
+    description: workout.description ?? null,
     sets: JSON.stringify(workout.sets),
     restBetweenExercises: workout.restBetweenExercises ?? null,
     notes: workout.notes ?? null,

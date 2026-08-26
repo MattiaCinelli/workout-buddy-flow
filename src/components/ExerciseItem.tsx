@@ -2,8 +2,9 @@
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Exercise } from '@/data/exercises';
-import { Image, Edit } from 'lucide-react';
+import { Exercise, getLogType } from '@/data/exercises';
+import { Image, Edit, Repeat, Timer } from 'lucide-react';
+import { useData } from '@/contexts/DataContext';
 
 interface ExerciseItemProps {
   exercise: Exercise;
@@ -12,6 +13,17 @@ interface ExerciseItemProps {
 }
 
 const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit }) => {
+  const { muscleGroups } = useData();
+  const muscleGroupNames = exercise.muscleGroups
+    .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
+    .join(', ');
+
+  const logType = getLogType(exercise);
+  const sets = exercise.defaultSets ?? 1;
+  const setSummary = logType === 'time'
+    ? (exercise.defaultDuration ? `${sets} × ${exercise.defaultDuration}s` : `${sets} set${sets === 1 ? '' : 's'}`)
+    : (exercise.defaultReps ? `${sets} × ${exercise.defaultReps} reps` : `${sets} set${sets === 1 ? '' : 's'}`);
+
   const getCategoryColor = () => {
     switch (exercise.category) {
       case 'strength': return 'bg-workout-blue text-white hover:bg-workout-blue/90';
@@ -62,9 +74,18 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
           
           <div className="flex-grow">
             <h3 className="font-medium">{exercise.name}</h3>
-            <div className="text-sm text-muted-foreground mt-1">
-              {exercise.muscleGroups.join(', ')}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              {logType === 'time' ? <Timer className="h-3 w-3" /> : <Repeat className="h-3 w-3" />}
+              {setSummary}
             </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {muscleGroupNames}
+            </div>
+            {exercise.instructions && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {exercise.instructions}
+              </p>
+            )}
           </div>
         </div>
         

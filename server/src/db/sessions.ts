@@ -51,6 +51,13 @@ export const deleteSession = (db: Db, token: string): void => {
   db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
 };
 
+// Used after a password change: every other device gets signed out and has
+// to re-authenticate with the new password, while the session that made
+// the change (which already proved it knows the new password) stays valid.
+export const deleteOtherSessionsForUser = (db: Db, userId: string, keepToken: string): void => {
+  db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(userId, keepToken);
+};
+
 export const deleteExpiredSessions = (db: Db): void => {
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(new Date().toISOString());
 };

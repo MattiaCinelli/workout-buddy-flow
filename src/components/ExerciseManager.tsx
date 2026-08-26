@@ -13,35 +13,48 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Exercise } from '@/data/exercises';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ExerciseItem from './ExerciseItem';
 import ExerciseForm from './ExerciseForm';
+import { ExerciseDetailModal } from './ExerciseDetailModal';
+import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Loader2 } from 'lucide-react';
+import { Plus, Search, FileImage, Loader2, Settings2 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
-  const { 
-    exercises, 
-    exercisesLoading, 
-    createExercise, 
-    updateExercise, 
-    deleteExercise 
+  const {
+    exercises,
+    exercisesLoading,
+    createExercise,
+    updateExercise,
+    deleteExercise,
+    muscleGroups,
   } = useData();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const filteredExercises = exercises.filter(exercise => 
-    exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    exercise.muscleGroups.some(group => 
-      group.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  const [isManageMusclesOpen, setIsManageMusclesOpen] = useState(false);
+  const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
+
+  const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
+
+  const filteredExercises = exercises.filter(exercise => {
+    const matchesSearch = !searchQuery ||
+      exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      exercise.muscleGroups.some(id =>
+        muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    const matchesMuscles = selectedMuscles.length === 0 ||
+      exercise.muscleGroups.some(id => selectedMuscles.includes(id));
+    return matchesSearch && matchesMuscles;
+  });
   
   const handleCreateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const existingExercise = exercises.find(
@@ -118,6 +131,7 @@ const ExerciseManager: React.FC = () => {
   };
   
   const handleEdit = (exercise: Exercise) => {
+    setViewingExercise(null);
     setCurrentExercise(exercise);
     setIsFormOpen(true);
   };
@@ -179,7 +193,7 @@ const ExerciseManager: React.FC = () => {
         </Button>
       </div>
       
-      <div className="relative mb-4">
+      <div className="relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search exercises..."
@@ -188,13 +202,39 @@ const ExerciseManager: React.FC = () => {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
-      
+
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-xs text-muted-foreground">Filter by muscle group</p>
+          <button
+            type="button"
+            onClick={() => setIsManageMusclesOpen(true)}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+          >
+            <Settings2 className="h-3 w-3" /> Manage
+          </button>
+        </div>
+        <ToggleGroup
+          type="multiple"
+          value={selectedMuscles}
+          onValueChange={(value) => setSelectedMuscles(value)}
+          className="justify-start flex-wrap"
+        >
+          {muscleGroups.map((group) => (
+            <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-7 px-2.5 text-xs">
+              {group.name}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
       <div className="space-y-3">
         {filteredExercises.length > 0 ? (
           filteredExercises.map((exercise) => (
             <ExerciseItem
               key={exercise.id}
               exercise={exercise}
+              onSelect={setViewingExercise}
               onEdit={handleEdit}
             />
           ))
@@ -203,11 +243,11 @@ const ExerciseManager: React.FC = () => {
             <FileImage className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-2 text-sm font-medium text-foreground">No exercises found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {searchQuery 
-                ? "Try adjusting your search query" 
+              {searchQuery || selectedMuscles.length > 0
+                ? "Try adjusting your search or muscle filter"
                 : "Get started by creating a new exercise"}
             </p>
-            {!searchQuery && (
+            {!searchQuery && selectedMuscles.length === 0 && (
               <div className="mt-6">
                 <Button
                   onClick={() => setIsFormOpen(true)}
@@ -280,6 +320,10 @@ const ExerciseManager: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManageMuscleGroupsModal isOpen={isManageMusclesOpen} onClose={() => setIsManageMusclesOpen(false)} />
+
+      <ExerciseDetailModal exercise={viewingExercise} onClose={() => setViewingExercise(null)} onEdit={handleEdit} />
     </div>
   );
 };

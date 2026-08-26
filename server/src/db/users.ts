@@ -4,6 +4,7 @@ import { Db } from './index';
 export interface User {
   id: string;
   email: string;
+  displayName?: string;
   passwordHash: string;
   createdAt: string;
 }
@@ -11,6 +12,7 @@ export interface User {
 interface UserRow {
   id: string;
   email: string;
+  display_name: string | null;
   password_hash: string;
   created_at: string;
 }
@@ -18,6 +20,7 @@ interface UserRow {
 const fromRow = (row: UserRow): User => ({
   id: row.id,
   email: row.email,
+  displayName: row.display_name ?? undefined,
   passwordHash: row.password_hash,
   createdAt: row.created_at,
 });
@@ -39,4 +42,22 @@ export const getUserByEmail = (db: Db, email: string): User | undefined => {
 export const getUserById = (db: Db, id: string): User | undefined => {
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
   return row ? fromRow(row) : undefined;
+};
+
+// Cosmetic only — no password confirmation needed to change this, unlike
+// email/password below.
+export const updateDisplayName = (db: Db, userId: string, displayName: string): User => {
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, userId);
+  return getUserById(db, userId)!;
+};
+
+// Caller is responsible for verifying the current password and email
+// uniqueness before calling this — this function just writes.
+export const updateEmail = (db: Db, userId: string, email: string): User => {
+  db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, userId);
+  return getUserById(db, userId)!;
+};
+
+export const updatePasswordHash = (db: Db, userId: string, passwordHash: string): void => {
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, userId);
 };

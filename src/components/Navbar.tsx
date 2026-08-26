@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dumbbell, Home, Menu, X, Library, Calendar, History, ListChecks, TrendingUp, BookOpen } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AccountButton } from "@/components/AccountButton";
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -87,13 +88,15 @@ const Navbar: React.FC = () => {
             <span>Courses</span>
           </Button>
           
+          <AccountButton />
           <ThemeToggle />
         </div>
-        
+
         {/* Mobile menu button */}
         <div className="md:hidden flex items-center gap-2">
+          <AccountButton />
           <ThemeToggle />
-          <Button 
+          <Button
             variant="ghost"
             size="icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

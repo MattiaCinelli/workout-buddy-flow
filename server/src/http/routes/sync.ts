@@ -5,6 +5,7 @@ import * as workouts from '../../db/workouts';
 import * as scheduledWorkouts from '../../db/scheduledWorkouts';
 import * as courses from '../../db/courses';
 import * as workoutSessions from '../../db/workoutSessions';
+import * as muscleGroups from '../../db/muscleGroups';
 
 const workoutSetSchema = {
   type: 'object',
@@ -28,6 +29,14 @@ const exerciseSchema = {
     category: { type: 'string' },
     muscleGroups: { type: 'array', items: { type: 'string' } },
     difficulty: { type: 'string' },
+    logType: { type: 'string' },
+    defaultSets: { type: 'number' },
+    defaultReps: { type: 'number' },
+    defaultDuration: { type: 'number' },
+    defaultWeight: { type: 'number' },
+    defaultDistance: { type: 'number' },
+    secondsPerRep: { type: 'number' },
+    instructions: { type: 'string' },
     imageUrl: { type: 'string' },
     updatedAt: { type: 'string' },
     deletedAt: { type: 'string' },
@@ -43,6 +52,7 @@ const workoutSchema = {
     title: { type: 'string' },
     duration: { type: 'number' },
     category: { type: 'string' },
+    description: { type: 'string' },
     sets: { type: 'array', items: workoutSetSchema },
     restBetweenExercises: { type: 'number' },
     notes: { type: 'string' },
@@ -61,7 +71,7 @@ const scheduledWorkoutSchema = {
     startTime: { type: 'string' },
     endTime: { type: 'string' },
     recurrence: { type: 'string' },
-    recurrenceDay: { type: 'string' },
+    recurrenceDays: { type: 'array', items: { type: 'string' } },
     endRecurrenceDate: { type: 'string' },
     notes: { type: 'string' },
     createdAt: { type: 'string' },
@@ -147,6 +157,17 @@ const workoutSessionSchema = {
   },
 };
 
+const muscleGroupSchema = {
+  type: 'object',
+  required: ['id', 'name', 'updatedAt'],
+  properties: {
+    id: { type: 'string', minLength: 1 },
+    name: { type: 'string' },
+    updatedAt: { type: 'string' },
+    deletedAt: { type: 'string' },
+  },
+};
+
 export const registerSyncRoutes = (app: FastifyInstance) => {
   registerSyncCollection(app, {
     path: 'exercises',
@@ -181,5 +202,12 @@ export const registerSyncRoutes = (app: FastifyInstance) => {
     listChangedSince: workoutSessions.listChangedSince,
     upsertBatch: workoutSessions.upsertWorkoutSessionsBatch,
     itemSchema: workoutSessionSchema,
+  });
+
+  registerSyncCollection(app, {
+    path: 'muscleGroups',
+    listChangedSince: muscleGroups.listChangedSince,
+    upsertBatch: muscleGroups.upsertMuscleGroupsBatch,
+    itemSchema: muscleGroupSchema,
   });
 };

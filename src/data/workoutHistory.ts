@@ -13,6 +13,7 @@ export interface WorkoutEntry {
   title: string;
   duration: number; // in minutes
   category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
+  description?: string; // what this workout is / who it's for — shown in the workout list
   sets: WorkoutSet[];
   restBetweenExercises?: number; // in seconds, default rest between different exercises
   notes?: string; // optional notes about the workout (mood, energy, achievements)

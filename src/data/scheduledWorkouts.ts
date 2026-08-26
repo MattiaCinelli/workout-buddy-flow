@@ -9,7 +9,7 @@ export interface ScheduledWorkout {
   startTime: string; // 24-hour format (HH:MM)
   endTime?: string; // Optional end time
   recurrence: RecurrenceType;
-  recurrenceDay?: WeekDay; // For weekly recurrence, which day
+  recurrenceDays?: WeekDay[]; // For weekly recurrence, which day(s) — e.g. just Monday, or Mon-Fri
   endRecurrenceDate?: string; // Optional end date for recurring events
   notes?: string;
   createdAt: string;
@@ -30,6 +30,20 @@ export const weekDayLabels: Record<WeekDay, string> = {
   saturday: 'Saturday',
   sunday: 'Sunday'
 };
+
+export const weekDayShortLabels: Record<WeekDay, string> = {
+  monday: 'Mon',
+  tuesday: 'Tue',
+  wednesday: 'Wed',
+  thursday: 'Thu',
+  friday: 'Fri',
+  saturday: 'Sat',
+  sunday: 'Sun'
+};
+
+// Quick-select presets for the weekly day picker.
+export const weekdaysPreset: WeekDay[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+export const weekendPreset: WeekDay[] = ['saturday', 'sunday'];
 
 // Helper to get day of week from a date
 export const getDayOfWeek = (date: Date): WeekDay => {

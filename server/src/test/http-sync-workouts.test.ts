@@ -41,6 +41,19 @@ test('a workout with multiple sets round-trips through push and pull with set or
   assert.equal(stored.sets[0].weight, 100);
 });
 
+test('description round-trips through push and pull', async () => {
+  const { app, aliceToken } = await setupTwoUsers();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/workouts', headers,
+    payload: { workouts: [workout({ description: 'A gentle morning routine to wake up your joints.' })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/workouts', headers });
+
+  assert.equal(pull.json().workouts[0].description, 'A gentle morning routine to wake up your joints.');
+});
+
 test('a stale workout push loses to a newer one already stored', async () => {
   const { app, aliceToken } = await setupTwoUsers();
   const headers = { authorization: `Bearer ${aliceToken}` };

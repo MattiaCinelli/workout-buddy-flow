@@ -1,17 +1,21 @@
 import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, ChevronRight, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock, ChevronRight, Activity, Trash2 } from "lucide-react";
 import { WorkoutSession } from '@/data/workoutSessions';
 import { WorkoutEntry } from '@/data/workoutHistory';
-import { exerciseList } from '@/data/exercises';
 import { useNavigate } from 'react-router-dom';
 
 interface WorkoutCardProps {
   workout: WorkoutSession | WorkoutEntry;
+  // Only wired for history entries (WorkoutSession) — workout templates
+  // have their own delete flow (Workouts page) with its own referential
+  // integrity checks, so this stays opt-in per usage rather than global.
+  onDelete?: (workout: WorkoutSession | WorkoutEntry) => void;
 }
 
-const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
+const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete }) => {
   const navigate = useNavigate();
   
   // Get unique exercises
@@ -37,17 +41,6 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
     }
   };
 
-  // Get exercise names
-  const getExercisePreview = () => {
-    return uniqueExercises.slice(0, 2).map(id => {
-      const exercise = exerciseList.find(ex => ex.id === id);
-      return exercise?.name;
-    }).join(', ');
-  };
-
-  const exercisePreview = getExercisePreview();
-  const hasMoreExercises = uniqueExercises.length > 2;
-
   // Handle click to navigate to workout detail page
   const handleCardClick = () => {
     navigate(`/workout/${'workoutId' in workout ? workout.workoutId : workout.id}`);
@@ -72,9 +65,8 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
       </CardHeader>
       
       <CardContent className="pb-2">
-        <div className="text-muted-foreground text-sm">
-          {exercisePreview}
-          {hasMoreExercises ? ` and ${uniqueExercises.length - 2} more` : ''}
+        <div className="text-muted-foreground text-sm line-clamp-2">
+          {workout.description || `${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}`}
         </div>
         {'actualSets' in workout && workout.actualSets && (
           <div className="mt-2 text-sm">
@@ -102,7 +94,20 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout }) => {
             <span>{exerciseCount} exercises</span>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={e => { e.stopPropagation(); onDelete(workout); }}
+              aria-label="Delete from history"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <ChevronRight className="h-4 w-4" />
+        </div>
       </CardFooter>
     </Card>
   );

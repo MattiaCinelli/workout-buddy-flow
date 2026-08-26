@@ -14,6 +14,7 @@ const CalendarPage: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedSchedule, setSelectedSchedule] = useState<ExpandedScheduledWorkout | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<ExpandedScheduledWorkout | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'week' | 'month'>('week');
 
@@ -37,6 +38,7 @@ const CalendarPage: React.FC = () => {
   const scheduledWorkouts = getScheduledWorkoutsForRange(start, end);
 
   const handleAddClick = (date: Date) => {
+    setEditingSchedule(null);
     setSelectedDate(date);
     setIsScheduleModalOpen(true);
   };
@@ -44,6 +46,17 @@ const CalendarPage: React.FC = () => {
   const handleScheduleClick = (schedule: ExpandedScheduledWorkout) => {
     setSelectedSchedule(schedule);
     setIsDetailModalOpen(true);
+  };
+
+  const handleEditClick = (schedule: ExpandedScheduledWorkout) => {
+    setIsDetailModalOpen(false);
+    setEditingSchedule(schedule);
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleScheduleModalClose = () => {
+    setIsScheduleModalOpen(false);
+    setEditingSchedule(null);
   };
 
   return (
@@ -84,9 +97,10 @@ const CalendarPage: React.FC = () => {
 
       <ScheduleWorkoutModal
         isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
+        onClose={handleScheduleModalClose}
         selectedDate={selectedDate}
         onScheduleCreated={refreshScheduledWorkouts}
+        editingSchedule={editingSchedule}
       />
 
       <ScheduleDetailModal
@@ -94,6 +108,7 @@ const CalendarPage: React.FC = () => {
         onClose={() => setIsDetailModalOpen(false)}
         schedule={selectedSchedule}
         onDeleted={refreshScheduledWorkouts}
+        onEdit={handleEditClick}
       />
     </div>
   );

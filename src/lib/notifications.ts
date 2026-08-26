@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { addDays, addWeeks, isAfter, parseISO, set } from 'date-fns';
-import { ScheduledWorkout } from '@/data/scheduledWorkouts';
+import { addDays, isAfter, isSameDay, parseISO, set } from 'date-fns';
+import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
 
 const notificationId = (value: string) => {
   let hash = 0;
@@ -9,16 +9,29 @@ const notificationId = (value: string) => {
   return Math.abs(hash) || 1;
 };
 
+// Walks day by day rather than stepping a fixed interval from startDate —
+// weekly recurrence can now span several chosen weekdays (e.g. Mon/Wed/Fri),
+// not just whichever one startDate happens to land on.
 const occurrences = (schedule: ScheduledWorkout) => {
   const [hour, minute] = schedule.startTime.split(':').map(Number);
-  const first = set(parseISO(schedule.startDate), { hours: hour, minutes: minute, seconds: 0, milliseconds: 0 });
+  const start = parseISO(schedule.startDate);
   const end = schedule.endRecurrenceDate ? set(parseISO(schedule.endRecurrenceDate), { hours: 23, minutes: 59 }) : addDays(new Date(), 90);
   const dates: Date[] = [];
-  let current = first;
+  let current = start;
   while (!isAfter(current, end) && dates.length < 90) {
-    if (isAfter(current, new Date())) dates.push(current);
+    const isOccurrence = schedule.recurrence === 'none'
+      ? isSameDay(current, start)
+      : schedule.recurrence === 'daily'
+      ? true
+      : (schedule.recurrenceDays ?? []).includes(getDayOfWeek(current));
+
+    if (isOccurrence) {
+      const at = set(current, { hours: hour, minutes: minute, seconds: 0, milliseconds: 0 });
+      if (isAfter(at, new Date())) dates.push(at);
+    }
+
     if (schedule.recurrence === 'none') break;
-    current = schedule.recurrence === 'daily' ? addDays(current, 1) : addWeeks(current, 1);
+    current = addDays(current, 1);
   }
   return dates;
 };

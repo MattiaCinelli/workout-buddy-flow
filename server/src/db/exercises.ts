@@ -6,6 +6,14 @@ export interface SyncedExercise {
   category: string;
   muscleGroups: string[];
   difficulty: string;
+  logType?: string;
+  defaultSets?: number;
+  defaultReps?: number;
+  defaultDuration?: number;
+  defaultWeight?: number;
+  defaultDistance?: number;
+  secondsPerRep?: number;
+  instructions?: string;
   imageUrl?: string;
   updatedAt: string;
   deletedAt?: string;
@@ -17,6 +25,14 @@ interface ExerciseRow {
   category: string;
   muscle_groups: string;
   difficulty: string;
+  log_type: string | null;
+  default_sets: number | null;
+  default_reps: number | null;
+  default_duration: number | null;
+  default_weight: number | null;
+  default_distance: number | null;
+  seconds_per_rep: number | null;
+  instructions: string | null;
   image_url: string | null;
   updated_at: string;
   deleted_at: string | null;
@@ -28,6 +44,14 @@ const fromRow = (row: ExerciseRow): SyncedExercise => ({
   category: row.category,
   muscleGroups: JSON.parse(row.muscle_groups),
   difficulty: row.difficulty,
+  logType: row.log_type ?? undefined,
+  defaultSets: row.default_sets ?? undefined,
+  defaultReps: row.default_reps ?? undefined,
+  defaultDuration: row.default_duration ?? undefined,
+  defaultWeight: row.default_weight ?? undefined,
+  defaultDistance: row.default_distance ?? undefined,
+  secondsPerRep: row.seconds_per_rep ?? undefined,
+  instructions: row.instructions ?? undefined,
   imageUrl: row.image_url ?? undefined,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at ?? undefined,
@@ -59,13 +83,29 @@ export const listChangedSince = (db: Db, userId: string, since?: string): Synced
 export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise): SyncedExercise => {
   const syncedAt = new Date().toISOString();
   db.prepare(`
-    INSERT INTO exercises (id, user_id, name, category, muscle_groups, difficulty, image_url, updated_at, deleted_at, synced_at)
-    VALUES (@id, @userId, @name, @category, @muscleGroups, @difficulty, @imageUrl, @updatedAt, @deletedAt, @syncedAt)
+    INSERT INTO exercises (
+      id, user_id, name, category, muscle_groups, difficulty,
+      log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep,
+      instructions, image_url, updated_at, deleted_at, synced_at
+    )
+    VALUES (
+      @id, @userId, @name, @category, @muscleGroups, @difficulty,
+      @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep,
+      @instructions, @imageUrl, @updatedAt, @deletedAt, @syncedAt
+    )
     ON CONFLICT(id, user_id) DO UPDATE SET
       name = excluded.name,
       category = excluded.category,
       muscle_groups = excluded.muscle_groups,
       difficulty = excluded.difficulty,
+      log_type = excluded.log_type,
+      default_sets = excluded.default_sets,
+      default_reps = excluded.default_reps,
+      default_duration = excluded.default_duration,
+      default_weight = excluded.default_weight,
+      default_distance = excluded.default_distance,
+      seconds_per_rep = excluded.seconds_per_rep,
+      instructions = excluded.instructions,
       image_url = excluded.image_url,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
@@ -78,6 +118,14 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     category: exercise.category,
     muscleGroups: JSON.stringify(exercise.muscleGroups),
     difficulty: exercise.difficulty,
+    logType: exercise.logType ?? null,
+    defaultSets: exercise.defaultSets ?? null,
+    defaultReps: exercise.defaultReps ?? null,
+    defaultDuration: exercise.defaultDuration ?? null,
+    defaultWeight: exercise.defaultWeight ?? null,
+    defaultDistance: exercise.defaultDistance ?? null,
+    secondsPerRep: exercise.secondsPerRep ?? null,
+    instructions: exercise.instructions ?? null,
     imageUrl: exercise.imageUrl ?? null,
     updatedAt: exercise.updatedAt,
     deletedAt: exercise.deletedAt ?? null,

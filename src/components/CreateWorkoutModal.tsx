@@ -12,10 +12,10 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Exercise } from '@/data/exercises';
+import { Exercise, getLogType } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Minus, Plus, Loader2 } from 'lucide-react';
+import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 
@@ -32,19 +32,21 @@ interface SelectedExercise {
 const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>('');
+  const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('exercises');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { exercises, createWorkout } = useData();
+  const { exercises, createWorkout, muscleGroups } = useData();
+  const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
   
   const filteredExercises = exercises.filter(exercise => 
     exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    exercise.muscleGroups.some(group => 
-      group.toLowerCase().includes(searchQuery.toLowerCase())
+    exercise.muscleGroups.some(id =>
+      muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
   
@@ -72,10 +74,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       const workoutData: Omit<WorkoutEntry, 'id'> = {
         title,
         category: category as WorkoutEntry['category'],
+        description: description.trim() || undefined,
         date: new Date().toISOString().split('T')[0],
         duration: estimatedDuration,
         sets: allSets,
-        restBetweenExercises: 90,
+        restBetweenExercises: 30,
         notes: notes.trim() || undefined
       };
       
@@ -89,6 +92,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       // Reset form and close modal
       setTitle('');
       setCategory('');
+      setDescription('');
       setNotes('');
       setSearchQuery('');
       setSelectedExercises([]);
@@ -116,20 +120,21 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       return;
     }
     
-    // Create default sets based on exercise category
-    const defaultSets: WorkoutSet[] = [];
-    const isTimeBasedExercise = exercise.category === 'cardio' || exercise.category === 'flexibility';
-    
-    // Add default set
-    defaultSets.push({
+    // Pre-fill from the exercise's own defaults rather than a generic
+    // category-based guess — e.g. a bodyweight exercise like "Wall Angel"
+    // gets its own configured reps/sets instead of always defaulting to
+    // 12 reps at 50kg regardless of what the exercise actually is.
+    const isTimeBased = getLogType(exercise) === 'time';
+    const setCount = exercise.defaultSets ?? 1;
+    const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
-      reps: isTimeBasedExercise ? undefined : 12,
-      weight: exercise.category === 'strength' ? 50 : undefined,
-      duration: isTimeBasedExercise ? 60 : undefined,
-      distance: exercise.category === 'cardio' ? 1000 : undefined,
-      restAfter: 60
-    });
-    
+      reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
+      weight: exercise.defaultWeight,
+      duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
+      distance: exercise.defaultDistance,
+      restAfter: 30
+    }));
+
     // Add exercise with default sets
     setSelectedExercises([
       ...selectedExercises, 
@@ -157,6 +162,14 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     });
   };
 
+  const handleMoveExercise = (exerciseIndex: number, direction: -1 | 1) => {
+    const target = exerciseIndex + direction;
+    if (target < 0 || target >= selectedExercises.length) return;
+    const updatedExercises = [...selectedExercises];
+    [updatedExercises[exerciseIndex], updatedExercises[target]] = [updatedExercises[target], updatedExercises[exerciseIndex]];
+    setSelectedExercises(updatedExercises);
+  };
+
   const handleAddSet = (exerciseIndex: number) => {
     const updatedExercises = [...selectedExercises];
     const currentExercise = updatedExercises[exerciseIndex];
@@ -169,7 +182,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       weight: lastSet.weight,
       duration: lastSet.duration,
       distance: lastSet.distance,
-      restAfter: 60
+      restAfter: 30
     };
     
     updatedExercises[exerciseIndex].sets.push(newSet);
@@ -210,6 +223,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     if (!isSubmitting) {
       setTitle('');
       setCategory('');
+      setDescription('');
       setNotes('');
       setSearchQuery('');
       setSelectedExercises([]);
@@ -266,7 +280,21 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                 </SelectContent>
               </Select>
             </div>
-            
+
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="workout-description" className="text-right pt-2">
+                Description
+              </Label>
+              <textarea
+                id="workout-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="col-span-3 flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="What this workout is, or who it's for — shown in your workout list"
+                disabled={isSubmitting}
+              />
+            </div>
+
             <div className="grid grid-cols-4 items-start gap-4">
               <Label htmlFor="workout-notes" className="text-right pt-2">
                 Notes
@@ -327,9 +355,29 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                       {selectedExercises.map((selectedEx, exIndex) => (
                         <div key={selectedEx.exercise.id} className="border rounded-md p-4">
                           <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
-                            <Button 
-                              variant="outline" 
+                            <div className="flex items-center gap-1">
+                              <div className="flex flex-col -my-1">
+                                <Button
+                                  variant="ghost" size="icon" type="button" className="h-5 w-6"
+                                  onClick={() => handleMoveExercise(exIndex, -1)}
+                                  disabled={isSubmitting || exIndex === 0}
+                                  aria-label="Move exercise up"
+                                >
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost" size="icon" type="button" className="h-5 w-6"
+                                  onClick={() => handleMoveExercise(exIndex, 1)}
+                                  disabled={isSubmitting || exIndex === selectedExercises.length - 1}
+                                  aria-label="Move exercise down"
+                                >
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
+                            </div>
+                            <Button
+                              variant="outline"
                               size="sm"
                               type="button"
                               onClick={() => handleRemoveExercise(selectedEx.exercise.id)}
@@ -345,53 +393,27 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                               <div key={setIndex} className="flex flex-wrap items-center gap-2 p-2 bg-muted/40 rounded-md">
                                 <div className="font-medium min-w-[80px]">Set {setIndex + 1}</div>
                                 
-                                {selectedEx.exercise.category === 'strength' && (
-                                  <>
-                                    <div className="flex items-center">
-                                      <Label htmlFor={`reps-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                        Reps:
-                                      </Label>
-                                      <Input
-                                        id={`reps-${exIndex}-${setIndex}`}
-                                        type="number"
-                                        min="1"
-                                        className="h-8 w-16"
-                                        value={set.reps || ''}
-                                        onChange={(e) => updateSetValue(
-                                          exIndex, 
-                                          setIndex, 
-                                          'reps', 
-                                          e.target.value ? Number(e.target.value) : undefined
-                                        )}
-                                        disabled={isSubmitting}
-                                      />
-                                    </div>
-                                    <div className="flex items-center">
-                                      <Label htmlFor={`weight-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                        Weight:
-                                      </Label>
-                                      <Input
-                                        id={`weight-${exIndex}-${setIndex}`}
-                                        type="number"
-                                        min="0"
-                                        step="2.5"
-                                        className="h-8 w-16"
-                                        value={set.weight || ''}
-                                        onChange={(e) => updateSetValue(
-                                          exIndex, 
-                                          setIndex, 
-                                          'weight', 
-                                          e.target.value ? Number(e.target.value) : undefined
-                                        )}
-                                        disabled={isSubmitting}
-                                      />
-                                    </div>
-                                  </>
-                                )}
-                                
-                                {(selectedEx.exercise.category === 'cardio' || 
-                                 selectedEx.exercise.category === 'flexibility' ||
-                                 selectedEx.exercise.category === 'balance') && (
+                                {getLogType(selectedEx.exercise) === 'reps' ? (
+                                  <div className="flex items-center">
+                                    <Label htmlFor={`reps-${exIndex}-${setIndex}`} className="mr-2 text-xs">
+                                      Reps:
+                                    </Label>
+                                    <Input
+                                      id={`reps-${exIndex}-${setIndex}`}
+                                      type="number"
+                                      min="1"
+                                      className="h-8 w-16"
+                                      value={set.reps || ''}
+                                      onChange={(e) => updateSetValue(
+                                        exIndex,
+                                        setIndex,
+                                        'reps',
+                                        e.target.value ? Number(e.target.value) : undefined
+                                      )}
+                                      disabled={isSubmitting}
+                                    />
+                                  </div>
+                                ) : (
                                   <div className="flex items-center">
                                     <Label htmlFor={`duration-${exIndex}-${setIndex}`} className="mr-2 text-xs">
                                       Duration (sec):
@@ -403,38 +425,57 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                       className="h-8 w-16"
                                       value={set.duration || ''}
                                       onChange={(e) => updateSetValue(
-                                        exIndex, 
-                                        setIndex, 
-                                        'duration', 
+                                        exIndex,
+                                        setIndex,
+                                        'duration',
                                         e.target.value ? Number(e.target.value) : undefined
                                       )}
                                       disabled={isSubmitting}
                                     />
                                   </div>
                                 )}
-                                
-                                {selectedEx.exercise.category === 'cardio' && (
-                                  <div className="flex items-center">
-                                    <Label htmlFor={`distance-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                      Distance (m):
-                                    </Label>
-                                    <Input
-                                      id={`distance-${exIndex}-${setIndex}`}
-                                      type="number"
-                                      min="0"
-                                      step="100"
-                                      className="h-8 w-20"
-                                      value={set.distance || ''}
-                                      onChange={(e) => updateSetValue(
-                                        exIndex, 
-                                        setIndex, 
-                                        'distance', 
-                                        e.target.value ? Number(e.target.value) : undefined
-                                      )}
-                                      disabled={isSubmitting}
-                                    />
-                                  </div>
-                                )}
+
+                                <div className="flex items-center">
+                                  <Label htmlFor={`weight-${exIndex}-${setIndex}`} className="mr-2 text-xs">
+                                    Weight (optional):
+                                  </Label>
+                                  <Input
+                                    id={`weight-${exIndex}-${setIndex}`}
+                                    type="number"
+                                    min="0"
+                                    step="2.5"
+                                    className="h-8 w-16"
+                                    value={set.weight || ''}
+                                    onChange={(e) => updateSetValue(
+                                      exIndex,
+                                      setIndex,
+                                      'weight',
+                                      e.target.value ? Number(e.target.value) : undefined
+                                    )}
+                                    disabled={isSubmitting}
+                                  />
+                                </div>
+
+                                <div className="flex items-center">
+                                  <Label htmlFor={`distance-${exIndex}-${setIndex}`} className="mr-2 text-xs">
+                                    Distance (m, optional):
+                                  </Label>
+                                  <Input
+                                    id={`distance-${exIndex}-${setIndex}`}
+                                    type="number"
+                                    min="0"
+                                    step="100"
+                                    className="h-8 w-20"
+                                    value={set.distance || ''}
+                                    onChange={(e) => updateSetValue(
+                                      exIndex,
+                                      setIndex,
+                                      'distance',
+                                      e.target.value ? Number(e.target.value) : undefined
+                                    )}
+                                    disabled={isSubmitting}
+                                  />
+                                </div>
                                 
                                 <Button
                                   type="button"

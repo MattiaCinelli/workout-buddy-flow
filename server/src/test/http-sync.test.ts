@@ -54,6 +54,49 @@ test('a pushed exercise is returned by POST and shows up in a subsequent GET', a
   assert.equal(pull.json().exercises[0].id, 'ex-1');
 });
 
+test('instructions round-trips through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ instructions: 'Keep your back straight and drive through your heels.' })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
+
+  assert.equal(pull.json().exercises[0].instructions, 'Keep your back straight and drive through your heels.');
+});
+
+test('secondsPerRep round-trips through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ secondsPerRep: 4 })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
+
+  assert.equal(pull.json().exercises[0].secondsPerRep, 4);
+});
+
+test('logType and set defaults round-trip through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ logType: 'time', defaultSets: 3, defaultDuration: 45 })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
+
+  const stored = pull.json().exercises[0];
+  assert.equal(stored.logType, 'time');
+  assert.equal(stored.defaultSets, 3);
+  assert.equal(stored.defaultDuration, 45);
+  assert.equal(stored.defaultReps, undefined);
+});
+
 test('GET since a watermark only returns rows the server received after it', async () => {
   const { app, aliceToken } = await setup();
   const headers = { authorization: `Bearer ${aliceToken}` };

@@ -45,13 +45,28 @@ describe('expandScheduledWorkouts', () => {
   it('expands a weekly recurrence only on the chosen weekday', () => {
     // 2026-03-10 is a Tuesday.
     const schedule: ScheduledWorkout = {
-      ...base, recurrence: 'weekly', recurrenceDay: 'tuesday', startDate: '2026-03-10',
+      ...base, recurrence: 'weekly', recurrenceDays: ['tuesday'], startDate: '2026-03-10',
     };
     const expanded = expandScheduledWorkouts([schedule], new Date('2026-03-01'), new Date('2026-03-31'));
     expect(expanded.map(item => item.displayDate)).toEqual(['2026-03-10', '2026-03-17', '2026-03-24', '2026-03-31']);
   });
 
-  it('produces no instances for weekly recurrence missing a recurrenceDay', () => {
+  it('expands a weekly recurrence across multiple chosen weekdays, e.g. Mon-Fri', () => {
+    // 2026-03-10 is a Tuesday; a Mon-Fri schedule starting there should skip
+    // Monday 03-09 (before the start date) but include every weekday after,
+    // and skip the weekend (03-14/03-15).
+    const schedule: ScheduledWorkout = {
+      ...base, recurrence: 'weekly',
+      recurrenceDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      startDate: '2026-03-10',
+    };
+    const expanded = expandScheduledWorkouts([schedule], new Date('2026-03-01'), new Date('2026-03-16'));
+    expect(expanded.map(item => item.displayDate)).toEqual([
+      '2026-03-10', '2026-03-11', '2026-03-12', '2026-03-13', '2026-03-16',
+    ]);
+  });
+
+  it('produces no instances for weekly recurrence missing recurrenceDays', () => {
     const schedule: ScheduledWorkout = { ...base, recurrence: 'weekly', startDate: '2026-03-10' };
     const expanded = expandScheduledWorkouts([schedule], new Date('2026-03-01'), new Date('2026-03-31'));
     expect(expanded).toHaveLength(0);

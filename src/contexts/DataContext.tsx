@@ -3,11 +3,13 @@ import { useExercises } from '@/hooks/useExercises';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useScheduledWorkouts, ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { useCourses } from '@/hooks/useCourses';
+import { useMuscleGroups } from '@/hooks/useMuscleGroups';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course, CourseWorkout } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
+import { MuscleGroup } from '@/data/muscleGroups';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
@@ -17,6 +19,7 @@ interface DataContextType {
   sessionsLoading: boolean;
   sessionsError: string | null;
   createSession: (data: Omit<WorkoutSession, 'id'>) => Promise<WorkoutSession>;
+  deleteSession: (id: string) => Promise<WorkoutSession | null>;
   clearAllSessions: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   // Exercises
@@ -66,7 +69,16 @@ interface DataContextType {
   getCourseById: (id: string) => Course | undefined;
   getCourseProgress: (courseId: string) => number;
   refreshCourses: () => Promise<void>;
-  
+
+  // Muscle groups
+  muscleGroups: MuscleGroup[];
+  muscleGroupsLoading: boolean;
+  muscleGroupsError: string | null;
+  createMuscleGroup: (data: Omit<MuscleGroup, 'id'>) => Promise<MuscleGroup>;
+  updateMuscleGroup: (id: string, updates: Partial<MuscleGroup>) => Promise<MuscleGroup | null>;
+  deleteMuscleGroup: (id: string) => Promise<MuscleGroup | null>;
+  refreshMuscleGroups: () => Promise<void>;
+
   // Combined loading state
   isLoading: boolean;
 }
@@ -74,7 +86,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, clearAllSessions, refreshSessions } = useWorkoutSessions();
+  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, deleteSession, clearAllSessions, refreshSessions } = useWorkoutSessions();
   const {
     exercises,
     isLoading: exercisesLoading,
@@ -127,6 +139,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     refreshCourses
   } = useCourses();
 
+  const {
+    muscleGroups,
+    isLoading: muscleGroupsLoading,
+    error: muscleGroupsError,
+    createMuscleGroup,
+    updateMuscleGroup,
+    deleteMuscleGroup: deleteMuscleGroupRaw,
+    refreshMuscleGroups
+  } = useMuscleGroups();
+
   const deleteExercise = async (id: string) => {
     const { blocked, reason } = checkExerciseDeletion(id, workouts, sessions);
     if (blocked) throw new Error(reason);
@@ -166,11 +188,27 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return deleted;
   };
 
+  // Untags rather than blocks: a muscle-group tag is one of several loosely
+  // descriptive labels on an exercise, not a hard dependency like a workout
+  // referencing an exercise template — losing one tag doesn't leave the
+  // exercise in a broken state the way a dangling exerciseId would.
+  const deleteMuscleGroup = async (id: string) => {
+    const deleted = await deleteMuscleGroupRaw(id);
+    if (deleted) {
+      const affected = exercises.filter(exercise => exercise.muscleGroups.includes(id));
+      await Promise.all(affected.map(exercise =>
+        updateExercise(exercise.id, { muscleGroups: exercise.muscleGroups.filter(group => group !== id) })
+      ));
+    }
+    return deleted;
+  };
+
   const value: DataContextType = {
     sessions,
     sessionsLoading,
     sessionsError,
     createSession,
+    deleteSession,
     clearAllSessions,
     refreshSessions,
     exercises,
@@ -216,8 +254,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getCourseById,
     getCourseProgress,
     refreshCourses,
-    
-    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading
+
+    muscleGroups,
+    muscleGroupsLoading,
+    muscleGroupsError,
+    createMuscleGroup,
+    updateMuscleGroup,
+    deleteMuscleGroup,
+    refreshMuscleGroups,
+
+    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading || muscleGroupsLoading
   };
 
   return (

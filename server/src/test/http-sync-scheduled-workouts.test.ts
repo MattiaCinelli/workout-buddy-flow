@@ -8,7 +8,7 @@ const scheduledWorkout = (overrides: Record<string, unknown> = {}) => ({
   startDate: '2026-03-10',
   startTime: '09:00',
   recurrence: 'weekly',
-  recurrenceDay: 'tuesday',
+  recurrenceDays: ['tuesday'],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   ...overrides,
@@ -29,8 +29,21 @@ test('a recurring schedule round-trips including its recurrence fields', async (
 
   const stored = pull.json().scheduledWorkouts[0];
   assert.equal(stored.recurrence, 'weekly');
-  assert.equal(stored.recurrenceDay, 'tuesday');
+  assert.deepEqual(stored.recurrenceDays, ['tuesday']);
   assert.equal(stored.createdAt, '2026-01-01T00:00:00.000Z');
+});
+
+test('a weekly schedule can span multiple chosen weekdays', async () => {
+  const { app, aliceToken } = await setupTwoUsers();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/scheduledWorkouts', headers,
+    payload: { scheduledWorkouts: [scheduledWorkout({ recurrenceDays: ['monday', 'wednesday', 'friday'] })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/scheduledWorkouts', headers });
+
+  assert.deepEqual(pull.json().scheduledWorkouts[0].recurrenceDays, ['monday', 'wednesday', 'friday']);
 });
 
 test('created_at is not overwritten by a later edit', async () => {

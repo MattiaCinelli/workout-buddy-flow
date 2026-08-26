@@ -21,10 +21,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Repeat, Trash2, Play, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
-import { weekDayLabels } from '@/data/scheduledWorkouts';
+import { weekDays, weekDayLabels, weekdaysPreset, weekendPreset, WeekDay } from '@/data/scheduledWorkouts';
 import { format, parseISO } from 'date-fns';
 
 interface ScheduleDetailModalProps {
@@ -32,6 +32,7 @@ interface ScheduleDetailModalProps {
   onClose: () => void;
   schedule: ExpandedScheduledWorkout | null;
   onDeleted: () => void;
+  onEdit: (schedule: ExpandedScheduledWorkout) => void;
 }
 
 const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
@@ -39,6 +40,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   onClose,
   schedule,
   onDeleted,
+  onEdit,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -65,11 +67,20 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
     }
   };
 
+  // Order- and length-independent equality, since a toggle group's selection
+  // order doesn't necessarily match canonical weekday order.
+  const isSameDaySet = (a: WeekDay[], b: WeekDay[]) =>
+    a.length === b.length && new Set(a).size === new Set([...a, ...b]).size;
+
   const getRecurrenceLabel = () => {
     if (schedule.recurrence === 'none') return 'One-time';
     if (schedule.recurrence === 'daily') return 'Every day';
-    if (schedule.recurrence === 'weekly' && schedule.recurrenceDay) {
-      return `Every ${weekDayLabels[schedule.recurrenceDay]}`;
+    if (schedule.recurrence === 'weekly' && schedule.recurrenceDays?.length) {
+      const days = schedule.recurrenceDays;
+      if (isSameDaySet(days, weekdaysPreset)) return 'Every weekday (Mon–Fri)';
+      if (isSameDaySet(days, weekendPreset)) return 'Every weekend';
+      const sorted = weekDays.filter(day => days.includes(day));
+      return `Every ${sorted.map(day => weekDayLabels[day]).join(', ')}`;
     }
     return 'Recurring';
   };
@@ -182,6 +193,9 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
               Delete
             </Button>
             <div className="flex gap-2">
+              <Button variant="outline" size="icon" onClick={() => onEdit(schedule)} aria-label="Edit schedule">
+                <Pencil className="h-4 w-4" />
+              </Button>
               <Button variant="outline" onClick={handleViewWorkout}>
                 View Details
               </Button>

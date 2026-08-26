@@ -4,9 +4,10 @@ import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
+import { MuscleGroup } from '@/data/muscleGroups';
 
 const DB_NAME = 'workout-buddy-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export interface WorkoutBuddyDB {
   exercises: Exercise;
@@ -14,6 +15,7 @@ export interface WorkoutBuddyDB {
   scheduledWorkouts: ScheduledWorkout;
   courses: Course;
   workoutSessions: WorkoutSession;
+  muscleGroups: MuscleGroup;
 }
 
 let dbPromise: Promise<IDBPDatabase<WorkoutBuddyDB>> | null = null;
@@ -40,6 +42,10 @@ export const getDB = () => {
         }
         if (!db.objectStoreNames.contains('workoutSessions')) {
           db.createObjectStore('workoutSessions', { keyPath: 'id' });
+        }
+        // Create muscle groups store (added in v5)
+        if (!db.objectStoreNames.contains('muscleGroups')) {
+          db.createObjectStore('muscleGroups', { keyPath: 'id' });
         }
       },
     });
@@ -167,6 +173,31 @@ export const bulkSaveCoursesToDB = async (courses: Course[]): Promise<void> => {
   ]);
 };
 
+// Muscle group operations
+export const getAllMuscleGroupsFromDB = async (): Promise<MuscleGroup[]> => {
+  const db = await getDB();
+  return db.getAll('muscleGroups');
+};
+
+export const saveMuscleGroupToDB = async (muscleGroup: MuscleGroup): Promise<void> => {
+  const db = await getDB();
+  await db.put('muscleGroups', muscleGroup);
+};
+
+export const deleteMuscleGroupFromDB = async (id: string): Promise<void> => {
+  const db = await getDB();
+  await db.delete('muscleGroups', id);
+};
+
+export const bulkSaveMuscleGroupsToDB = async (muscleGroups: MuscleGroup[]): Promise<void> => {
+  const db = await getDB();
+  const tx = db.transaction('muscleGroups', 'readwrite');
+  await Promise.all([
+    ...muscleGroups.map(group => tx.store.put(group)),
+    tx.done
+  ]);
+};
+
 export const getAllWorkoutSessionsFromDB = async (): Promise<WorkoutSession[]> => {
   const db = await getDB();
   return db.getAll('workoutSessions');
@@ -180,6 +211,11 @@ export const saveWorkoutSessionToDB = async (session: WorkoutSession): Promise<v
 export const deleteAllWorkoutSessionsFromDB = async (): Promise<void> => {
   const db = await getDB();
   await db.clear('workoutSessions');
+};
+
+export const deleteWorkoutSessionFromDB = async (id: string): Promise<void> => {
+  const db = await getDB();
+  await db.delete('workoutSessions', id);
 };
 
 // Initialize database with default data if empty

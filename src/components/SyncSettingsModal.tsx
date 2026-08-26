@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { getLastSyncedAt, getLoggedInEmail, getServerUrl, isConnected, login, logout, syncAll } from '@/lib/syncClient';
+import {
+  getDisplayName, getLastSyncedAt, getLoggedInEmail, getServerUrl, isConnected, login, logout, syncAll,
+} from '@/lib/syncClient';
 import { useData } from '@/contexts/DataContext';
+import { AccountProfileTab } from '@/components/AccountProfileTab';
 import { toast } from 'sonner';
 
 interface SyncSettingsModalProps {
@@ -16,6 +20,7 @@ interface SyncSettingsModalProps {
 const SyncSettingsModal: React.FC<SyncSettingsModalProps> = ({ isOpen, onClose }) => {
   const { refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions } = useData();
   const [connected, setConnected] = useState(isConnected());
+  const [tab, setTab] = useState('sync');
   const [serverUrl, setServerUrl] = useState(getServerUrl() ?? 'http://');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,6 +54,7 @@ const SyncSettingsModal: React.FC<SyncSettingsModalProps> = ({ isOpen, onClose }
     await logout();
     setConnected(false);
     setLastSyncedAt(null);
+    setTab('sync');
     toast.success('Disconnected from sync server');
   };
 
@@ -73,32 +79,43 @@ const SyncSettingsModal: React.FC<SyncSettingsModalProps> = ({ isOpen, onClose }
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Self-hosted sync</DialogTitle>
+          <DialogTitle>{connected ? (getDisplayName() || getLoggedInEmail()) : 'Self-hosted sync'}</DialogTitle>
           <DialogDescription>
             {connected
-              ? 'Connected. Syncs automatically in the background every 30 seconds and whenever you open the app — Sync now is only for forcing it immediately.'
+              ? 'Syncs automatically in the background every 30 seconds and whenever you open the app.'
               : 'Connect to your own self-hosted sync server to use this library across your devices. This is optional — everything still works fully offline without it.'}
           </DialogDescription>
         </DialogHeader>
 
         {connected ? (
-          <div className="space-y-4">
-            <div className="text-sm">
-              <p><span className="text-muted-foreground">Server:</span> {getServerUrl()}</p>
-              <p><span className="text-muted-foreground">Account:</span> {getLoggedInEmail()}</p>
-            </div>
-            {lastSyncedAt && (
-              <p className="text-sm text-muted-foreground">Last synced: {new Date(lastSyncedAt).toLocaleTimeString()}</p>
-            )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2">
-              <Button onClick={handleSyncNow} disabled={syncing} className="flex-1">
-                {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {syncing ? 'Syncing…' : 'Sync now'}
-              </Button>
-              <Button variant="outline" onClick={handleDisconnect} disabled={syncing}>Disconnect</Button>
-            </div>
-          </div>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="sync">Sync</TabsTrigger>
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sync" className="space-y-4 pt-2">
+              <div className="text-sm">
+                <p><span className="text-muted-foreground">Server:</span> {getServerUrl()}</p>
+                <p><span className="text-muted-foreground">Account:</span> {getLoggedInEmail()}</p>
+              </div>
+              {lastSyncedAt && (
+                <p className="text-sm text-muted-foreground">Last synced: {new Date(lastSyncedAt).toLocaleTimeString()}</p>
+              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <div className="flex gap-2">
+                <Button onClick={handleSyncNow} disabled={syncing} className="flex-1">
+                  {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  {syncing ? 'Syncing…' : 'Sync now'}
+                </Button>
+                <Button variant="outline" onClick={handleDisconnect} disabled={syncing}>Disconnect</Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="profile" className="pt-2">
+              <AccountProfileTab />
+            </TabsContent>
+          </Tabs>
         ) : (
           <div className="space-y-3">
             <div className="space-y-1">
@@ -117,16 +134,11 @@ const SyncSettingsModal: React.FC<SyncSettingsModalProps> = ({ isOpen, onClose }
                 onKeyDown={e => { if (e.key === 'Enter') void handleConnect(); }} />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-        )}
-
-        {!connected && (
-          <DialogFooter>
-            <Button onClick={handleConnect} disabled={connecting || !serverUrl || !email || !password}>
+            <Button onClick={handleConnect} disabled={connecting || !serverUrl || !email || !password} className="w-full">
               {connecting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               {connecting ? 'Connecting…' : 'Connect'}
             </Button>
-          </DialogFooter>
+          </div>
         )}
       </DialogContent>
     </Dialog>

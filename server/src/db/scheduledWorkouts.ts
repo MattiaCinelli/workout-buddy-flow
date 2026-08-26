@@ -7,7 +7,7 @@ export interface SyncedScheduledWorkout {
   startTime: string;
   endTime?: string;
   recurrence: string;
-  recurrenceDay?: string;
+  recurrenceDays?: string[];
   endRecurrenceDate?: string;
   notes?: string;
   createdAt: string;
@@ -22,7 +22,7 @@ interface ScheduledWorkoutRow {
   start_time: string;
   end_time: string | null;
   recurrence: string;
-  recurrence_day: string | null;
+  recurrence_days: string | null;
   end_recurrence_date: string | null;
   notes: string | null;
   created_at: string;
@@ -37,7 +37,7 @@ const fromRow = (row: ScheduledWorkoutRow): SyncedScheduledWorkout => ({
   startTime: row.start_time,
   endTime: row.end_time ?? undefined,
   recurrence: row.recurrence,
-  recurrenceDay: row.recurrence_day ?? undefined,
+  recurrenceDays: row.recurrence_days ? JSON.parse(row.recurrence_days) : undefined,
   endRecurrenceDate: row.end_recurrence_date ?? undefined,
   notes: row.notes ?? undefined,
   createdAt: row.created_at,
@@ -61,11 +61,11 @@ export const upsertScheduledWorkout = (db: Db, userId: string, item: SyncedSched
   db.prepare(`
     INSERT INTO scheduled_workouts (
       id, user_id, workout_id, start_date, start_time, end_time, recurrence,
-      recurrence_day, end_recurrence_date, notes, created_at, updated_at, deleted_at, synced_at
+      recurrence_days, end_recurrence_date, notes, created_at, updated_at, deleted_at, synced_at
     )
     VALUES (
       @id, @userId, @workoutId, @startDate, @startTime, @endTime, @recurrence,
-      @recurrenceDay, @endRecurrenceDate, @notes, @createdAt, @updatedAt, @deletedAt, @syncedAt
+      @recurrenceDays, @endRecurrenceDate, @notes, @createdAt, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
       workout_id = excluded.workout_id,
@@ -73,7 +73,7 @@ export const upsertScheduledWorkout = (db: Db, userId: string, item: SyncedSched
       start_time = excluded.start_time,
       end_time = excluded.end_time,
       recurrence = excluded.recurrence,
-      recurrence_day = excluded.recurrence_day,
+      recurrence_days = excluded.recurrence_days,
       end_recurrence_date = excluded.end_recurrence_date,
       notes = excluded.notes,
       updated_at = excluded.updated_at,
@@ -88,7 +88,7 @@ export const upsertScheduledWorkout = (db: Db, userId: string, item: SyncedSched
     startTime: item.startTime,
     endTime: item.endTime ?? null,
     recurrence: item.recurrence,
-    recurrenceDay: item.recurrenceDay ?? null,
+    recurrenceDays: item.recurrenceDays ? JSON.stringify(item.recurrenceDays) : null,
     endRecurrenceDate: item.endRecurrenceDate ?? null,
     notes: item.notes ?? null,
     createdAt: item.createdAt,
