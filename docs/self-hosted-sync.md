@@ -405,15 +405,19 @@ WebView blocks by default in two independent ways — both had to be fixed;
 fixing only one still failed with "Failed to fetch" and no clearer error
 until checked via `adb logcat`:
 
-1. **OS-level cleartext block** (API 28+): `android/app/src/main/AndroidManifest.xml`
-   sets `android:usesCleartextTraffic="true"` on `<application>`.
+1. **OS-level cleartext block** (API 28+). Rather than the blanket
+   `android:usesCleartextTraffic="true"`, the manifest now points at
+   `res/xml/network_security_config.xml`, which denies cleartext by default
+   and permits it only for `localhost` / `127.0.0.1` / `10.0.2.2` (the
+   emulator host). A LAN sync server on a real IP over HTTP needs that
+   address added to the file and a rebuild — deliberately a friction.
 2. **Mixed content**: the app's own pages load from a virtual
    `https://localhost` origin; a fetch from there to a real `http://`
    target is "mixed content" and blocked separately from #1. Fixed in
-   `capacitor.config.ts` via `android: { allowMixedContent: true } }` —
-   **not** `server.cleartext` (that key exists too, and sounds right, but
-   controls something else; it was tried first and, confirmed via logcat,
-   did not stop the "Mixed Content: ... blocked" error).
+   `capacitor.config.ts` via `android: { allowMixedContent: true } }`,
+   emitted only when built with `WB_ALLOW_INSECURE_SYNC=1` — **not**
+   `server.cleartext` (that key exists too, and sounds right, but controls
+   something else).
 
 Both are broad allows (any host, not just the configured sync server)
 rather than a per-host `network_security_config.xml` allowlist — deliberate,

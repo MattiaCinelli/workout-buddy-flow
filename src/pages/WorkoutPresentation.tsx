@@ -19,6 +19,7 @@ import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { buildWorkoutSteps, remainingSeconds } from '@/lib/workoutRuntime';
+import { logDiagnostic } from '@/lib/diagnosticLog';
 import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
 import { describeSetResult, exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
 import { suggestNextSet } from '@/lib/progression';
@@ -427,6 +428,7 @@ const WorkoutPresentation = () => {
       navigate(courseId ? `/courses/${courseId}` : '/history');
     } catch (error) {
       console.error('Failed to save workout:', error);
+      logDiagnostic('error', `Save workout failed: ${error instanceof Error ? error.message : String(error)}`);
       toast({ title: 'Could not save workout', description: 'Your resumable workout remains stored on this device.', variant: 'destructive' });
       setSaving(false);
     }

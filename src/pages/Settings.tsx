@@ -14,6 +14,8 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
+import { clearDiagnostics, formatDiagnostics } from '@/lib/diagnosticLog';
+import { saveTextFile } from '@/lib/downloadFile';
 import { scheduleWorkoutReminders } from '@/lib/notifications';
 import { isConnected } from '@/lib/syncClient';
 import { useTheme, Theme } from '@/hooks/useTheme';
@@ -35,6 +37,7 @@ const SettingsPage = () => {
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<WorkoutBuddyBackup | null>(null);
+  const [backupWarnings, setBackupWarnings] = useState<string[]>([]);
   const backupInput = useRef<HTMLInputElement>(null);
   const recordCount = data.exercises.length + data.workouts.length + data.sessions.length
     + data.scheduledWorkouts.length + data.courses.length + data.muscleGroups.length + data.bodyMetrics.length;
@@ -42,10 +45,21 @@ const SettingsPage = () => {
   const selectBackup = async (file?: File) => {
     if (!file) return;
     try {
-      setPendingBackup(parseBackup(await file.text()));
+      const { data, warnings } = parseBackup(await file.text());
+      setPendingBackup(data);
+      setBackupWarnings(warnings);
       setRestoreOpen(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Invalid backup file');
+    }
+  };
+
+  const exportDiagnostics = async () => {
+    try {
+      await saveTextFile(formatDiagnostics(), `workout-buddy-diagnostics-${new Date().toISOString().slice(0, 10)}.txt`, 'text/plain');
+    } catch (error) {
+      console.error('Diagnostic export failed:', error);
+      toast.error('Could not export the diagnostic log.');
     }
   };
 
@@ -185,11 +199,19 @@ const SettingsPage = () => {
                 if you feel pain. Suggested weights and progressions are guidance from your own logged
                 history, not a prescription.
               </p>
-              <Button variant="outline" asChild>
-                <a href="https://github.com/MattiaCinelli/workout-buddy-flow/releases/latest" target="_blank" rel="noreferrer">
-                  Check for updates <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" asChild>
+                  <a href="https://github.com/MattiaCinelli/workout-buddy-flow/releases/latest" target="_blank" rel="noreferrer">
+                    Check for updates <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+                <Button variant="outline" onClick={exportDiagnostics}>Export diagnostic log</Button>
+                <Button variant="ghost" onClick={() => { clearDiagnostics(); toast.success('Diagnostic log cleared'); }}>Clear log</Button>
+              </div>
+              <p className="text-xs">
+                The diagnostic log is a short local record of errors and sync events, kept on this device
+                for troubleshooting. Nothing is sent anywhere.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -201,10 +223,15 @@ const SettingsPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Replace all local data?</AlertDialogTitle>
             <AlertDialogDescription>
-              This replaces exercises, workouts, sessions, schedules, and courses on this device with the selected backup.
-              Export the current data first if you may need it later.
+              This replaces exercises, workouts, sessions, schedules, courses{pendingBackup?.version === 3 ? ', and device preferences' : ''} on
+              this device with the selected backup. Export the current data first if you may need it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {backupWarnings.length > 0 && (
+            <ul className="list-disc space-y-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 pl-6 text-xs text-amber-700 dark:text-amber-300">
+              {backupWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
+            </ul>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmRestore}>Restore and replace</AlertDialogAction>

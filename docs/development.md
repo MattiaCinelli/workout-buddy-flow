@@ -43,6 +43,12 @@ and uses `@testing-library/react`. `src/test/setup.ts` registers the jest-dom
 matchers. Pure logic lives in `src/lib/*` with a sibling `*.test.ts` — prefer
 extracting logic there over testing it through a component.
 
+## CI
+
+`.github/workflows/ci.yml` runs two jobs: **verify** (lint, `tsc`, unit tests, build +
+a PWA-output check, Playwright e2e) and **server** (`cd server && npm ci && npm run
+build && npm test`). Both must pass on a PR to `main`.
+
 ## Working on the sync server
 
 `server/` has its own `package.json` and test suite, independent of the app above:

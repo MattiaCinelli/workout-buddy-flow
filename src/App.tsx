@@ -7,24 +7,25 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DataProvider } from "@/contexts/DataContext";
 import AutoSync from "@/components/AutoSync";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import ExercisesPage from "./pages/Exercises";
-import WorkoutDetail from "./pages/WorkoutDetail";
-import WorkoutPresentation from "./pages/WorkoutPresentation";
-import CalendarPage from "./pages/Calendar";
-import HistoryPage from "./pages/History";
-import WorkoutsPage from "./pages/Workouts";
-import CoursesPage from "./pages/Courses";
-import CourseDetail from "./pages/CourseDetail";
-import EditCourse from "./pages/EditCourse";
-import SettingsPage from "./pages/Settings";
 import { AccessibilityController } from "./components/AccessibilityController";
+import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
+import Index from "./pages/Index";
 
-// The chart-heavy screens pull in Recharts (~150 KB gzip) — load them only
-// when visited so they stay off the initial bundle.
-const ProgressPage = lazy(() => import("./pages/Progress"));
+// Every route past the dashboard is code-split so the initial load only
+// ships the landing screen. The Suspense fallback covers the fetch.
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ExercisesPage = lazy(() => import("./pages/Exercises"));
 const ExerciseProgress = lazy(() => import("./pages/ExerciseProgress"));
+const WorkoutDetail = lazy(() => import("./pages/WorkoutDetail"));
+const WorkoutPresentation = lazy(() => import("./pages/WorkoutPresentation"));
+const CalendarPage = lazy(() => import("./pages/Calendar"));
+const HistoryPage = lazy(() => import("./pages/History"));
+const WorkoutsPage = lazy(() => import("./pages/Workouts"));
+const ProgressPage = lazy(() => import("./pages/Progress"));
+const CoursesPage = lazy(() => import("./pages/Courses"));
+const CourseDetail = lazy(() => import("./pages/CourseDetail"));
+const EditCourse = lazy(() => import("./pages/EditCourse"));
+const SettingsPage = lazy(() => import("./pages/Settings"));
 
 const RouteFallback = () => (
   <div className="min-h-[100dvh] flex items-center justify-center bg-background">
@@ -38,6 +39,7 @@ const App = () => (
       <DataProvider>
         <AutoSync />
         <AccessibilityController />
+        <PwaUpdatePrompt />
         <Toaster />
         <Sonner />
         <BrowserRouter>

@@ -23,6 +23,7 @@ const ImportShareButton = ({ variant = 'outline', size = 'default', className, l
   const { exercises, muscleGroups, createExercise, createWorkout, createMuscleGroup } = useData();
   const { toast } = useToast();
   const [pending, setPending] = useState<WorkoutBuddyShare | null>(null);
+  const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
 
   const summary = pending ? summarizeShareImport(pending, exercises, muscleGroups) : null;
@@ -35,7 +36,9 @@ const ImportShareButton = ({ variant = 'outline', size = 'default', className, l
     event.target.value = '';
     if (!file) return;
     try {
-      setPending(parseShare(await file.text()));
+      const { data, warnings } = parseShare(await file.text());
+      setPending(data);
+      setPendingWarnings(warnings);
     } catch (error) {
       toast({
         title: 'Could not read that file',
@@ -59,6 +62,7 @@ const ImportShareButton = ({ variant = 'outline', size = 'default', className, l
         description: added.length ? `Added ${added.join(', ')}.` : 'Everything was already in your library.',
       });
       setPending(null);
+      setPendingWarnings([]);
     } catch (error) {
       console.error('Share import failed:', error);
       toast({ title: 'Import failed', description: 'Nothing was changed.', variant: 'destructive' });
@@ -75,7 +79,7 @@ const ImportShareButton = ({ variant = 'outline', size = 'default', className, l
       </Button>
       <input ref={inputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleFile} />
 
-      <AlertDialog open={!!pending} onOpenChange={open => { if (!open && !importing) setPending(null); }}>
+      <AlertDialog open={!!pending} onOpenChange={open => { if (!open && !importing) { setPending(null); setPendingWarnings([]); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -93,6 +97,11 @@ const ImportShareButton = ({ variant = 'outline', size = 'default', className, l
                 <li>{summary.reusedExercises} exercise{summary.reusedExercises === 1 ? '' : 's'} already in your library (reused by name)</li>
               )}
               {summary.newMuscleGroups > 0 && <li>{summary.newMuscleGroups} new muscle group{summary.newMuscleGroups === 1 ? '' : 's'}</li>}
+            </ul>
+          )}
+          {pendingWarnings.length > 0 && (
+            <ul className="list-disc space-y-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 pl-6 text-xs text-amber-700 dark:text-amber-300">
+              {pendingWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
             </ul>
           )}
           <AlertDialogFooter>

@@ -73,7 +73,7 @@ describe('parseShare', () => {
   const valid = JSON.stringify(buildExerciseShare(exercise(), groups));
 
   it('accepts a well-formed share file', () => {
-    expect(parseShare(valid).format).toBe('workout-buddy-share');
+    expect(parseShare(valid).data.format).toBe('workout-buddy-share');
   });
 
   it('rejects a full backup with a pointed message', () => {
@@ -86,16 +86,16 @@ describe('parseShare', () => {
     expect(() => parseShare('not json')).toThrow(/valid JSON/);
   });
 
-  it('rejects a share that carries nothing', () => {
+  it('rejects a share that carries nothing usable', () => {
     const empty = JSON.stringify({
       format: 'workout-buddy-share', version: 1, exportedAt: '', kind: 'exercise',
       data: { exercises: [], workouts: [], muscleGroups: [] },
     });
-    expect(() => parseShare(empty)).toThrow(/nothing to import/);
+    expect(() => parseShare(empty)).toThrow(/nothing usable to import/);
   });
 
   it('rejects an oversized file before parsing', () => {
-    expect(() => parseShare('x'.repeat(65 * 1024 * 1024))).toThrow(/too large/);
+    expect(() => parseShare('x'.repeat(129 * 1024 * 1024))).toThrow(/too large/);
   });
 
   it('strips a non-image / dangerous imageUrl from an imported exercise', () => {
@@ -103,11 +103,25 @@ describe('parseShare', () => {
       format: 'workout-buddy-share', version: 1, exportedAt: '', kind: 'exercise',
       data: { exercises: [{ ...exercise(), imageUrl: url }], workouts: [], muscleGroups: [] },
     });
-    expect(parseShare(build('javascript:alert(1)')).data.exercises[0].imageUrl).toBeUndefined();
-    expect(parseShare(build('data:text/html,<script>')).data.exercises[0].imageUrl).toBeUndefined();
-    expect(parseShare(build('http://insecure/x.png')).data.exercises[0].imageUrl).toBeUndefined();
-    expect(parseShare(build('https://ok/x.png')).data.exercises[0].imageUrl).toBe('https://ok/x.png');
-    expect(parseShare(build('data:image/png;base64,AAAA')).data.exercises[0].imageUrl).toBe('data:image/png;base64,AAAA');
+    const img = (file: string) => parseShare(build(file)).data.data.exercises[0].imageUrl;
+    expect(img('javascript:alert(1)')).toBeUndefined();
+    expect(img('data:text/html,<script>')).toBeUndefined();
+    expect(img('http://insecure/x.png')).toBeUndefined();
+    expect(img('https://ok/x.png')).toBe('https://ok/x.png');
+    expect(img('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('drops a malformed record with a warning instead of failing', () => {
+    const file = JSON.stringify({
+      format: 'workout-buddy-share', version: 1, exportedAt: '', kind: 'exercise',
+      data: {
+        exercises: [exercise(), { id: 42 /* not a string */ }, { id: 'ok2', name: 'X', category: 'strength', muscleGroups: [], difficulty: 'beginner' }],
+        workouts: [], muscleGroups: [],
+      },
+    });
+    const { data, warnings } = parseShare(file);
+    expect(data.data.exercises.map(e => e.id)).toEqual(['ex-row', 'ok2']);
+    expect(warnings.join(' ')).toMatch(/skipped 1 record/);
   });
 });
 

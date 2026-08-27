@@ -2,22 +2,30 @@ import { test, expect } from '../playwright-fixture';
 import { parseBackup } from '../src/lib/backup';
 
 test('backup parser accepts the current format', () => {
-  const backup = parseBackup(JSON.stringify({
-    format: 'workout-buddy-backup', version: 2, exportedAt: '2026-01-01T00:00:00.000Z',
+  const { data } = parseBackup(JSON.stringify({
+    format: 'workout-buddy-backup', version: 3, exportedAt: '2026-01-01T00:00:00.000Z',
     data: {
       exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [],
       muscleGroups: [], bodyMetrics: [],
-    }
+    },
+    preferences: {},
   }));
-  expect(backup.version).toBe(2);
+  expect(data.version).toBe(3);
 });
 
-test('backup parser still accepts legacy version-1 files', () => {
-  const backup = parseBackup(JSON.stringify({
+test('backup parser still accepts legacy version-1 and version-2 files', () => {
+  expect(parseBackup(JSON.stringify({
     format: 'workout-buddy-backup', version: 1, exportedAt: '2025-01-01T00:00:00.000Z',
     data: { exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [] },
-  }));
-  expect(backup.version).toBe(1);
+  })).data.version).toBe(1);
+
+  expect(parseBackup(JSON.stringify({
+    format: 'workout-buddy-backup', version: 2, exportedAt: '2025-06-01T00:00:00.000Z',
+    data: {
+      exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [],
+      muscleGroups: [], bodyMetrics: [],
+    },
+  })).data.version).toBe(2);
 });
 
 test('backup parser rejects incomplete current files before restore', () => {

@@ -110,15 +110,18 @@ a session linked to a course also reopens that exact course item.
 
 ## Backup format — `src/lib/backup.ts`
 
-Backups are versioned JSON documents. Version 2 contains all seven object-store
-collections: exercises, workout templates, workout sessions, schedules, courses,
-muscle groups and body metrics. Restore validates the format, version, arrays and
-record IDs before opening one read/write transaction that replaces the included
-stores together. Legacy version-1 backups remain supported; because those files
-predate muscle-group and body-metric backup support, restoring one leaves those two
-stores on the device untouched. On Android, the backup is written to the cache
-directory and handed to the native share sheet; on the web it is downloaded as a
-`.json` file.
+Backups are versioned JSON documents. **Version 3** carries the full app state: all
+seven object-store collections (exercises, workout templates, workout sessions,
+schedules, courses, muscle groups, body metrics), plus `preferences` (a whitelist of
+device `localStorage` keys — theme, weekly goal, accessibility, reminders, height,
+plate-calculator bar; sync credentials and seed markers are deliberately excluded) and
+the optional custom workout `audioTrack` as a data URL. Restore validates each record
+against a Zod schema (`src/lib/importSchemas.ts`) — malformed records and duplicate ids
+are dropped and surfaced as warnings in the confirm dialog — then replaces the included
+stores in one transaction and writes the preferences / audio track back. Legacy
+version 1 and 2 files still restore (a v1 file leaves muscle groups and body metrics
+untouched; v1/v2 carry no preferences). On Android the file goes to the cache directory
+and the native share sheet; on the web it downloads as `.json`.
 
 ## Scheduled workout — `src/data/scheduledWorkouts.ts`
 

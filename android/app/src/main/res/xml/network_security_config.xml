@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext (plain HTTP) is denied by default: a sync server should be
+  reached over HTTPS so the bearer token and workout data are encrypted in
+  transit. The only exceptions are the local loopback addresses, so a sync
+  server run on the same machine / the Android emulator host still works.
+
+  A self-hoster who genuinely must reach a LAN sync server over HTTP on a
+  real IP has to add that address here and rebuild — deliberately a
+  friction, not a default.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

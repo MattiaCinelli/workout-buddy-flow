@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { isConnected, syncAll } from '@/lib/syncClient';
+import { logDiagnostic } from '@/lib/diagnosticLog';
 import { useData } from '@/contexts/DataContext';
 
 const SYNC_INTERVAL_MS = 30_000;
@@ -49,6 +50,7 @@ export const useAutoSync = () => {
         const wait = Math.min(SYNC_INTERVAL_MS * 2 ** Math.min(failuresRef.current, 5), MAX_BACKOFF_MS);
         nextAllowedAtRef.current = Date.now() + wait;
         console.warn(`Background sync failed (retry in ~${Math.round(wait / 1000)}s):`, error);
+        logDiagnostic('warn', `Background sync failed (attempt ${failuresRef.current}): ${error instanceof Error ? error.message : String(error)}`);
       } finally {
         syncingRef.current = false;
       }

@@ -139,10 +139,20 @@ Custom routes must be added **above** the catch-all `*` route.
 ## Offline / PWA
 
 The installed Android app (Capacitor) serves its own assets and is offline-capable by
-construction. For the **web** build, `public/manifest.webmanifest` makes it installable
-and `public/sw.js` (registered from `src/main.tsx`, prod only) is a network-first
-service worker that caches whatever loads, so a later visit opens offline. App data is
+construction. For the **web** build, `vite-plugin-pwa` (config in `vite.config.ts`)
+generates `dist/manifest.webmanifest` and a Workbox service worker that **precaches the
+whole app shell at build time**, so a first visit that drops connectivity mid-load
+can't leave a partial install. `registerType: 'prompt'` — `src/components/PwaUpdatePrompt.tsx`
+registers the SW via the `virtual:pwa-register/react` module and shows an "Update
+available" toast rather than swapping the running code. The SW only runs in the build
+(`devOptions.enabled: false`); CI asserts `dist/sw.js` exists and precaches. App data is
 IndexedDB and is untouched by the service worker.
+
+## Code splitting
+
+Every route past the dashboard is `React.lazy`-loaded in `src/App.tsx` behind one
+`<Suspense>` boundary, and `manualChunks` splits Recharts / date-fns out. The initial
+JS is ~100 KB gzip; the chart-heavy Progress screens and their library load on demand.
 
 ## Third-party code / trust boundary
 
@@ -150,9 +160,11 @@ The app ships **no** third-party runtime code and makes no outbound requests exc
 a sync server the user configures. `index.html` carries the Lovable in-browser-editor
 script (`cdn.gpteng.co`); a Vite plugin (`stripLovableEditorScript` in
 `vite.config.ts`, `apply: 'build'`) removes it from every `vite build`, so it exists
-only during `vite` dev. Imported backup / share files are validated for shape and their
-`imageUrl` is constrained to `https:` or an `image/*` data URI (`src/lib/backup.ts`);
-CSV export escapes leading `= + - @` to prevent spreadsheet formula injection.
+only during `vite` dev. Imported backup / share files run each record through a Zod
+schema (`src/lib/importSchemas.ts`) — malformed records and duplicate ids are dropped
+with a warning shown before the restore, and every `imageUrl` is constrained to
+`https:` or an `image/*` data URI. CSV export escapes leading `= + - @` to prevent
+spreadsheet formula injection.
 
 ## Styling conventions
 

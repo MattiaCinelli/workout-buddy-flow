@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { logDiagnostic } from '@/lib/diagnosticLog';
 
 interface Props { children: ReactNode; }
 interface State { error: Error | null; }
@@ -16,6 +17,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('Unhandled render error:', error, info.componentStack);
+    logDiagnostic('error', `Render crash: ${error.message}${info.componentStack ? ` @${info.componentStack.trim().split('\n')[0]?.trim()}` : ''}`);
   }
 
   render() {
