@@ -130,6 +130,7 @@ const ExerciseProgress = () => {
                 {suggestion.reps}{suggestion.weight ? ` × ${suggestion.weight} kg` : ''}
               </p>
               <p className="text-sm text-muted-foreground">{suggestion.note}</p>
+              <p className="mt-1 text-xs text-muted-foreground">A guide from your history — adjust it to how you feel on the day.</p>
             </CardContent>
           </Card>
         )}

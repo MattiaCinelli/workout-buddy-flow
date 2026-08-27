@@ -32,6 +32,12 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [connecting, setConnecting] = useState(false);
+
+  const isInsecureUrl = (url: string) => {
+    const trimmed = url.trim().toLowerCase();
+    return trimmed.startsWith('http://')
+      && !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(trimmed);
+  };
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(getLastSyncedAt());
@@ -105,6 +111,13 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
             onChange={event => setServerUrl(event.target.value)}
             disabled={connecting}
           />
+          {isInsecureUrl(serverUrl) && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              This is an unencrypted <code>http://</code> address — your login token and workout data
+              would be sent in the clear. Use <code>https://</code> unless the server is only reachable
+              on a network you trust.
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="sync-email">Email</Label>
@@ -133,6 +146,9 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
         <div className="min-w-0">
           <p className="font-medium">Connected</p>
           <p className="break-all text-sm text-muted-foreground">{getServerUrl()}</p>
+          {isInsecureUrl(getServerUrl() ?? '') && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">Unencrypted connection (http://).</p>
+          )}
           <p className="break-all text-sm text-muted-foreground">{getLoggedInEmail()}</p>
         </div>
       </div>

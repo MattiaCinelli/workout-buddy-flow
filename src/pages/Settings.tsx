@@ -180,6 +180,11 @@ const SettingsPage = () => {
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>Offline-first and private by default. No account or server is required unless you choose to enable sync.</p>
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+                Not medical advice. Consult a doctor before starting a new exercise programme, and stop
+                if you feel pain. Suggested weights and progressions are guidance from your own logged
+                history, not a prescription.
+              </p>
               <Button variant="outline" asChild>
                 <a href="https://github.com/MattiaCinelli/workout-buddy-flow/releases/latest" target="_blank" rel="noreferrer">
                   Check for updates <ExternalLink className="ml-2 h-4 w-4" />

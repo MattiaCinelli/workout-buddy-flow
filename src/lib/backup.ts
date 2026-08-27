@@ -71,7 +71,31 @@ export const downloadBackup = async () => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
+// A backup with photo-heavy exercises is legitimately large; anything past
+// this is almost certainly hostile or corrupt, and parsing it would just
+// bloat IndexedDB.
+const MAX_IMPORT_BYTES = 64 * 1024 * 1024;
+const MAX_IMAGE_URL_LENGTH = 4 * 1024 * 1024; // ~3 MB once base64-decoded
+
+// An imported `imageUrl` is untrusted. Keep only a plain https URL or an
+// inline image data URI of a sane size; drop anything else (javascript:,
+// data:text/html, absurdly long strings) rather than storing and rendering it.
+const sanitizeImageUrl = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || value.length > MAX_IMAGE_URL_LENGTH) return undefined;
+  return /^https:\/\//i.test(value) || /^data:image\/(png|jpe?g|gif|webp|avif);/i.test(value)
+    ? value : undefined;
+};
+
+const scrubImportedImages = (parsed: Record<string, unknown>): void => {
+  const data = parsed.data;
+  if (!isRecord(data) || !Array.isArray(data.exercises)) return;
+  for (const item of data.exercises) {
+    if (isRecord(item) && 'imageUrl' in item) item.imageUrl = sanitizeImageUrl(item.imageUrl);
+  }
+};
+
 export const parseBackup = (text: string): WorkoutBuddyBackup => {
+  if (text.length > MAX_IMPORT_BYTES) throw new Error('That backup file is too large to import.');
   const parsed: unknown = JSON.parse(text);
   if (!isRecord(parsed) || parsed.format !== 'workout-buddy-backup'
     || (parsed.version !== 1 && parsed.version !== 2) || !isRecord(parsed.data)) {
@@ -84,6 +108,7 @@ export const parseBackup = (text: string): WorkoutBuddyBackup => {
       throw new Error(`Backup contains invalid ${store} records.`);
     }
   }
+  scrubImportedImages(parsed);
   return parsed as unknown as WorkoutBuddyBackup;
 };
 
@@ -188,6 +213,7 @@ export const shareWorkout = (workout: WorkoutEntry, exercises: Exercise[], muscl
   shareOrDownloadFile(buildWorkoutShare(workout, exercises, muscleGroups), `workout-${slugify(workout.title)}.json`);
 
 export const parseShare = (text: string): WorkoutBuddyShare => {
+  if (text.length > MAX_IMPORT_BYTES) throw new Error('That shared file is too large to import.');
   let parsed: unknown;
   try { parsed = JSON.parse(text); }
   catch { throw new Error('That file is not valid JSON.'); }
@@ -207,6 +233,7 @@ export const parseShare = (text: string): WorkoutBuddyShare => {
   if ((data.exercises as unknown[]).length === 0 && (data.workouts as unknown[]).length === 0) {
     throw new Error('Shared file has nothing to import.');
   }
+  scrubImportedImages(parsed);
   return parsed as unknown as WorkoutBuddyShare;
 };
 

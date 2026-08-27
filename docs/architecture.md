@@ -144,6 +144,16 @@ and `public/sw.js` (registered from `src/main.tsx`, prod only) is a network-firs
 service worker that caches whatever loads, so a later visit opens offline. App data is
 IndexedDB and is untouched by the service worker.
 
+## Third-party code / trust boundary
+
+The app ships **no** third-party runtime code and makes no outbound requests except to
+a sync server the user configures. `index.html` carries the Lovable in-browser-editor
+script (`cdn.gpteng.co`); a Vite plugin (`stripLovableEditorScript` in
+`vite.config.ts`, `apply: 'build'`) removes it from every `vite build`, so it exists
+only during `vite` dev. Imported backup / share files are validated for shape and their
+`imageUrl` is constrained to `https:` or an `image/*` data URI (`src/lib/backup.ts`);
+CSV export escapes leading `= + - @` to prevent spreadsheet formula injection.
+
 ## Styling conventions
 
 Colours, gradients and shadows are **semantic tokens** defined in `src/index.css` and

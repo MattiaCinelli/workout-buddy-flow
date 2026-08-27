@@ -54,6 +54,11 @@ export function OnboardingDialog() {
           ))}
         </ul>
 
+        <p className="text-xs text-muted-foreground">
+          Not medical advice — consult a doctor before starting a new exercise programme, and stop if
+          anything hurts.
+        </p>
+
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={dismiss}>Explore on my own</Button>
           <Button onClick={() => { dismiss(); navigate('/courses'); }}>See the starter course</Button>

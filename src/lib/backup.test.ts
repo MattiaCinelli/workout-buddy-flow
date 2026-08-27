@@ -93,6 +93,22 @@ describe('parseShare', () => {
     });
     expect(() => parseShare(empty)).toThrow(/nothing to import/);
   });
+
+  it('rejects an oversized file before parsing', () => {
+    expect(() => parseShare('x'.repeat(65 * 1024 * 1024))).toThrow(/too large/);
+  });
+
+  it('strips a non-image / dangerous imageUrl from an imported exercise', () => {
+    const build = (url: string) => JSON.stringify({
+      format: 'workout-buddy-share', version: 1, exportedAt: '', kind: 'exercise',
+      data: { exercises: [{ ...exercise(), imageUrl: url }], workouts: [], muscleGroups: [] },
+    });
+    expect(parseShare(build('javascript:alert(1)')).data.exercises[0].imageUrl).toBeUndefined();
+    expect(parseShare(build('data:text/html,<script>')).data.exercises[0].imageUrl).toBeUndefined();
+    expect(parseShare(build('http://insecure/x.png')).data.exercises[0].imageUrl).toBeUndefined();
+    expect(parseShare(build('https://ok/x.png')).data.exercises[0].imageUrl).toBe('https://ok/x.png');
+    expect(parseShare(build('data:image/png;base64,AAAA')).data.exercises[0].imageUrl).toBe('data:image/png;base64,AAAA');
+  });
 });
 
 describe('importShare', () => {

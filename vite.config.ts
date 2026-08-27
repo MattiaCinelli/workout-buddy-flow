@@ -1,8 +1,22 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import packageJson from "./package.json";
+
+// The Lovable in-browser editor requires a remote script in index.html. It
+// has full access to the origin (IndexedDB, localStorage — including any
+// sync token) and phones home on every load, so it must not ship in a
+// distributed build. Kept for `vite` dev (the editor), stripped from every
+// `vite build`.
+const stripLovableEditorScript = (): Plugin => ({
+  name: "strip-lovable-editor-script",
+  apply: "build",
+  transformIndexHtml: (html) =>
+    html
+      .replace(/\s*<!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->/g, "")
+      .replace(/\s*<script src="https:\/\/cdn\.gpteng\.co\/gptengineer\.js"[^>]*><\/script>/g, ""),
+});
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -15,8 +29,8 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    mode === 'development' && componentTagger(),
+    stripLovableEditorScript(),
   ].filter(Boolean),
   resolve: {
     alias: {

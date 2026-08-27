@@ -420,8 +420,24 @@ rather than a per-host `network_security_config.xml` allowlist — deliberate,
 since the user can point the app at *any* server address they choose,
 which a static allowlist can't accommodate without being regenerated per
 server. Both are explicitly flagged "not intended for production" in
-Capacitor's own docs; acceptable for a self-built, self-installed personal
-app, not something to carry into anything distributed more broadly.
+Capacitor's own docs.
+
+**Because plain HTTP sync sends the bearer token and every record in the
+clear, it is now OFF by default.** `capacitor.config.ts` only emits the
+`server.cleartext` / `android.allowMixedContent` allows when built with
+`WB_ALLOW_INSECURE_SYNC=1` (e.g. `WB_ALLOW_INSECURE_SYNC=1 npm run
+android:sync`). The default build is HTTPS-only; point the app at an HTTPS
+sync server. `SyncSettingsPanel` also shows an "unencrypted connection"
+warning when the entered URL is a non-localhost `http://` address.
+
+### Session tokens are hashed at rest
+
+`createSession` returns the raw 32-byte token to the client but stores only
+its SHA-256 in `sessions.token` (`server/src/db/sessions.ts`), and every
+lookup/delete hashes its input. A read of the `sessions` table — a leaked
+backup, stray file access — therefore can't yield a usable bearer token.
+Migration `014_hash_session_tokens.sql` clears the pre-hash rows, so every
+device logs in once after the upgrade.
 
 ## Verified two-device, end to end — on real hardware, not just automation
 

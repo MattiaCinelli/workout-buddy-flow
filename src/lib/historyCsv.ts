@@ -7,7 +7,11 @@ const HEADERS = [
 ] as const;
 
 const cell = (value: string | number | undefined | null): string => {
-  const text = value === undefined || value === null ? '' : String(value);
+  let text = value === undefined || value === null ? '' : String(value);
+  // Neutralise spreadsheet formula injection: a non-numeric cell starting
+  // with = + - @ (or a control char) is a live formula in Excel / Sheets.
+  // A workout title could carry one, especially via an imported/shared file.
+  if (/^[=+\-@\t\r]/.test(text) && Number.isNaN(Number(text))) text = `'${text}`;
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 

@@ -34,6 +34,12 @@ describe('sessionsToCsv', () => {
     expect(lines[3]).toBe('2026-02-01,Push,strength,40,,Bench Press,1,working,yes,8,45,,,');
   });
 
+  it('neutralises a spreadsheet formula in a workout title', () => {
+    const csv = sessionsToCsv([session({ title: '=HYPERLINK("http://evil","x")' })], exercises);
+    // leading = escaped with a quote, then the whole cell quoted for the comma
+    expect(csv.split('\n')[1]).toContain(`"'=HYPERLINK(""http://evil"",""x"")"`);
+  });
+
   it('falls back to planned sets when a session has no actualSets', () => {
     const csv = sessionsToCsv([session({ actualSets: undefined })], exercises);
     expect(csv.split('\n')[1]).toBe('2026-01-02,Push,strength,40,,Bench Press,1,working,yes,10,40,,,');
