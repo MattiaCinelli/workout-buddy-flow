@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { addDays, isAfter, isSameDay, parseISO, set, subMinutes } from 'date-fns';
+import { addDays, format, isAfter, isSameDay, parseISO, set, subMinutes } from 'date-fns';
 import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 
@@ -26,7 +26,7 @@ const occurrences = (schedule: ScheduledWorkout) => {
       ? true
       : (schedule.recurrenceDays ?? []).includes(getDayOfWeek(current));
 
-    if (isOccurrence) {
+    if (isOccurrence && !schedule.skippedDates?.includes(format(current, 'yyyy-MM-dd'))) {
       const at = set(current, { hours: hour, minutes: minute, seconds: 0, milliseconds: 0 });
       if (isAfter(at, new Date())) dates.push(at);
     }

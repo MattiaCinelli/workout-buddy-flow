@@ -30,6 +30,11 @@ npx playwright install chromium
 End-to-end tests live in `e2e/`. The configuration starts Vite automatically on
 `127.0.0.1:4173` and uses a fresh browser context for each test.
 
+`e2e/accessibility-mobile.spec.ts` exercises the Settings page at 360×640, the guided
+workout controls at 320×568, system reduced-motion behavior, large text and horizontal
+overflow. When changing navigation, Settings or guided mode, keep these narrow-phone
+checks passing and manually inspect at least one landscape viewport on Android.
+
 ## Working on the sync server
 
 `server/` has its own `package.json` and test suite, independent of the app above:

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, ChevronRight, Activity, Trash2, Star } from "lucide-react";
+import { Calendar, Clock, ChevronRight, Activity, Pencil, Trash2, Star } from "lucide-react";
 import { WorkoutSession } from '@/data/workoutSessions';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { useNavigate } from 'react-router-dom';
@@ -13,12 +13,13 @@ interface WorkoutCardProps {
   // have their own delete flow (Workouts page) with its own referential
   // integrity checks, so this stays opt-in per usage rather than global.
   onDelete?: (workout: WorkoutSession | WorkoutEntry) => void;
+  onEdit?: (workout: WorkoutSession | WorkoutEntry) => void;
   // Only meaningful for workout templates, not history entries — wired in
   // from the Workouts page only.
   onToggleFavorite?: (workout: WorkoutEntry) => void;
 }
 
-const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onToggleFavorite }) => {
+const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, onToggleFavorite }) => {
   const navigate = useNavigate();
   
   // Get unique exercises
@@ -95,8 +96,10 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onToggleFa
         {'actualSets' in workout && workout.actualSets && (
           <div className="mt-2 text-sm">
             {workout.actualSets.filter(set => set.completed).length}/{workout.actualSets.length} sets completed
-            {workout.perceivedExertion ? ` • RPE ${workout.perceivedExertion}/10` : ''}
           </div>
+        )}
+        {'perceivedExertion' in workout && workout.perceivedExertion && (
+          <div className="mt-1 text-sm">RPE {workout.perceivedExertion}/10</div>
         )}
         {'completionNotes' in workout && workout.completionNotes && (
           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{workout.completionNotes}</p>
@@ -119,6 +122,12 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onToggleFa
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {onEdit && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"
+              onClick={event => { event.stopPropagation(); onEdit(workout); }} aria-label="Correct history record">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {onDelete && (
             <Button
               variant="ghost"

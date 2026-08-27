@@ -31,6 +31,9 @@ with all data stored on the device.
    can be wrapped by Capacitor into an APK without changing the data layer.
 6. **Simple, boring architecture.** Plain React + hooks + one context. No state
    machine libraries, no server sync logic. Easy to read and easy to change.
+7. **Correctable and accessible.** Mistaken history and calendar actions can be
+   corrected without rebuilding a program. Device-level large text, reduced motion,
+   voice and haptic preferences keep guided sessions usable in varied environments.
 
 ## Core concepts
 
@@ -77,5 +80,5 @@ History / Progress -> filter completed sessions, see streaks/charts, clear histo
   from a Raspberry Pi to a small VPS, with no managed-cloud APIs involved.
 - No wearable / health-platform integration.
 - No public account self-signup on the sync server — accounts are admin-created only.
-- Manual JSON backup and restore remain available from Progress settings regardless of
+- Manual JSON backup and restore remain available from Settings regardless of
   whether sync is set up; they're the simplest path and require no server at all.

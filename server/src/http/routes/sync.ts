@@ -75,6 +75,7 @@ const scheduledWorkoutSchema = {
     endTime: { type: 'string' },
     recurrence: { type: 'string' },
     recurrenceDays: { type: 'array', items: { type: 'string' } },
+    skippedDates: { type: 'array', items: { type: 'string' } },
     endRecurrenceDate: { type: 'string' },
     notes: { type: 'string' },
     createdAt: { type: 'string' },

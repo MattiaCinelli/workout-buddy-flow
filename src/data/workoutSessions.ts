@@ -10,7 +10,7 @@ export interface WorkoutSetResult {
   distance?: number;
 }
 
-/** An immutable record created when a workout is actually finished. */
+/** A historical snapshot created when a workout finishes; explicitly correctable from History. */
 export interface WorkoutSession extends WorkoutEntry {
   workoutId: string;
   completedAt: string;

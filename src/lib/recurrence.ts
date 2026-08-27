@@ -3,6 +3,7 @@ import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
 
 export interface ExpandedScheduledWorkout extends ScheduledWorkout {
   displayDate: string; // The actual date this instance appears on
+  skipped: boolean;
 }
 
 // Expands recurrence rules ('none' / 'daily' / 'weekly', the latter against
@@ -25,7 +26,7 @@ export const expandScheduledWorkouts = (
         (isSameDay(scheduleStartDate, startDate) || isAfter(scheduleStartDate, startDate)) &&
         (isSameDay(scheduleStartDate, endDate) || isBefore(scheduleStartDate, endDate))
       ) {
-        expanded.push({ ...sw, displayDate: sw.startDate });
+        expanded.push({ ...sw, displayDate: sw.startDate, skipped: sw.skippedDates?.includes(sw.startDate) ?? false });
       }
     } else if (sw.recurrence === 'daily') {
       let currentDate = isBefore(scheduleStartDate, startDate) ? startDate : scheduleStartDate;
@@ -34,7 +35,8 @@ export const expandScheduledWorkouts = (
         if (scheduleEndDate && isAfter(currentDate, scheduleEndDate)) break;
 
         if (isSameDay(currentDate, scheduleStartDate) || isAfter(currentDate, scheduleStartDate)) {
-          expanded.push({ ...sw, displayDate: format(currentDate, 'yyyy-MM-dd') });
+          const displayDate = format(currentDate, 'yyyy-MM-dd');
+          expanded.push({ ...sw, displayDate, skipped: sw.skippedDates?.includes(displayDate) ?? false });
         }
 
         currentDate = addDays(currentDate, 1);
@@ -50,7 +52,8 @@ export const expandScheduledWorkouts = (
           sw.recurrenceDays.includes(dayOfWeek) &&
           (isSameDay(currentDate, scheduleStartDate) || isAfter(currentDate, scheduleStartDate))
         ) {
-          expanded.push({ ...sw, displayDate: format(currentDate, 'yyyy-MM-dd') });
+          const displayDate = format(currentDate, 'yyyy-MM-dd');
+          expanded.push({ ...sw, displayDate, skipped: sw.skippedDates?.includes(displayDate) ?? false });
         }
 
         currentDate = addDays(currentDate, 1);

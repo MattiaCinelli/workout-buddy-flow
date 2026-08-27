@@ -211,11 +211,12 @@ Endpoints that exist right now:
 | `POST /sync/<collection>` | `Authorization: Bearer <token>` | `{ <collection>: [...] }`, up to 1000 per request, validated by JSON schema. Applies each with last-write-wins in one transaction and returns the post-merge state — a caller whose write lost a conflict gets told what actually won, not an echo of what it sent. |
 
 `<collection>` is one of `exercises`, `workouts`, `scheduledWorkouts`,
-`courses`, `workoutSessions` — all five now exist and share this exact
+`courses`, `workoutSessions`, `muscleGroups`, `bodyMetrics` — all seven
+exist and share this exact
 shape, registered through one generic factory
-(`server/src/http/syncRoute.ts`) rather than five hand-written route pairs.
+(`server/src/http/syncRoute.ts`) rather than seven hand-written route pairs.
 Only the DB-layer SQL stays explicit per table
-(`server/src/db/{exercises,workouts,scheduledWorkouts,courses,workoutSessions}.ts`)
+(`server/src/db/`)
 — deliberately not genericized, so each table's upsert logic stays directly
 readable rather than generated from column config.
 
@@ -224,17 +225,17 @@ readable rather than generated from column config.
 - `updatedAt` is now stamped on every create/update by
   `useIndexedDBCollection` (`src/hooks/useIndexedDBCollection.ts`)
   unconditionally, whether or not sync is configured — one change to the
-  shared hook rather than five to each domain hook. Pre-existing records
+  shared hook rather than changes to each domain hook. Pre-existing records
   missing it get backfilled and persisted on their first sync.
 - `syncAll()` pushes every local record for a collection (simpler than
   tracking a per-record dirty flag; the server's upsert is idempotent, so
   re-pushing unchanged rows is harmless at personal-library scale), saves
   back whatever the server says actually won each conflict, then pulls
   anything changed since the last watermark and merges it in.
-- UI lives in `src/components/SyncSettingsModal.tsx`, opened via the
-  account icon in the navbar (`src/components/AccountButton.tsx`) — a
-  single, always-visible entry point rather than a page-specific settings
-  menu, so "am I connected" is discoverable from anywhere in the app. The
+- UI lives on the dedicated Settings page, with reusable controls in
+  `src/components/SyncSettingsPanel.tsx`. It is opened from the explicit
+  Settings navigation item or the account icon in the navbar
+  (`src/components/AccountButton.tsx`). The
   icon itself is the connection indicator: outline when disconnected,
   filled when connected — chosen over a separate dot/badge so there's one
   less element to keep in sync with state. Connect (server URL + email +
@@ -254,7 +255,7 @@ readable rather than generated from column config.
   unreachable) are logged and swallowed, not surfaced as user-facing
   errors — only the explicit **Sync now** button surfaces errors, since
   that's an in-the-moment action the user is watching. The "Last synced"
-  time shown in the dialog is read from a persisted value
+  time shown on the Settings page is read from a persisted value
   (`getLastSyncedAt()`) rather than component state, so it reflects
   background syncs too, not just ones triggered while the dialog happened
   to be open. Verified with two automated checks: a page reload with zero
@@ -266,13 +267,13 @@ readable rather than generated from column config.
 
 ## Account management (`src/components/AccountProfileTab.tsx`)
 
-Once connected, the sync dialog's **Profile** tab lets a user manage their
+Once connected, the Settings page's **Account** section lets a user manage their
 own account — display name, email, password — without needing shell/CLI
 access to the server. Three independent mini-forms, each with its own save
 button and error state:
 
-- **Display name**: purely cosmetic, no password required. Shown in place
-  of the raw email in the dialog title and anywhere else the app displays
+- **Display name**: purely cosmetic, no password required. Stored for use
+  anywhere the app displays
   "who's connected." `PATCH /account/profile`.
 - **Email**: requires the current password to confirm, server-side checks
   the new email isn't already taken by another account. `PATCH

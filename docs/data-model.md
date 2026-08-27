@@ -85,15 +85,22 @@ interface WorkoutSession extends WorkoutEntry {
 the actual completion timestamp and elapsed duration, and optionally links back to a
 course item or scheduled workout. History, streaks, weekly goals and progress charts
 read only from sessions. Its inherited `date` is the completion timestamp and its
-inherited `duration` is the actual elapsed time in minutes.
+inherited `duration` is the actual elapsed time in minutes. The snapshot is normally
+append-only, but the History correction dialog can update its timestamp, duration,
+set results, exertion and notes when the user recorded something incorrectly. Deleting
+a session linked to a course also reopens that exact course item.
 
 ## Backup format — `src/lib/backup.ts`
 
-Backups are versioned JSON documents containing all five object-store collections.
-Restore validates the format, version, arrays and record IDs before opening one
-read/write transaction that replaces all stores together. On Android, the backup is
-written to the cache directory and handed to the native share sheet; on the web it is
-downloaded as a `.json` file.
+Backups are versioned JSON documents. Version 2 contains all seven object-store
+collections: exercises, workout templates, workout sessions, schedules, courses,
+muscle groups and body metrics. Restore validates the format, version, arrays and
+record IDs before opening one read/write transaction that replaces the included
+stores together. Legacy version-1 backups remain supported; because those files
+predate muscle-group and body-metric backup support, restoring one leaves those two
+stores on the device untouched. On Android, the backup is written to the cache
+directory and handed to the native share sheet; on the web it is downloaded as a
+`.json` file.
 
 ## Scheduled workout — `src/data/scheduledWorkouts.ts`
 
@@ -110,13 +117,17 @@ interface ScheduledWorkout {
   recurrenceDay?: WeekDay;     // for weekly recurrence
   endRecurrenceDate?: string;  // when the series stops
   notes?: string;
+  skippedDates?: string[];      // concrete recurring occurrences intentionally skipped
   createdAt: string;
 }
 ```
 
 Stored as a **rule**. `useScheduledWorkouts` expands rules into
 `ExpandedScheduledWorkout` (`+ displayDate`) for any requested date range, so editing
-or deleting one record changes the whole series.
+or deleting one record changes the whole series. A skipped occurrence stays visible
+with a skipped state so it can be restored. Moving one recurring occurrence adds that
+date to `skippedDates` and creates a new one-time schedule on the chosen date, leaving
+the rest of the recurrence intact.
 
 ## Course — `src/data/courses.ts`
 

@@ -18,9 +18,8 @@ export interface IndexedDBCollectionConfig<T extends { id: string }, StampedKeys
   stamp?: () => Pick<T, StampedKeys>;
 }
 
-// Shared load/create/update/delete/error-state plumbing for the app's five
-// IndexedDB-backed collections (exercises, workouts, scheduled workouts,
-// courses, workout sessions). Each domain hook supplies the DB functions and
+// Shared load/create/update/delete/error-state plumbing for the app's seven
+// IndexedDB-backed collections. Each domain hook supplies the DB functions and
 // any collection-specific transform, then layers its own specialized
 // operations (e.g. course completion) on top of the returned primitives.
 export function useIndexedDBCollection<T extends { id: string }, StampedKeys extends keyof T = never>(

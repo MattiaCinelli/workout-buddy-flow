@@ -21,11 +21,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
+import { Ban, Calendar, CalendarClock, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { weekDays, weekDayLabels, weekdaysPreset, weekendPreset, WeekDay } from '@/data/scheduledWorkouts';
 import { format, parseISO } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface ScheduleDetailModalProps {
   isOpen: boolean;
@@ -44,13 +46,19 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveDate, setMoveDate] = useState('');
+  const [recovering, setRecovering] = useState(false);
   const { toast } = useToast();
-  const { workouts, deleteScheduledWorkout } = useData();
+  const { workouts, sessions, createScheduledWorkout, updateScheduledWorkout, deleteScheduledWorkout } = useData();
   const navigate = useNavigate();
 
   if (!schedule) return null;
 
   const workout = workouts.find(w => w.id === schedule.workoutId);
+  const completed = sessions.some(session => session.scheduledWorkoutId === schedule.id
+    && session.completedAt.slice(0, 10) === schedule.displayDate);
+  const missed = !schedule.skipped && !completed && schedule.displayDate < format(new Date(), 'yyyy-MM-dd');
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -118,6 +126,39 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
     navigate(`/workouts/${schedule.workoutId}`);
   };
 
+  const toggleSkipped = async () => {
+    setRecovering(true);
+    try {
+      const skippedDates = schedule.skipped
+        ? (schedule.skippedDates ?? []).filter(date => date !== schedule.displayDate)
+        : [...new Set([...(schedule.skippedDates ?? []), schedule.displayDate])];
+      await updateScheduledWorkout(schedule.id, { skippedDates });
+      toast({ title: schedule.skipped ? 'Workout restored' : 'Workout marked skipped' });
+      onClose();
+    } catch {
+      toast({ title: 'Could not update workout', description: 'Please try again.', variant: 'destructive' });
+    } finally { setRecovering(false); }
+  };
+
+  const moveOccurrence = async () => {
+    if (!moveDate) return;
+    setRecovering(true);
+    try {
+      if (schedule.recurrence === 'none') {
+        await updateScheduledWorkout(schedule.id, { startDate: moveDate });
+      } else {
+        const skippedDates = [...new Set([...(schedule.skippedDates ?? []), schedule.displayDate])];
+        await updateScheduledWorkout(schedule.id, { skippedDates });
+        await createScheduledWorkout({ workoutId: schedule.workoutId, startDate: moveDate,
+          startTime: schedule.startTime, endTime: schedule.endTime, recurrence: 'none', notes: schedule.notes });
+      }
+      toast({ title: 'Workout rescheduled', description: `Moved to ${format(parseISO(moveDate), 'MMMM d, yyyy')}.` });
+      setMoveOpen(false); onClose();
+    } catch {
+      toast({ title: 'Could not reschedule workout', description: 'No calendar changes were completed.', variant: 'destructive' });
+    } finally { setRecovering(false); }
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -130,6 +171,8 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                   {workout.category}
                 </Badge>
               )}
+              {schedule.skipped && <Badge variant="secondary">Skipped</Badge>}
+              {missed && <Badge variant="destructive">Missed</Badge>}
             </DialogTitle>
             <DialogDescription>
               Scheduled workout details
@@ -193,6 +236,12 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
               Delete
             </Button>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={() => { setMoveDate(schedule.displayDate); setMoveOpen(true); }} disabled={recovering}>
+                <CalendarClock className="h-4 w-4 sm:mr-2" /><span className="sr-only sm:not-sr-only">Move</span>
+              </Button>
+              <Button variant="outline" onClick={() => void toggleSkipped()} disabled={recovering}>
+                <Ban className="h-4 w-4 sm:mr-2" /><span className="sr-only sm:not-sr-only">{schedule.skipped ? 'Unskip' : 'Skip'}</span>
+              </Button>
               <Button variant="outline" size="icon" onClick={() => onEdit(schedule)} aria-label="Edit schedule">
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -208,6 +257,19 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
               </Button>
             </div>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Move this workout</DialogTitle><DialogDescription>
+            {schedule.recurrence === 'none' ? 'Choose a new date.' : 'Only this occurrence moves; the recurring schedule stays unchanged.'}
+          </DialogDescription></DialogHeader>
+          <div className="space-y-2"><Label htmlFor="move-workout-date">New date</Label>
+            <Input id="move-workout-date" type="date" value={moveDate} onChange={event => setMoveDate(event.target.value)} />
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setMoveOpen(false)}>Cancel</Button>
+            <Button onClick={() => void moveOccurrence()} disabled={!moveDate || recovering}>Move workout</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

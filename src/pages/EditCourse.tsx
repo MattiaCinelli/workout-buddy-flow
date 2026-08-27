@@ -47,8 +47,13 @@ const EditCourse = () => {
       toast.error('Please enter a course title');
       return;
     }
-    if (!programItems.some(item => item.type === 'workout' && item.workoutId)) {
+    const workoutSessions = programItems.filter(item => item.type === 'workout');
+    if (workoutSessions.length === 0) {
       toast.error('Please add at least one workout session');
+      return;
+    }
+    if (workoutSessions.some(item => !item.workoutId)) {
+      toast.error('Every session needs a workout selected');
       return;
     }
 

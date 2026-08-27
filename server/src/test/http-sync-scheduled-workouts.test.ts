@@ -20,16 +20,18 @@ test('GET and POST /sync/scheduledWorkouts require auth', async () => {
   assert.equal(get.statusCode, 401);
 });
 
-test('a recurring schedule round-trips including its recurrence fields', async () => {
+test('a recurring schedule round-trips recurrence and skipped occurrences', async () => {
   const { app, aliceToken } = await setupTwoUsers();
   const headers = { authorization: `Bearer ${aliceToken}` };
 
-  await app.inject({ method: 'POST', url: '/sync/scheduledWorkouts', headers, payload: { scheduledWorkouts: [scheduledWorkout()] } });
+  await app.inject({ method: 'POST', url: '/sync/scheduledWorkouts', headers,
+    payload: { scheduledWorkouts: [scheduledWorkout({ skippedDates: ['2026-03-17'] })] } });
   const pull = await app.inject({ method: 'GET', url: '/sync/scheduledWorkouts', headers });
 
   const stored = pull.json().scheduledWorkouts[0];
   assert.equal(stored.recurrence, 'weekly');
   assert.deepEqual(stored.recurrenceDays, ['tuesday']);
+  assert.deepEqual(stored.skippedDates, ['2026-03-17']);
   assert.equal(stored.createdAt, '2026-01-01T00:00:00.000Z');
 });
 

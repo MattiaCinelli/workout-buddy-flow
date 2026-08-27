@@ -1,10 +1,13 @@
+import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Pencil, Repeat, Timer } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
+import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
 
 interface ExerciseDetailModalProps {
@@ -37,6 +40,21 @@ const getDifficultyColor = (difficulty: string) => {
 // immediately drop you into editing it.
 export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetailModalProps) {
   const { muscleGroups } = useData();
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = async () => {
+    if (!exercise) return;
+    setSharing(true);
+    try {
+      await shareExercise(exercise, muscleGroups);
+    } catch (error) {
+      console.error('Failed to share exercise:', error);
+      toast.error('Could not share this exercise.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   if (!exercise) return null;
 
   const logType = getLogType(exercise);
@@ -94,7 +112,10 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleShare} disabled={sharing}>
+            {sharing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />} Share
+          </Button>
           <Button variant="outline" onClick={() => onEdit(exercise)}>
             <Pencil className="h-4 w-4 mr-2" /> Edit
           </Button>

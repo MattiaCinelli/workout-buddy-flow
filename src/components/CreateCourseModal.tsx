@@ -37,8 +37,13 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose }
       toast.error('Please enter a course title');
       return;
     }
-    if (!courseWorkouts.some(item => item.type === 'workout' && item.workoutId)) {
+    const workoutSessions = courseWorkouts.filter(item => item.type === 'workout');
+    if (workoutSessions.length === 0) {
       toast.error('Please add at least one workout session');
+      return;
+    }
+    if (workoutSessions.some(item => !item.workoutId)) {
+      toast.error('Every session needs a workout selected');
       return;
     }
 

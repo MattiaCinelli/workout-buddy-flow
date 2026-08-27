@@ -21,6 +21,7 @@ interface DataContextType {
   sessionsLoading: boolean;
   sessionsError: string | null;
   createSession: (data: Omit<WorkoutSession, 'id'>) => Promise<WorkoutSession>;
+  updateSession: (id: string, updates: Partial<WorkoutSession>) => Promise<WorkoutSession | null>;
   deleteSession: (id: string) => Promise<WorkoutSession | null>;
   clearAllSessions: () => Promise<void>;
   refreshSessions: () => Promise<void>;
@@ -67,6 +68,7 @@ interface DataContextType {
   startCourse: (id: string) => Promise<Course | null>;
   restartCourse: (id: string) => Promise<Course | null>;
   completeWorkoutInCourse: (courseId: string, courseItemId: string) => Promise<Course | null>;
+  uncompleteWorkoutInCourse: (courseId: string, courseItemId: string) => Promise<Course | null>;
   getNextWorkoutInCourse: (courseId: string) => CourseWorkout | null;
   getCourseById: (id: string) => Course | undefined;
   getCourseProgress: (courseId: string) => number;
@@ -97,7 +99,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, deleteSession, clearAllSessions, refreshSessions } = useWorkoutSessions();
+  const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, updateSession, deleteSession, clearAllSessions, refreshSessions } = useWorkoutSessions();
   const {
     exercises,
     isLoading: exercisesLoading,
@@ -144,6 +146,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     startCourse,
     restartCourse,
     completeWorkoutInCourse,
+    uncompleteWorkoutInCourse,
     getNextWorkoutInCourse,
     getCourseById,
     getCourseProgress,
@@ -230,6 +233,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sessionsLoading,
     sessionsError,
     createSession,
+    updateSession,
     deleteSession,
     clearAllSessions,
     refreshSessions,
@@ -272,6 +276,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     startCourse,
     restartCourse,
     completeWorkoutInCourse,
+    uncompleteWorkoutInCourse,
     getNextWorkoutInCourse,
     getCourseById,
     getCourseProgress,

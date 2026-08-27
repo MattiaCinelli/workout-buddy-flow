@@ -18,6 +18,8 @@ import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
 import { buildWorkoutSteps, remainingSeconds } from '@/lib/workoutRuntime';
 import { detectNewPersonalRecords, PRKind } from '@/lib/personalRecords';
+import { ToastAction } from '@/components/ui/toast';
+import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -26,7 +28,6 @@ type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; 
   deadline: number | null; paused: boolean };
 type WakeLockLike = { release: () => Promise<void>; released?: boolean };
 const runtimeKey = (id: string) => `workout-buddy-active:${id}`;
-const VOICE_PREF_KEY = 'workout-buddy-voice-enabled';
 
 // A left-to-right fill that mirrors the numeric countdown, so time
 // remaining is readable at a glance without parsing digits. Colours are
@@ -46,7 +47,10 @@ const WorkoutPresentation = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { workouts, exercises, sessions, workoutsLoading, createSession, completeWorkoutInCourse } = useData();
+  const {
+    workouts, exercises, sessions, workoutsLoading, createSession, deleteSession,
+    completeWorkoutInCourse, uncompleteWorkoutInCourse,
+  } = useData();
   const workout = workouts.find(item => item.id === id);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
   const startedAt = useRef(Date.now());
@@ -64,7 +68,7 @@ const WorkoutPresentation = () => {
   const [actualSets, setActualSets] = useState<WorkoutSetResult[]>([]);
   const [rpe, setRpe] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
-  const [voiceEnabled, setVoiceEnabled] = useState(() => localStorage.getItem(VOICE_PREF_KEY) !== 'false');
+  const [voiceEnabled, setVoiceEnabled] = useState(() => getAccessibilitySettings().voiceCues);
   const lastSpokenRepRef = useRef<number | null>(null);
   const lastSpokenCountdownRef = useRef<number | null>(null);
 
@@ -76,6 +80,7 @@ const WorkoutPresentation = () => {
   // rejects on desktop (no vibration hardware) — the catch is that, not an
   // error worth surfacing.
   const vibrate = useCallback((style: ImpactStyle) => {
+    if (!getAccessibilitySettings().haptics) return;
     Haptics.impact({ style }).catch(() => undefined);
   }, []);
 
@@ -104,7 +109,7 @@ const WorkoutPresentation = () => {
   const toggleVoice = () => {
     setVoiceEnabled(prev => {
       const next = !prev;
-      localStorage.setItem(VOICE_PREF_KEY, String(next));
+      setAccessibilitySettings({ ...getAccessibilitySettings(), voiceCues: next });
       if (!next) void TextToSpeech.stop().catch(() => undefined);
       return next;
     });
@@ -333,7 +338,7 @@ const WorkoutPresentation = () => {
       const completedAt = new Date().toISOString();
       const courseId = searchParams.get('courseId') || undefined;
       const courseItemId = searchParams.get('courseItemId') || undefined;
-      await createSession({ workoutId: workout.id, completedAt, date: completedAt, title: workout.title,
+      const createdSession = await createSession({ workoutId: workout.id, completedAt, date: completedAt, title: workout.title,
         duration: Math.max(1, Math.round((Date.now() - startedAt.current) / 60000)), plannedDuration: workout.duration,
         category: workout.category, sets: workout.sets, notes: workout.notes, courseId, courseItemId,
         scheduledWorkoutId: searchParams.get('scheduledWorkoutId') || undefined, actualSets,
@@ -365,6 +370,11 @@ const WorkoutPresentation = () => {
             })}
           </div>
         ),
+        action: <ToastAction altText="Undo workout completion" onClick={() => void (async () => {
+          await deleteSession(createdSession.id);
+          if (courseId && courseItemId) await uncompleteWorkoutInCourse(courseId, courseItemId);
+          toast({ title: 'Completion undone', description: 'The history record was removed.' });
+        })()}>Undo</ToastAction>,
       });
       navigate(courseId ? `/courses/${courseId}` : '/history');
     } catch (error) {
@@ -405,17 +415,20 @@ const WorkoutPresentation = () => {
   if (!workout || !current) return null;
 
   return <div className="min-h-[100dvh] flex flex-col bg-gray-900 text-white">
-    <header className="p-3 sm:p-4 flex items-center justify-between gap-2">
-      <Button variant="ghost" size="icon" className="text-white shrink-0" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-6 w-6" /></Button>
+    <header className="flex items-center justify-between gap-2 p-3 pt-[max(.75rem,env(safe-area-inset-top))] sm:p-4">
+      <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-white" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-6 w-6" /></Button>
       <h1 className="text-lg sm:text-xl font-bold truncate">{workout.title}</h1>
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
+        <Button variant="ghost" size="icon" className="h-11 w-11 text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
           {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </Button>
         <Button variant="ghost" size="sm" className="text-white" onClick={() => setRestartConfirmOpen(true)}>Restart</Button>
       </div>
     </header>
     <section className="px-4 space-y-2" aria-label="Workout progress">
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : current.kind === 'prep' ? 'Get ready' : current.kind === 'switch' ? 'Switch sides' : 'Rest'}.
+      </p>
       <div className="flex justify-between text-xs sm:text-sm text-gray-300">
         <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Switch sides' : `Set ${activeSetNumber} of ${workout.sets.length}`}</span>
         <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
@@ -423,9 +436,9 @@ const WorkoutPresentation = () => {
       <Progress value={((activeStep + 1) / steps.length) * 100} className="h-2" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
       {current.type === 'exercise' && <p className="text-center text-sm text-gray-300">Next: {upcomingLabel}</p>}
     </section>
-    <main className="flex-1 flex flex-col items-center justify-center overflow-y-auto p-4 pb-28">
+    <main className="flex-1 flex flex-col items-center justify-center overflow-y-auto p-4 pb-28 landscape:justify-start landscape:pt-2">
       {current.type === 'exercise' && exercise ? <>
-        {exercise.imageUrl && <img src={exercise.imageUrl} alt={exercise.name} className="mb-6 w-full max-w-xs h-48 object-contain rounded-lg" />}
+        {exercise.imageUrl && <img src={exercise.imageUrl} alt="" className="mb-6 h-48 w-full max-w-xs rounded-lg object-contain landscape:h-28" />}
         <div className="text-center mb-8">
           {current.side && (
             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-workout-green/20 px-4 py-1.5 text-workout-green">
@@ -495,9 +508,9 @@ const WorkoutPresentation = () => {
       </>}
     </main>
     <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-2 border-t border-white/15 bg-gray-900/95 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur" aria-label="Workout controls">
-      <Button size="lg" variant="outline" className="h-14 border-white/40 bg-transparent text-white" onClick={previousStep} disabled={activeStep === 0}><ChevronLeft className="mr-1 h-5 w-5" />Previous</Button>
-      <Button size="lg" className="h-14 bg-workout-purple text-white" onClick={togglePause}>{paused ? <Play className="mr-1 h-5 w-5" /> : <Pause className="mr-1 h-5 w-5" />}{paused ? 'Resume' : 'Pause'}</Button>
-      <Button size="lg" className="h-14 bg-workout-green text-white hover:bg-green-600" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
+      <Button size="lg" variant="outline" className="h-14 min-w-0 px-2 text-xs border-white/40 bg-transparent text-white sm:text-sm" onClick={previousStep} disabled={activeStep === 0}><ChevronLeft className="mr-1 h-5 w-5" />Previous</Button>
+      <Button size="lg" className="h-14 min-w-0 px-2 text-xs bg-workout-purple text-white sm:text-sm" onClick={togglePause}>{paused ? <Play className="mr-1 h-5 w-5" /> : <Pause className="mr-1 h-5 w-5" />}{paused ? 'Resume' : 'Pause'}</Button>
+      <Button size="lg" className="h-14 min-w-0 px-2 text-xs bg-workout-green text-white hover:bg-green-600 sm:text-sm" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
     </nav>
     <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle>Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
       <div className="space-y-3">{actualSets.map((result, index) => { const planned = workout.sets[index]; const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise'; return <div key={index} className="border rounded-md p-3"><div className="flex items-center gap-2 mb-2"><Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} /><Label htmlFor={`completed-${index}`} className="font-medium flex-1">{name} · Set {result.setIndex + 1}</Label><span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2">{planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>Reps</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}{planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}{planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}{planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}</div></div>; })}</div>

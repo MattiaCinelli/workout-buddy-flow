@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Loader2, Dumbbell } from "lucide-react";
 import Navbar from '@/components/Navbar';
 import CreateWorkoutModal from '@/components/CreateWorkoutModal';
+import ImportShareButton from '@/components/ImportShareButton';
 import WorkoutCard from '@/components/WorkoutCard';
 import { useData } from '@/contexts/DataContext';
 import { Input } from '@/components/ui/input';
@@ -57,12 +58,12 @@ const WorkoutsPage = () => {
             </p>
           </div>
           
-          <Button 
-            onClick={() => setCreateWorkoutOpen(true)}
-            className="mt-4 md:mt-0"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Create Workout
-          </Button>
+          <div className="flex gap-2 mt-4 md:mt-0">
+            <ImportShareButton />
+            <Button onClick={() => setCreateWorkoutOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Create Workout
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}

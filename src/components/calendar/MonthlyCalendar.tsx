@@ -157,7 +157,9 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                         <button
                           key={`${schedule.id}-${schedule.displayDate}`}
                           onClick={() => onScheduleClick(schedule)}
-                          className="w-full flex items-center gap-1 text-left text-xs p-0.5 rounded hover:bg-muted transition-colors"
+                          className={cn("w-full flex items-center gap-1 text-left text-xs p-0.5 rounded hover:bg-muted transition-colors",
+                            schedule.skipped && "line-through opacity-50")}
+                          aria-label={`${workout.title}${schedule.skipped ? ', skipped' : ''}`}
                         >
                           <span
                             className={cn(

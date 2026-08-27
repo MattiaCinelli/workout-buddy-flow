@@ -3,6 +3,19 @@
 @tailwind components;
 @tailwind utilities;
 
+html.text-size-large {
+  font-size: 18px;
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
 @layer base {
   :root {
     --background: 210 40% 98%;

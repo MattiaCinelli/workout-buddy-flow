@@ -110,8 +110,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                       onClick={() => onScheduleClick(schedule)}
                       className={cn(
                         "w-full text-left p-1.5 rounded border text-xs transition-colors hover:opacity-80",
-                        getCategoryColor(workout.category)
+                        getCategoryColor(workout.category), schedule.skipped && "line-through opacity-50"
                       )}
+                      aria-label={`${workout.title}${schedule.skipped ? ', skipped' : ''}`}
                     >
                       <div className="font-medium truncate flex items-center gap-1">
                         {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0" />}

@@ -17,7 +17,7 @@ The APK is the installer; no server or account is required.
 Android may show a warning because the app is downloaded outside Google Play. Only
 install APKs published by this repository. Future releases install as updates and
 retain local app data, provided they use the same signing key. Making a JSON backup
-from Progress settings before an update is still recommended.
+from Settings before an update is still recommended.
 
 ## Features
 
@@ -39,6 +39,10 @@ from Progress settings before an update is still recommended.
   wake lock, local reminders and JSON backup/restore.
 - **Performance logging** — record actual sets, skipped work, perceived exertion and
   post-session notes.
+- **Corrections and recovery** — edit or remove mistaken history records, undo a
+  just-saved completion, and skip, restore or move individual calendar occurrences.
+- **Accessible training** — large-text and reduced-motion preferences, optional voice
+  and haptic cues, screen-reader status announcements and phone-safe workout controls.
 - **Light & dark themes.**
 
 ## Quick start
@@ -83,7 +87,7 @@ Fastify — see [docs/self-hosted-sync.md](docs/self-hosted-sync.md).
 By default there is no backend and no login. All data is stored in an IndexedDB
 database (`workout-buddy-db`) on the user's own device and never leaves it. Clearing
 site/app storage or uninstalling the Android app can remove locally stored data —
-manual JSON backup/restore (Progress settings) is the safety net.
+manual JSON backup/restore (Settings) is the safety net.
 
 A self-hosted sync server (`server/` — see
 [docs/self-hosted-sync.md](docs/self-hosted-sync.md)) is available for anyone who wants

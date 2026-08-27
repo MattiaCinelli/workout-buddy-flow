@@ -8,8 +8,9 @@ test('course builder exposes structured program fields', async ({ page }) => {
   await expect(page.getByText('Program schedule')).toBeVisible();
   await expect(page.getByLabel('Goal')).toBeVisible();
   await expect(page.getByLabel('Difficulty')).toBeVisible();
+  await expect(page.getByText('Add sessions across a range', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Rest' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Workout' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Single' })).toBeDisabled();
 });
 
 test('empty course cannot be created', async ({ page }) => {

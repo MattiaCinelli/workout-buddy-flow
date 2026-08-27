@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { SessionCorrectionDialog } from '@/components/SessionCorrectionDialog';
 
 type CategoryFilter = 'all' | 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
 type SortOption = 'newest' | 'oldest' | 'duration-high' | 'duration-low';
@@ -40,16 +41,20 @@ const HistoryPage: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   
-  const { sessions: workouts, deleteSession } = useData();
+  const { sessions: workouts, deleteSession, updateSession, uncompleteWorkoutInCourse } = useData();
   const { toast } = useToast();
   const [pendingDelete, setPendingDelete] = useState<WorkoutSession | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
     setIsDeleting(true);
     try {
       await deleteSession(pendingDelete.id);
+      if (pendingDelete.courseId && pendingDelete.courseItemId) {
+        await uncompleteWorkoutInCourse(pendingDelete.courseId, pendingDelete.courseItemId);
+      }
       toast({ title: 'Removed from history', description: `"${pendingDelete.title}" was deleted.` });
     } catch (error) {
       console.error('Failed to delete session:', error);
@@ -285,7 +290,8 @@ const HistoryPage: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {filteredAndSortedWorkouts.map((workout) => (
-              <WorkoutCard key={workout.id} workout={workout} onDelete={() => setPendingDelete(workout)} />
+              <WorkoutCard key={workout.id} workout={workout} onEdit={() => setEditingSession(workout)}
+                onDelete={() => setPendingDelete(workout)} />
             ))}
           </div>
         )}
@@ -296,8 +302,8 @@ const HistoryPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove "{pendingDelete?.title}" from history?</AlertDialogTitle>
             <AlertDialogDescription>
-              This only removes the logged record — it won't affect the workout template or anything scheduled.
-              This can't be undone.
+              This removes the logged record and, when linked, reopens its course item. It won't affect the
+              workout template or calendar schedule. This can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -313,6 +319,12 @@ const HistoryPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <SessionCorrectionDialog session={editingSession} onClose={() => setEditingSession(null)} onSave={async updates => {
+        if (!editingSession) return;
+        const updated = await updateSession(editingSession.id, updates);
+        if (!updated) throw new Error('Session no longer exists');
+        toast({ title: 'History corrected', description: `Changes to "${updated.title}" were saved.` });
+      }} />
     </div>
   );
 };

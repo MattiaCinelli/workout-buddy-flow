@@ -8,7 +8,7 @@ const byCompletedAtDescending = (sessions: WorkoutSession[]) =>
   [...sessions].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
 
 export const useWorkoutSessions = () => {
-  const { items, isLoading, error, load, create, remove, clearAll } =
+  const { items, isLoading, error, load, create, update, remove, clearAll } =
     useIndexedDBCollection<WorkoutSession>({
       getAll: getAllWorkoutSessionsFromDB,
       save: saveWorkoutSessionToDB,
@@ -23,6 +23,7 @@ export const useWorkoutSessions = () => {
     isLoading,
     error,
     createSession: create,
+    updateSession: update,
     deleteSession: remove,
     clearAllSessions: clearAll,
     refreshSessions: load

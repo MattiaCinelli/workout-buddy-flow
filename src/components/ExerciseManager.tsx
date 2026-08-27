@@ -16,6 +16,7 @@ import { Exercise } from '@/data/exercises';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import ExerciseItem from './ExerciseItem';
 import ExerciseForm from './ExerciseForm';
+import ImportShareButton from './ImportShareButton';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
 import { useToast } from '@/hooks/use-toast';
@@ -183,14 +184,17 @@ const ExerciseManager: React.FC = () => {
 
   return (
     <div className="space-y-4 relative pb-20">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2">
         <h2 className="text-2xl font-bold">Exercise Library</h2>
-        <Button 
-          onClick={() => setIsFormOpen(true)}
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Plus className="mr-2 h-4 w-4" /> New Exercise
-        </Button>
+        <div className="flex gap-2">
+          <ImportShareButton />
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            className="bg-primary hover:bg-primary/90"
+          >
+            <Plus className="mr-2 h-4 w-4" /> New Exercise
+          </Button>
+        </div>
       </div>
       
       <div className="relative">

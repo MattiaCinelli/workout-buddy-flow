@@ -79,4 +79,16 @@ describe('expandScheduledWorkouts', () => {
     const expanded = expandScheduledWorkouts([early, late, sameDayLater], new Date('2026-03-01'), new Date('2026-03-31'));
     expect(expanded.map(item => item.id)).toEqual(['b', 'c', 'a']);
   });
+
+  it('retains skipped occurrences so users can see and recover them', () => {
+    const schedule: ScheduledWorkout = {
+      ...base, recurrence: 'daily', startDate: '2026-03-10', skippedDates: ['2026-03-11'],
+    };
+    const expanded = expandScheduledWorkouts([schedule], new Date('2026-03-10'), new Date('2026-03-12'));
+    expect(expanded.map(item => ({ date: item.displayDate, skipped: item.skipped }))).toEqual([
+      { date: '2026-03-10', skipped: false },
+      { date: '2026-03-11', skipped: true },
+      { date: '2026-03-12', skipped: false },
+    ]);
+  });
 });

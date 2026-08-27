@@ -15,10 +15,13 @@ const SYNC_INTERVAL_MS = 30_000;
 // because the server is temporarily unreachable — phone left the house,
 // laptop asleep — shouldn't surface as a user-facing error interrupting
 // whatever they're doing. The manual "Sync now" button in
-// SyncSettingsModal still surfaces errors, since that's an explicit,
+// Settings still surfaces errors, since that's an explicit,
 // in-the-moment action the user is watching.
 export const useAutoSync = () => {
-  const { refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions } = useData();
+  const {
+    refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions,
+    refreshMuscleGroups, refreshBodyMetrics,
+  } = useData();
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -29,6 +32,7 @@ export const useAutoSync = () => {
         await syncAll();
         await Promise.all([
           refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
+          refreshMuscleGroups(), refreshBodyMetrics(),
         ]);
       } catch (error) {
         console.warn('Background sync failed (will retry on the next interval):', error);
@@ -49,5 +53,8 @@ export const useAutoSync = () => {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions]);
+  }, [
+    refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions,
+    refreshMuscleGroups, refreshBodyMetrics,
+  ]);
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Dumbbell, Home, Menu, Library, Calendar, History, ListChecks, TrendingUp, BookOpen } from "lucide-react";
+import { Dumbbell, Home, Menu, Library, Calendar, History, ListChecks, TrendingUp, BookOpen, Settings } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccountButton } from "@/components/AccountButton";
@@ -98,6 +98,7 @@ const Navbar: React.FC = () => {
     { path: '/history', label: 'History', icon: <History className="h-4 w-4" /> },
     { path: '/progress', label: 'Progress', icon: <TrendingUp className="h-4 w-4" /> },
     { path: '/courses', label: 'Courses', icon: <BookOpen className="h-4 w-4" /> },
+    { path: '/settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
   ];
 
   return (
@@ -108,7 +109,7 @@ const Navbar: React.FC = () => {
           onClick={() => navigate('/')}
         >
           <Dumbbell className="h-6 w-6 text-primary" />
-          <span className="text-xl font-bold text-primary">WorkoutBuddy</span>
+          <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WorkoutBuddy</span>
         </div>
 
         {/* Desktop navigation */}

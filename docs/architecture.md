@@ -33,7 +33,7 @@ Rules of thumb:
 
 ## The data layer (`src/lib/db.ts`)
 
-One IndexedDB database, `workout-buddy-db`, with five object stores, each keyed by `id`:
+One IndexedDB database, `workout-buddy-db`, with seven object stores, each keyed by `id`:
 
 | Store | Type | Added in DB version |
 | --- | --- | --- |
@@ -42,6 +42,8 @@ One IndexedDB database, `workout-buddy-db`, with five object stores, each keyed 
 | `scheduledWorkouts` | `ScheduledWorkout` | 2 |
 | `courses` | `Course` | 3 |
 | `workoutSessions` | `WorkoutSession` | 4 |
+| `muscleGroups` | `MuscleGroup` | 5 |
+| `bodyMetrics` | `BodyMetric` | 6 |
 
 `getDB()` lazily opens the database once and memoises the promise. The `upgrade`
 callback creates any store that does not yet exist, so bumping `DB_VERSION` and adding
@@ -55,7 +57,7 @@ safe upserts by entity ID.
 
 ## State management (`src/contexts/DataContext.tsx`)
 
-`DataProvider` calls the five domain hooks once, near the root of the app, and republishes
+`DataProvider` calls the seven domain hooks once, near the root of the app, and republishes
 their values on a single context. Consumers use:
 
 ```ts
@@ -91,6 +93,10 @@ while history, courses or calendar records reference it. This prevents dangling 
   `completedAt` on the course when all items are done,
   `getNextWorkoutInCourse` returns the first uncompleted entry, and `restartCourse`
   clears all completion flags.
+- **`useMuscleGroups`** — owns editable exercise tags and seeds the standard groups on
+  a fresh database. Group IDs remain stable when their display names are changed.
+- **`useBodyMetrics`** — owns dated body-weight measurements and keeps them ordered for
+  progress charts.
 
 ## Routing (`src/App.tsx`)
 
@@ -105,6 +111,7 @@ while history, courses or calendar records reference it. This prevents dangling 
 | `/courses`, `/courses/:id`, `/courses/:id/edit` | Course list, detail, editor |
 | `/history` | Filterable past sessions |
 | `/progress` | Charts, streaks, clear-history action |
+| `/settings` | Sync, account, reminders, appearance, backup/restore and app information |
 | `*` | Not found |
 
 Custom routes must be added **above** the catch-all `*` route.

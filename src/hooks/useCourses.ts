@@ -73,6 +73,17 @@ export const useCourses = () => {
     });
   }, [items, update]);
 
+  const uncompleteWorkoutInCourse = useCallback(async (courseId: string, courseItemId: string): Promise<Course | null> => {
+    const course = items.find(c => c.id === courseId);
+    if (!course) return null;
+    return update(courseId, {
+      workouts: course.workouts.map(item => item.id === courseItemId
+        ? { ...item, completed: false, completedAt: undefined }
+        : item),
+      completedAt: undefined,
+    });
+  }, [items, update]);
+
   // Get the next workout in a course
   const getNextWorkoutInCourse = useCallback((courseId: string): CourseWorkout | null => {
     const course = items.find(c => c.id === courseId);
@@ -101,6 +112,7 @@ export const useCourses = () => {
     startCourse,
     restartCourse,
     completeWorkoutInCourse,
+    uncompleteWorkoutInCourse,
     getNextWorkoutInCourse,
     getCourseById: getById,
     getCourseProgress,

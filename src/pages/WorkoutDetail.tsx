@@ -11,9 +11,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Trash2, Loader2, Star } from 'lucide-react';
+import { ArrowLeft, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
+import { shareWorkout } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
@@ -193,6 +194,15 @@ const WorkoutDetail = () => {
     setSelectedExercises(updated);
   };
 
+  const handleShareWorkout = async () => {
+    try {
+      await shareWorkout(workout, exercises, muscleGroups);
+    } catch (error) {
+      console.error('Failed to share workout:', error);
+      toast({ title: 'Could not share workout', variant: 'destructive' });
+    }
+  };
+
   const handleDeleteWorkout = async () => {
     setIsDeleting(true);
     try {
@@ -221,7 +231,16 @@ const WorkoutDetail = () => {
           <Button
             variant="outline"
             size="icon"
-            className="ml-auto text-muted-foreground hover:text-amber-500"
+            className="ml-auto"
+            onClick={handleShareWorkout}
+            aria-label="Share workout"
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="text-muted-foreground hover:text-amber-500"
             onClick={() => updateWorkout(workout.id, { favorite: !workout.favorite })}
             aria-label={workout.favorite ? 'Remove from favorites' : 'Add to favorites'}
           >

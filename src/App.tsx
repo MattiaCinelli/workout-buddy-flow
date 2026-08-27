@@ -17,6 +17,8 @@ import ProgressPage from "./pages/Progress";
 import CoursesPage from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
 import EditCourse from "./pages/EditCourse";
+import SettingsPage from "./pages/Settings";
+import { AccessibilityController } from "./components/AccessibilityController";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,7 @@ const App = () => (
     <TooltipProvider>
       <DataProvider>
         <AutoSync />
+        <AccessibilityController />
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -35,6 +38,7 @@ const App = () => (
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/workouts" element={<WorkoutsPage />} />
             <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/courses" element={<CoursesPage />} />
             <Route path="/courses/:id" element={<CourseDetail />} />
             <Route path="/courses/:id/edit" element={<EditCourse />} />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications, PendingLocalNotificationSchema } from '@capacitor/local-notifications';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useData } from '@/contexts/DataContext';
+import NotificationDiagnostics from '@/components/NotificationDiagnostics';
 import { rescheduleAllReminders } from '@/lib/notifications';
 import { getNotificationSettings, setNotificationSettings, LEAD_MINUTE_OPTIONS } from '@/lib/notificationSettings';
 
@@ -20,6 +21,75 @@ interface RemindersDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface ReminderPreferencesProps {
+  onApplied?: (settings: ReturnType<typeof getNotificationSettings>) => void | Promise<void>;
+}
+
+export function ReminderPreferences({ onApplied }: ReminderPreferencesProps) {
+  const id = useId();
+  const { scheduledWorkouts, getWorkoutById } = useData();
+  const [settings, setSettings] = useState(getNotificationSettings);
+  const [applyingSettings, setApplyingSettings] = useState(false);
+  const [diagnosticsKey, setDiagnosticsKey] = useState(0);
+  const isNative = Capacitor.isNativePlatform();
+
+  const applySettings = async (next: typeof settings) => {
+    setSettings(next);
+    setNotificationSettings(next);
+    setApplyingSettings(true);
+    try {
+      await rescheduleAllReminders(scheduledWorkouts, workoutId => getWorkoutById(workoutId)?.title);
+      await onApplied?.(next);
+      setDiagnosticsKey(key => key + 1);
+      toast.success('Notification settings updated');
+    } catch (error) {
+      console.error('Failed to reschedule reminders:', error);
+      toast.error('Settings saved, but reminders could not be rescheduled.');
+    } finally {
+      setApplyingSettings(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {!isNative && (
+        <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+          Workout notifications are delivered by the installed Android app, not by a browser tab.
+        </p>
+      )}
+      <NotificationDiagnostics remindersEnabled={settings.enabled} refreshKey={diagnosticsKey} />
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <Label htmlFor={`${id}-enabled`}>Workout reminders</Label>
+          <p className="text-sm text-muted-foreground">Get notified before workouts scheduled on the calendar.</p>
+        </div>
+        <Switch
+          id={`${id}-enabled`}
+          checked={settings.enabled}
+          disabled={applyingSettings || !isNative}
+          onCheckedChange={checked => void applySettings({ ...settings, enabled: checked })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${id}-lead`}>Remind me</Label>
+        <Select
+          value={String(settings.leadMinutes)}
+          disabled={!settings.enabled || applyingSettings || !isNative}
+          onValueChange={value => void applySettings({ ...settings, leadMinutes: Number(value) })}
+        >
+          <SelectTrigger id={`${id}-lead`}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {LEAD_MINUTE_OPTIONS.map(minutes => (
+              <SelectItem key={minutes} value={String(minutes)}>{leadLabel(minutes)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">This applies to existing and newly scheduled workouts.</p>
+      </div>
+    </div>
+  );
+}
+
 // Fully controlled, and deliberately separate from whatever button opens
 // it (see RemindersTriggerButton below). This dialog is meant to be
 // mounted exactly ONCE, for the lifetime of the page — if it lived inside
@@ -28,12 +98,10 @@ interface RemindersDialogProps {
 // dialog down in the same instant it opened, since a React unmount also
 // destroys anything the unmounting subtree rendered into a portal.
 export function RemindersDialog({ open, onOpenChange }: RemindersDialogProps) {
-  const { scheduledWorkouts, getWorkoutById } = useData();
   const [tab, setTab] = useState('reminders');
   const [pending, setPending] = useState<PendingLocalNotificationSchema[]>([]);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState(getNotificationSettings);
-  const [applyingSettings, setApplyingSettings] = useState(false);
   const isNative = Capacitor.isNativePlatform();
 
   const load = async () => {
@@ -67,25 +135,6 @@ export function RemindersDialog({ open, onOpenChange }: RemindersDialogProps) {
     } catch (error) {
       console.error('Failed to cancel reminder:', error);
       toast.error('Could not cancel that reminder.');
-    }
-  };
-
-  // Already-scheduled alarms were computed under the OLD settings, so
-  // changing enabled/leadMinutes has to re-derive every reminder from the
-  // calendar — the OS won't do that on its own.
-  const applySettings = async (next: typeof settings) => {
-    setSettings(next);
-    setNotificationSettings(next);
-    setApplyingSettings(true);
-    try {
-      await rescheduleAllReminders(scheduledWorkouts, workoutId => getWorkoutById(workoutId)?.title);
-      await load();
-      toast.success('Notification settings updated');
-    } catch (error) {
-      console.error('Failed to reschedule reminders:', error);
-      toast.error('Settings saved, but reminders could not be rescheduled.');
-    } finally {
-      setApplyingSettings(false);
     }
   };
 
@@ -138,38 +187,8 @@ export function RemindersDialog({ open, onOpenChange }: RemindersDialogProps) {
               )}
             </TabsContent>
 
-            <TabsContent value="settings" className="pt-2 space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="reminders-enabled">Workout reminders</Label>
-                  <p className="text-sm text-muted-foreground">Get notified before workouts you've scheduled on the calendar.</p>
-                </div>
-                <Switch
-                  id="reminders-enabled"
-                  checked={settings.enabled}
-                  disabled={applyingSettings}
-                  onCheckedChange={checked => void applySettings({ ...settings, enabled: checked })}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="reminders-lead">Remind me</Label>
-                <Select
-                  value={String(settings.leadMinutes)}
-                  disabled={!settings.enabled || applyingSettings}
-                  onValueChange={value => void applySettings({ ...settings, leadMinutes: Number(value) })}
-                >
-                  <SelectTrigger id="reminders-lead">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LEAD_MINUTE_OPTIONS.map(minutes => (
-                      <SelectItem key={minutes} value={String(minutes)}>{leadLabel(minutes)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Applies to every workout you schedule, not just new ones.</p>
-              </div>
+            <TabsContent value="settings" className="pt-2">
+              <ReminderPreferences onApplied={next => { setSettings(next); return load(); }} />
             </TabsContent>
           </Tabs>
         )}
