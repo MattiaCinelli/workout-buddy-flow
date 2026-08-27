@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, RefreshCw, Server, Unplug } from 'lucide-react';
+import { Loader2, RefreshCw, RotateCcw, Server, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,11 +7,14 @@ import {
   getLastSyncedAt,
   getLoggedInEmail,
   getServerUrl,
+  getSyncStatus,
   isConnected,
   login,
   logout,
+  resetSyncState,
   syncAll,
 } from '@/lib/syncClient';
+import { SyncConflicts } from '@/components/SyncConflicts';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 
@@ -32,6 +35,12 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(getLastSyncedAt());
+  const [status, setStatus] = useState(getSyncStatus());
+
+  const refreshAll = () => Promise.all([
+    refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
+    refreshMuscleGroups(), refreshBodyMetrics(),
+  ]);
 
   const handleConnect = async () => {
     setConnecting(true);
@@ -57,22 +66,27 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
     toast.success('Disconnected from sync server');
   };
 
-  const handleSyncNow = async () => {
+  const runSync = async (label: string) => {
     setSyncing(true);
     setError(null);
     try {
       await syncAll();
-      await Promise.all([
-        refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
-        refreshMuscleGroups(), refreshBodyMetrics(),
-      ]);
+      await refreshAll();
       setLastSyncedAt(getLastSyncedAt());
-      toast.success('Sync complete');
+      toast.success(label);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sync failed');
     } finally {
+      setStatus(getSyncStatus());
       setSyncing(false);
     }
+  };
+
+  const handleSyncNow = () => runSync('Sync complete');
+
+  const handleFullResync = () => {
+    resetSyncState();
+    return runSync('Full re-sync complete');
   };
 
   if (!connected) {
@@ -127,17 +141,32 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
           ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
           : 'No completed sync recorded on this device yet.'}
       </p>
+      {status.lastError && (!status.lastOkAt || (status.lastErrorAt ?? '') > status.lastOkAt) && (
+        <p role="alert" className="text-sm text-destructive">
+          Last sync failed: {status.lastError}
+          {status.lastErrorAt && ` (${new Date(status.lastErrorAt).toLocaleString()})`}
+        </p>
+      )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      <div className="flex flex-col gap-2 sm:flex-row">
+
+      <SyncConflicts />
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button onClick={handleSyncNow} disabled={syncing}>
           {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           {syncing ? 'Syncing…' : 'Sync now'}
+        </Button>
+        <Button variant="outline" onClick={handleFullResync} disabled={syncing}>
+          <RotateCcw className="mr-2 h-4 w-4" />Full re-sync
         </Button>
         <Button variant="outline" onClick={handleDisconnect} disabled={syncing}>
           <Unplug className="mr-2 h-4 w-4" />Disconnect
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Automatic sync runs when the app opens and every 30 seconds while connected.</p>
+      <p className="text-xs text-muted-foreground">
+        Automatic sync runs when the app opens and every 30 seconds while connected. Full re-sync re-pulls
+        everything from the server — use it if data looks out of step.
+      </p>
     </div>
   );
 }

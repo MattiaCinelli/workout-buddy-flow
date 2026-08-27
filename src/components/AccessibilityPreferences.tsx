@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { AccessibilitySettings, getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { CustomMusicPicker } from '@/components/CustomMusicPicker';
 import { cn } from '@/lib/utils';
@@ -44,7 +45,20 @@ export function AccessibilityPreferences() {
         <p className="text-sm text-muted-foreground">Plays during guided workouts. Toggle it anytime from the workout screen too.</p></div>
         <Switch id="accessibility-music" checked={settings.backgroundMusic} onCheckedChange={checked => change({ backgroundMusic: checked })} />
       </div>
-      {settings.backgroundMusic && <CustomMusicPicker />}
+      {settings.backgroundMusic && <>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="accessibility-music-volume">Music volume</Label>
+            <span className="text-sm text-muted-foreground">{Math.round(settings.musicVolume * 100)}%</span>
+          </div>
+          <Slider
+            id="accessibility-music-volume" min={0} max={1} step={0.05}
+            value={[settings.musicVolume]}
+            onValueChange={([value]) => change({ musicVolume: value })}
+          />
+        </div>
+        <CustomMusicPicker />
+      </>}
     </div>
   </div>;
 }

@@ -15,6 +15,7 @@ export const useMuscleGroups = () => {
       remove: deleteMuscleGroupFromDB,
       bulkSave: bulkSaveMuscleGroupsToDB,
       defaults: defaultMuscleGroups,
+      seedKey: 'muscleGroups',
       errorMessage: 'Failed to load muscle groups'
     });
 

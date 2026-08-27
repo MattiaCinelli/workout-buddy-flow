@@ -261,9 +261,44 @@ readable rather than generated from column config.
   to be open. Verified with two automated checks: a page reload with zero
   clicks still syncs (tests the on-load path) and sitting idle for 35s
   produces a sync round within that window (tests the interval path).
-- **Known gap:** local deletes are still hard deletes; they don't push a
-  tombstone, so a record deleted on one device won't disappear from
-  another after a sync. Creates and edits sync correctly.
+- **Backoff:** after a failed background sync `useAutoSync` waits an
+  exponentially growing interval (30s → up to 15min) before retrying, so a
+  dead server isn't hammered every tick. A manual **Sync now** or the app
+  returning to the foreground clears the wait. The last background failure
+  is persisted (`getSyncStatus()`) and shown on the Settings page —
+  previously a background failure was invisible.
+- **Full re-sync** (`resetSyncState()` + a button on the Settings page)
+  forgets every pull watermark and conflict baseline so the next sync
+  re-pulls the whole account. For "data looks out of step".
+
+## Conflict visibility (`src/lib/syncConflicts.ts`)
+
+Resolution is still last-write-wins per record — the change is that a
+*losing* local edit is no longer silent.
+
+- After each successful `syncCollection`, the `updatedAt` of every record is
+  snapshotted as a per-collection **baseline** in localStorage.
+- On the next push, `detectOverwrites()` compares: a record whose local
+  `updatedAt` differs from its baseline (we edited it) but which came back
+  from the server as a *different* version (`server.updatedAt !== ours`)
+  means our edit lost. The full local record is stashed as a
+  `SyncConflict`.
+- `src/components/SyncConflicts.tsx` (in the Sync settings) lists them:
+  **Keep mine** re-writes the local version with a fresh `updatedAt` so it
+  wins the next push (and un-deletes it if the winner was a deletion);
+  **Dismiss** just clears it. No field-level merge — this is
+  visible-and-recoverable, not automatic.
+- No server change was needed: the push response already returns the
+  post-merge winner, which is all the client needs to notice the mismatch.
+
+## Not synced (deliberate, for now)
+
+- **Settings** — accessibility / notification / body-profile (height) /
+  music preferences live in `localStorage` and are device-local. Syncing
+  the account-level ones needs a `settings` collection + server endpoint;
+  not built yet.
+- **Custom workout audio** — a multi-MB blob in its own IndexedDB database
+  (`src/lib/customAudio.ts`); a per-device choice, left local.
 
 ## Account management (`src/components/AccountProfileTab.tsx`)
 

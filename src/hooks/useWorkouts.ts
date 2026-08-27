@@ -20,6 +20,7 @@ export const useWorkouts = () => {
       remove: deleteWorkoutFromDB,
       bulkSave: bulkSaveWorkoutsToDB,
       defaults: defaultWorkouts,
+      seedKey: 'workouts',
       errorMessage: 'Failed to load workouts',
       transform: byDateDescending
     });

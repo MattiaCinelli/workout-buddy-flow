@@ -5,6 +5,13 @@ export interface WorkoutSet {
   duration?: number; // in seconds
   distance?: number; // in meters
   restAfter?: number; // in seconds, rest period after this set
+  // A preparation set at a lighter load. Excluded from personal records,
+  // volume, per-exercise history and (later) progression maths.
+  warmup?: boolean;
+  // "As many reps as possible": `reps` is then a target/floor to beat, not
+  // a fixed count. The guided player says so, and the completion dialog
+  // foregrounds capturing what was actually done.
+  amrap?: boolean;
 }
 
 export interface WorkoutEntry {

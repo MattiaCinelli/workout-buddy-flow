@@ -5,14 +5,16 @@ import { Course } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
+import { SEED_IDS } from './seedVersion';
+import { addConflicts, clearBaselines, clearConflicts, detectOverwrites, getBaseline, setBaseline } from './syncConflicts';
 import {
-  getAllExercisesFromDB, saveExerciseToDB,
-  getAllWorkoutsFromDB, saveWorkoutToDB,
-  getAllScheduledWorkoutsFromDB, saveScheduledWorkoutToDB,
-  getAllCoursesFromDB, saveCourseToDB,
-  getAllWorkoutSessionsFromDB, saveWorkoutSessionToDB,
-  getAllMuscleGroupsFromDB, saveMuscleGroupToDB,
-  getAllBodyMetricsFromDB, saveBodyMetricToDB,
+  getAllExercisesFromDB, saveExerciseToDB, deleteExerciseFromDB,
+  getAllWorkoutsFromDB, saveWorkoutToDB, deleteWorkoutFromDB,
+  getAllScheduledWorkoutsFromDB, saveScheduledWorkoutToDB, deleteScheduledWorkoutFromDB,
+  getAllCoursesFromDB, saveCourseToDB, deleteCourseFromDB,
+  getAllWorkoutSessionsFromDB, saveWorkoutSessionToDB, deleteWorkoutSessionFromDB,
+  getAllMuscleGroupsFromDB, saveMuscleGroupToDB, deleteMuscleGroupFromDB,
+  getAllBodyMetricsFromDB, saveBodyMetricToDB, deleteBodyMetricFromDB,
 } from './db';
 
 // Talks to the optional self-hosted sync server (server/). See
@@ -27,6 +29,8 @@ const emailKey = `${STORAGE_PREFIX}:email`;
 const displayNameKey = `${STORAGE_PREFIX}:displayName`;
 const watermarkKey = (collection: string) => `${STORAGE_PREFIX}:watermark:${collection}`;
 const lastSyncedAtKey = `${STORAGE_PREFIX}:lastSyncedAt`;
+const lastErrorKey = `${STORAGE_PREFIX}:lastError`;
+const lastErrorAtKey = `${STORAGE_PREFIX}:lastErrorAt`;
 
 export const getServerUrl = (): string | null => localStorage.getItem(serverUrlKey);
 export const getLoggedInEmail = (): string | null => localStorage.getItem(emailKey);
@@ -39,6 +43,17 @@ export const isConnected = (): boolean => !!(localStorage.getItem(serverUrlKey) 
 // up next time the sync UI is opened, rather than only reflecting whichever
 // sync last happened to run while that UI was on screen.
 export const getLastSyncedAt = (): string | null => localStorage.getItem(lastSyncedAtKey);
+
+export interface SyncStatus {
+  lastOkAt: string | null;
+  lastError: string | null;
+  lastErrorAt: string | null;
+}
+export const getSyncStatus = (): SyncStatus => ({
+  lastOkAt: localStorage.getItem(lastSyncedAtKey),
+  lastError: localStorage.getItem(lastErrorKey),
+  lastErrorAt: localStorage.getItem(lastErrorAtKey),
+});
 
 const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
@@ -84,7 +99,11 @@ export const logout = async (): Promise<void> => {
   localStorage.removeItem(emailKey);
   localStorage.removeItem(displayNameKey);
   localStorage.removeItem(lastSyncedAtKey);
+  localStorage.removeItem(lastErrorKey);
+  localStorage.removeItem(lastErrorAtKey);
   COLLECTION_PATHS.forEach(path => localStorage.removeItem(watermarkKey(path)));
+  clearBaselines(COLLECTION_PATHS);
+  clearConflicts();
 };
 
 interface SyncedRecord {
@@ -135,10 +154,11 @@ interface CollectionSyncConfig<T extends SyncedRecord> {
   path: string;
   getAll: () => Promise<T[]>;
   save: (item: T) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 }
 
 const syncCollection = async <T extends SyncedRecord>(config: CollectionSyncConfig<T>): Promise<CollectionSyncResult> => {
-  const { path, getAll, save } = config;
+  const { path, getAll, save, remove } = config;
 
   // Records created before sync was configured (or before this field
   // existed at all) may not have updatedAt yet. Backfill and persist it
@@ -156,6 +176,11 @@ const syncCollection = async <T extends SyncedRecord>(config: CollectionSyncConf
   // the authoritative post-conflict state — save it back locally in case
   // this device's own write lost a conflict to another device's newer one.
   const pushed = await push(path, localItems);
+  try {
+    addConflicts(detectOverwrites(path, getBaseline(path), localItems, pushed));
+  } catch (error) {
+    console.warn(`Conflict detection for ${path} failed (sync itself is unaffected):`, error);
+  }
   await Promise.all(pushed.map(item => save(item)));
 
   // Then pull anything changed on the server since our last watermark
@@ -165,24 +190,58 @@ const syncCollection = async <T extends SyncedRecord>(config: CollectionSyncConf
   await Promise.all(pulled.map(item => save(item)));
 
   localStorage.setItem(watermarkKey(path), serverTime);
+
+  // Compact: a local tombstone whose deletion the server has now accepted
+  // (push succeeded above) has done its job — other devices learn of the
+  // delete from their own pulls, and the server keeps the authoritative
+  // tombstone. Dropping the local row stops them accumulating forever.
+  // Seed-item tombstones are kept: they are what stops a later seed
+  // migration re-adding something the user deleted.
+  const finalItems = await getAll();
+  const tombstones = finalItems.filter(item => item.deletedAt && !SEED_IDS.has(item.id));
+  await Promise.all(tombstones.map(item => remove(item.id)));
+
+  // Snapshot the post-merge state so the next sync can tell which records
+  // this device changed in the meantime (see detectOverwrites).
+  setBaseline(path, Object.fromEntries(
+    finalItems.filter(item => item.updatedAt).map(item => [item.id, item.updatedAt as string]),
+  ));
+
   return { collection: path, pushed: pushed.length, pulled: pulled.length };
 };
 
 // Runs every collection in turn. Deliberately sequential and fail-fast: if
 // one collection's sync fails partway through, the caller sees the error
-// and can retry, rather than this silently reporting partial success.
+// and can retry, rather than this silently reporting partial success. The
+// failure is also recorded so the UI can surface it after a background run.
 export const syncAll = async (): Promise<CollectionSyncResult[]> => {
-  const results = [
-    await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB }),
-    await syncCollection<WorkoutEntry>({ path: 'workouts', getAll: getAllWorkoutsFromDB, save: saveWorkoutToDB }),
-    await syncCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB }),
-    await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB }),
-    await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB }),
-    await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB }),
-    await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB }),
-  ];
-  localStorage.setItem(lastSyncedAtKey, new Date().toISOString());
-  return results;
+  try {
+    const results = [
+      await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }),
+      await syncCollection<WorkoutEntry>({ path: 'workouts', getAll: getAllWorkoutsFromDB, save: saveWorkoutToDB, remove: deleteWorkoutFromDB }),
+      await syncCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB, remove: deleteScheduledWorkoutFromDB }),
+      await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB, remove: deleteCourseFromDB }),
+      await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB, remove: deleteWorkoutSessionFromDB }),
+      await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }),
+      await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }),
+    ];
+    localStorage.setItem(lastSyncedAtKey, new Date().toISOString());
+    localStorage.removeItem(lastErrorKey);
+    localStorage.removeItem(lastErrorAtKey);
+    return results;
+  } catch (error) {
+    localStorage.setItem(lastErrorKey, error instanceof Error ? error.message : 'Sync failed');
+    localStorage.setItem(lastErrorAtKey, new Date().toISOString());
+    throw error;
+  }
+};
+
+// Forget every pull watermark and conflict baseline so the next sync
+// re-pulls the whole account and re-establishes the baselines from scratch
+// (no spurious conflicts on that run). For "something looks out of sync".
+export const resetSyncState = (): void => {
+  COLLECTION_PATHS.forEach(path => localStorage.removeItem(watermarkKey(path)));
+  clearBaselines(COLLECTION_PATHS);
 };
 
 // Cosmetic — no current-password confirmation, matching the server route.

@@ -37,9 +37,10 @@ Notes:
   running.
 - Max file size is **25 MB** (`MAX_TRACK_BYTES`). Non-audio files are
   rejected.
-- Playback volume is fixed: ~`0.55` for a user file, ~`0.13` for the
-  generated ambient. There is no volume slider yet — re-encode a track
-  that is too loud or quiet.
+- **Music volume** (Settings → Accessibility, 0–100 %, default 50 %) is a
+  single preference scaled per source: a user file plays at that level
+  directly, the synth peaks much lower (`volume × 0.26`). Read once at
+  workout start — a change applies from the next workout.
 
 ## Where it lives (code map)
 
@@ -48,7 +49,7 @@ Notes:
 | `src/lib/accessibilitySettings.ts` | `backgroundMusic: boolean` in `AccessibilitySettings` (default `false`). Persisted to `localStorage`. |
 | `src/lib/ambientAudio.ts` | `createAmbientPlayer()` — the generative Web Audio bed. `createFilePlayer(blob)` — a looping `<audio>` element. Both return the same `AmbientPlayer` interface (`start / stop / suspend / resume / setVolume / playing`). |
 | `src/lib/customAudio.ts` | Stores the one optional user track as a `Blob` in its **own** IndexedDB database, `workout-buddy-audio` (kept out of the main store so a multi-MB file never touches sync or backup). `getCustomTrack` / `setCustomTrack` / `clearCustomTrack`. |
-| `src/hooks/useWorkoutMusic.ts` | Ties it together: picks file-vs-synth at workout start, owns the player lifecycle, handles the autoplay gate and backgrounding. |
+| `src/hooks/useWorkoutMusic.ts` | Ties it together: picks file-vs-synth at workout start, applies the scaled volume, owns the player lifecycle, handles the autoplay gate and backgrounding. |
 | `src/components/CustomMusicPicker.tsx` | The file picker shown under the Background-music switch in Settings. |
 | `src/components/AccessibilityPreferences.tsx` | Renders the switch + `<CustomMusicPicker />`. |
 | `src/pages/WorkoutPresentation.tsx` | Calls `useWorkoutMusic(musicEnabled, restored && !completionOpen)` and renders the header toggle button. |

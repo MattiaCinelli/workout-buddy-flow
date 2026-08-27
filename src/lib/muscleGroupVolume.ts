@@ -10,8 +10,8 @@ export interface MuscleGroupLoad {
 }
 
 const completedSetsOf = (session: WorkoutSession): WorkoutSetResult[] =>
-  session.actualSets?.filter(set => set.completed)
-  ?? session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true }));
+  (session.actualSets ?? session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true })))
+    .filter(set => set.completed && !set.warmup);
 
 // Attributes each completed set to every muscle group its exercise is
 // tagged with — "sets per muscle group" being the usual way training

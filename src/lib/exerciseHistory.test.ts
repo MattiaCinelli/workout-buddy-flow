@@ -42,6 +42,15 @@ describe('exerciseSessionHistory', () => {
   it('excludes sessions that never included the exercise', () => {
     expect(exerciseSessionHistory('squat', [session()])).toEqual([]);
   });
+
+  it('drops warm-up sets', () => {
+    const s = session({ actualSets: [
+      { exerciseId: 'bench', setIndex: 0, completed: true, reps: 10, weight: 20, warmup: true },
+      { exerciseId: 'bench', setIndex: 1, completed: true, reps: 8, weight: 42 },
+    ] });
+    const history = exerciseSessionHistory('bench', [s]);
+    expect(history[0].sets).toEqual([{ exerciseId: 'bench', setIndex: 1, completed: true, reps: 8, weight: 42 }]);
+  });
 });
 
 describe('lastExerciseSession', () => {

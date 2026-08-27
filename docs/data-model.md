@@ -14,6 +14,13 @@ interface Exercise {
   muscleGroups: string[];      // optional in the form; may be empty
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   imageUrl?: string;           // remote path or a base64 data URL from a phone photo
+  unilateral?: boolean;        // runtime splits each set into left / right
+  progression?: {              // opt-in; suggests the next target, never edits templates
+    mode: 'linear' | 'double';
+    incrementKg?: number;      // default 2.5
+    repRangeMin?: number;      // 'double' only
+    repRangeMax?: number;
+  };
 }
 ```
 
@@ -22,6 +29,12 @@ Notes:
 - Uploaded images are read in the browser and stored inline, capped at ~5 MB, so they
   keep working offline.
 - `exerciseList` is the starter library seeded on first run.
+- **Progression** (`src/lib/progression.ts`, `suggestNextSet()`) is a pure suggestion
+  layer: it reads the exercise policy + the logged history and proposes the next
+  weight/reps, shown in the guided player's "last time" panel and on the per-exercise
+  progress screen. It never writes a template or a session. `linear` adds weight when
+  every set hit the target (and deloads ~10 % after two misses); `double` climbs the
+  rep range first, then adds weight and resets to the bottom.
 
 ## Workout — `src/data/workoutHistory.ts`
 
@@ -33,6 +46,8 @@ interface WorkoutSet {
   duration?: number;    // seconds — used by cardio / flexibility / holds
   distance?: number;    // meters
   restAfter?: number;   // seconds of rest after this set
+  warmup?: boolean;     // lighter prep set — excluded from records / volume / per-exercise history
+  amrap?: boolean;      // "as many reps as possible": `reps` is a floor to beat, not a fixed count
 }
 
 interface WorkoutEntry {
@@ -66,6 +81,9 @@ interface WorkoutSetResult {
   weight?: number;
   duration?: number;
   distance?: number;
+  rpe?: number;          // 1–10, how hard that set actually felt (per-set)
+  warmup?: boolean;      // copied from the plan so records/history filtering is self-contained
+  amrap?: boolean;
 }
 
 interface WorkoutSession extends WorkoutEntry {

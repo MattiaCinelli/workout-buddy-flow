@@ -29,6 +29,16 @@ describe('computePersonalRecords', () => {
     expect(records.get('squat')).toBeUndefined();
   });
 
+  it('never sets a record from a warm-up set', () => {
+    const sessions = [
+      session({ actualSets: [
+        { exerciseId: 'squat', setIndex: 0, completed: true, reps: 10, weight: 200, warmup: true },
+        { exerciseId: 'squat', setIndex: 1, completed: true, reps: 5, weight: 60 },
+      ] }),
+    ];
+    expect(computePersonalRecords(sessions).get('squat')?.maxWeight).toEqual({ value: 60, date: '2026-01-01' });
+  });
+
   it('falls back to the planned sets when a session has no actualSets (older history)', () => {
     const sessions = [session({ actualSets: undefined, sets: [{ exerciseId: 'squat', reps: 5, weight: 70 }] })];
     const records = computePersonalRecords(sessions);

@@ -15,6 +15,7 @@ export const useExercises = () => {
       remove: deleteExerciseFromDB,
       bulkSave: bulkSaveExercisesToDB,
       defaults: exerciseList,
+      seedKey: 'exercises',
       errorMessage: 'Failed to load exercises'
     });
 

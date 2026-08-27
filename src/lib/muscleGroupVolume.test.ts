@@ -38,6 +38,17 @@ describe('muscleGroupLoad', () => {
     expect(result).toEqual([]);
   });
 
+  it('excludes warm-up sets from set count and volume', () => {
+    const result = muscleGroupLoad([session({ actualSets: [
+      { exerciseId: 'bench', setIndex: 0, completed: true, reps: 12, weight: 20, warmup: true },
+      { exerciseId: 'bench', setIndex: 1, completed: true, reps: 8, weight: 40 },
+    ] })], exercises);
+    expect(result).toEqual([
+      { muscleGroupId: 'Chest', sets: 1, volume: 320 },
+      { muscleGroupId: 'Triceps', sets: 1, volume: 320 },
+    ]);
+  });
+
   it('respects the since cutoff', () => {
     const sessions = [
       session({ id: 'old', date: '2026-01-01T00:00:00.000Z', actualSets: [{ exerciseId: 'pushup', setIndex: 0, completed: true, reps: 10 }] }),

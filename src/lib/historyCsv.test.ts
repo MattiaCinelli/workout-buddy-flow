@@ -28,14 +28,24 @@ describe('sessionsToCsv', () => {
     ], exercises);
 
     const lines = csv.split('\n');
-    expect(lines[0]).toBe('date,workout,category,duration_min,perceived_exertion,exercise,set,completed,reps,weight_kg,duration_s,distance_m');
-    expect(lines[1]).toBe('2026-01-01,Push,strength,40,7,Bench Press,1,yes,10,40,,');
-    expect(lines[2]).toBe('2026-01-01,Push,strength,40,7,"Row, seated",2,no,0,30,,');
-    expect(lines[3]).toBe('2026-02-01,Push,strength,40,,Bench Press,1,yes,8,45,,');
+    expect(lines[0]).toBe('date,workout,category,duration_min,perceived_exertion,exercise,set,set_kind,completed,reps,weight_kg,duration_s,distance_m,set_rpe');
+    expect(lines[1]).toBe('2026-01-01,Push,strength,40,7,Bench Press,1,working,yes,10,40,,,');
+    expect(lines[2]).toBe('2026-01-01,Push,strength,40,7,"Row, seated",2,working,no,0,30,,,');
+    expect(lines[3]).toBe('2026-02-01,Push,strength,40,,Bench Press,1,working,yes,8,45,,,');
   });
 
   it('falls back to planned sets when a session has no actualSets', () => {
     const csv = sessionsToCsv([session({ actualSets: undefined })], exercises);
-    expect(csv.split('\n')[1]).toBe('2026-01-02,Push,strength,40,,Bench Press,1,yes,10,40,,');
+    expect(csv.split('\n')[1]).toBe('2026-01-02,Push,strength,40,,Bench Press,1,working,yes,10,40,,,');
+  });
+
+  it('flags warm-up and amrap sets and includes per-set RPE', () => {
+    const csv = sessionsToCsv([session({ actualSets: [
+      { exerciseId: 'bench', setIndex: 0, completed: true, reps: 12, weight: 20, warmup: true },
+      { exerciseId: 'bench', setIndex: 1, completed: true, reps: 9, weight: 42, amrap: true, rpe: 9 },
+    ] })], exercises);
+    const lines = csv.split('\n');
+    expect(lines[1]).toBe('2026-01-02,Push,strength,40,,Bench Press,1,warmup,yes,12,20,,,');
+    expect(lines[2]).toBe('2026-01-02,Push,strength,40,,Bench Press,2,amrap,yes,9,42,,,9');
   });
 });

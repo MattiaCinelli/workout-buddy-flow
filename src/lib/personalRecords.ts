@@ -18,9 +18,10 @@ export interface PersonalRecord {
   maxDistance?: RecordEntry;
 }
 
+// Working sets only — warm-ups never set a record.
 const completedSetsOf = (session: WorkoutSession): WorkoutSetResult[] =>
-  session.actualSets?.filter(set => set.completed) ??
-  session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true }));
+  (session.actualSets ?? session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true })))
+    .filter(set => set.completed && !set.warmup);
 
 const applySet = (records: Map<string, PersonalRecord>, exerciseId: string, date: string, set: WorkoutSetResult) => {
   const record = records.get(exerciseId) ?? { exerciseId };
@@ -79,7 +80,7 @@ export const detectNewPersonalRecords = (
     if (!existing || value > existing.value) newRecords.set(key, { exerciseId, kind, value, previousValue: previous.value });
   };
 
-  for (const set of finishedSets.filter(item => item.completed)) {
+  for (const set of finishedSets.filter(item => item.completed && !item.warmup)) {
     const prior = priorRecords.get(set.exerciseId);
     consider(set.exerciseId, 'weight', set.weight, prior?.maxWeight);
     consider(set.exerciseId, 'reps', set.reps, prior?.maxReps);

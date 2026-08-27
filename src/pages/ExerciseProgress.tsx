@@ -13,6 +13,8 @@ import { computePersonalRecords } from '@/lib/personalRecords';
 import {
   describeSetResult, exerciseSessionHistory, exerciseSessionSummaries, formatLoggedDistance, formatLoggedDuration,
 } from '@/lib/exerciseHistory';
+import { describeSeries } from '@/lib/chartA11y';
+import { suggestNextSet } from '@/lib/progression';
 
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--card))',
@@ -31,9 +33,9 @@ const TrendChart = ({ title, description, data, unit, color }: {
       <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent>
-      <div className="h-[240px]">
+      <div className="h-[240px]" role="img" aria-label={describeSeries(title, data.map(point => point.value), unit)}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 4, right: 12, bottom: 0, left: -16 }}>
+          <LineChart accessibilityLayer data={data} margin={{ top: 4, right: 12, bottom: 0, left: -16 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="label" className="text-xs" />
             <YAxis className="text-xs" width={44} allowDecimals={false} />
@@ -65,6 +67,9 @@ const ExerciseProgress = () => {
   const history = useMemo(() => exerciseSessionHistory(id, sessions), [id, sessions]);
   const summaries = useMemo(() => exerciseSessionSummaries(id, sessions), [id, sessions]);
   const record = useMemo(() => computePersonalRecords(sessions).get(id), [sessions, id]);
+  const suggestion = exercise
+    ? suggestNextSet(exercise, { reps: exercise.defaultReps, weight: exercise.defaultWeight }, history)
+    : null;
 
   if (exercisesLoading || sessionsLoading) {
     return (
@@ -116,6 +121,18 @@ const ExerciseProgress = () => {
             <p className="text-sm text-muted-foreground">Progress from your completed sessions</p>
           </div>
         </div>
+
+        {suggestion && (
+          <Card className="mb-6 border-workout-green/40 bg-workout-green/5">
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold text-workout-green">Next target</p>
+              <p className="text-lg font-bold">
+                {suggestion.reps}{suggestion.weight ? ` × ${suggestion.weight} kg` : ''}
+              </p>
+              <p className="text-sm text-muted-foreground">{suggestion.note}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {history.length === 0 ? (
           <Card>

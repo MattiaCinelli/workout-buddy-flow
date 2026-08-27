@@ -20,7 +20,8 @@ import { WorkoutSetResult } from '@/data/workoutSessions';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { buildWorkoutSteps, remainingSeconds } from '@/lib/workoutRuntime';
 import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
-import { describeSetResult, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
+import { describeSetResult, exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
+import { suggestNextSet } from '@/lib/progression';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
@@ -85,6 +86,7 @@ const WorkoutPresentation = () => {
   const [completionNotes, setCompletionNotes] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(() => getAccessibilitySettings().voiceCues);
   const [musicEnabled, setMusicEnabled] = useState(() => getAccessibilitySettings().backgroundMusic);
+  const musicVolume = useRef(getAccessibilitySettings().musicVolume).current;
   const lastSpokenRepRef = useRef<number | null>(null);
   const lastSpokenCountdownRef = useRef<number | null>(null);
 
@@ -95,10 +97,11 @@ const WorkoutPresentation = () => {
   const personalRecords = useMemo(() => computePersonalRecords(sessions), [sessions]);
   const currentExerciseId = steps[activeStep]?.type === 'exercise' ? steps[activeStep]?.exerciseId : undefined;
   const upcomingExerciseId = steps[activeStep + 1]?.type === 'exercise' ? steps[activeStep + 1]?.exerciseId : undefined;
-  const currentExerciseLast = useMemo(
-    () => currentExerciseId ? lastExerciseSession(currentExerciseId, sessions) : null,
+  const currentExerciseHistory = useMemo(
+    () => currentExerciseId ? exerciseSessionHistory(currentExerciseId, sessions) : [],
     [currentExerciseId, sessions],
   );
+  const currentExerciseLast = currentExerciseHistory[0] ?? null;
   const upcomingExerciseLast = useMemo(
     () => upcomingExerciseId ? lastExerciseSession(upcomingExerciseId, sessions) : null,
     [upcomingExerciseId, sessions],
@@ -157,7 +160,7 @@ const WorkoutPresentation = () => {
 
   // Backing track (the user's own file, or the generated ambient bed) plays
   // for the whole session, pausing only for the completion dialog.
-  useWorkoutMusic(musicEnabled, restored && !completionOpen);
+  useWorkoutMusic(musicEnabled, restored && !completionOpen, musicVolume);
 
   const requestWakeLock = useCallback(async () => {
     try {
@@ -210,7 +213,8 @@ const WorkoutPresentation = () => {
       setDeadline(duration ? Date.now() + duration * 1000 : null);
     }
     setActualSets(workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
-      completed: true, reps: set.reps, weight: set.weight, duration: set.duration, distance: set.distance })));
+      completed: true, reps: set.reps, weight: set.weight, duration: set.duration, distance: set.distance,
+      warmup: set.warmup, amrap: set.amrap })));
     setRestored(true);
   }, [workout, steps, restored, toast]);
 
@@ -434,7 +438,13 @@ const WorkoutPresentation = () => {
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   const remainingWorkoutSeconds = timeLeft + steps.slice(activeStep + 1)
     .reduce((total, step) => total + (step.duration || 0), 0);
-  const activeSetNumber = ((current?.sourceSetIndex ?? steps[activeStep - 1]?.sourceSetIndex) ?? 0) + 1;
+  // Warm-ups don't count toward "Set N of M" — number the working sets.
+  const workoutSets = workout?.sets ?? [];
+  const currentSourceIndex = current?.sourceSetIndex ?? steps[activeStep - 1]?.sourceSetIndex;
+  const currentIsWarmup = currentSourceIndex !== undefined && !!workoutSets[currentSourceIndex]?.warmup;
+  const workingSetCount = workoutSets.filter(item => !item.warmup).length;
+  const workingSetNumber = currentSourceIndex === undefined ? 0
+    : workoutSets.slice(0, currentSourceIndex + 1).filter(item => !item.warmup).length;
   const sideLabel = (side?: 'left' | 'right') => side === 'left' ? 'Left side' : side === 'right' ? 'Right side' : '';
   const upcomingLabel = upcoming?.type === 'rest'
     ? (upcoming.kind === 'switch' ? 'Switch sides' : `Rest · ${formatTime(upcoming.duration || 0)}`)
@@ -451,11 +461,15 @@ const WorkoutPresentation = () => {
   const upcomingExercise = upcoming?.exerciseId
     ? exercises.find(item => item.id === upcoming.exerciseId) : undefined;
   const currentBestLabel = bestRecordLabel(currentExerciseId ? personalRecords.get(currentExerciseId) : undefined);
+  const progressionSuggestion = exercise && current?.type === 'exercise' && !current.warmup
+    ? suggestNextSet(exercise, { reps: current.reps, weight: current.weight }, currentExerciseHistory)
+    : null;
   const resultsValid = actualSets.every(result =>
     (result.reps === undefined || (result.reps >= 0 && result.reps <= 1000)) &&
     (result.weight === undefined || (result.weight >= 0 && result.weight <= 1000)) &&
     (result.duration === undefined || (result.duration >= 0 && result.duration <= 86400)) &&
-    (result.distance === undefined || (result.distance >= 0 && result.distance <= 1000000))
+    (result.distance === undefined || (result.distance >= 0 && result.distance <= 1000000)) &&
+    (result.rpe === undefined || (result.rpe >= 0 && result.rpe <= 10))
   );
   if (!workout || !current) return null;
 
@@ -478,7 +492,7 @@ const WorkoutPresentation = () => {
         Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : current.kind === 'prep' ? 'Get ready' : current.kind === 'switch' ? 'Switch sides' : 'Rest'}.
       </p>
       <div className="flex justify-between text-xs sm:text-sm text-gray-300">
-        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Switch sides' : `Set ${activeSetNumber} of ${workout.sets.length}`}</span>
+        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Switch sides' : currentIsWarmup ? 'Warm-up set' : `Set ${workingSetNumber} of ${workingSetCount}`}</span>
         <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
       </div>
       <Progress value={((activeStep + 1) / steps.length) * 100} className="h-2" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
@@ -488,10 +502,20 @@ const WorkoutPresentation = () => {
       {current.type === 'exercise' && exercise ? <>
         {exercise.imageUrl && <img src={exercise.imageUrl} alt="" className="mb-6 h-48 w-full max-w-xs rounded-lg object-contain landscape:h-28" />}
         <div className="text-center mb-8">
-          {current.side && (
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-workout-green/20 px-4 py-1.5 text-workout-green">
-              {current.side === 'left' ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
-              <span className="text-sm font-bold uppercase tracking-wide">{sideLabel(current.side)}</span>
+          {(current.side || current.warmup || current.amrap) && (
+            <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+              {current.warmup && (
+                <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-300">Warm-up</span>
+              )}
+              {current.amrap && (
+                <span className="rounded-full bg-workout-green/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-workout-green">AMRAP</span>
+              )}
+              {current.side && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-workout-green/20 px-4 py-1 text-workout-green">
+                  {current.side === 'left' ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                  <span className="text-sm font-bold uppercase tracking-wide">{sideLabel(current.side)}</span>
+                </span>
+              )}
             </div>
           )}
           <div className="flex items-center justify-center gap-2">
@@ -512,7 +536,9 @@ const WorkoutPresentation = () => {
             )}
           </div>
           <p className="text-xl text-gray-400">Exercise set {(current.setIndex || 0) + 1}</p>
-          {currentRepNumber !== undefined ? (
+          {current.amrap && current.reps ? (
+            <p className="my-4 text-4xl font-bold">As many reps as possible — beat {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
+          ) : currentRepNumber !== undefined ? (
             <p className="my-4 text-4xl font-bold">Rep {currentRepNumber} of {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : current.reps ? (
             <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} kg` : ''}</p>
@@ -528,7 +554,7 @@ const WorkoutPresentation = () => {
             <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
           </>}
         </div>
-        {(currentExerciseLast || currentBestLabel) && (
+        {(currentExerciseLast || currentBestLabel || progressionSuggestion) && (
           <div className="mx-auto w-full max-w-xs rounded-xl border border-white/15 bg-white/5 p-3 text-left text-sm landscape:hidden">
             <div className="mb-1 flex items-center justify-between gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -545,6 +571,14 @@ const WorkoutPresentation = () => {
             {currentExerciseLast && (
               <p className="text-gray-200">
                 {currentExerciseLast.sets.map(set => describeSetResult(set)).join('   ·   ')}
+              </p>
+            )}
+            {progressionSuggestion && (
+              <p className="mt-2 border-t border-white/10 pt-2 text-workout-green">
+                <span className="font-semibold">
+                  Try: {progressionSuggestion.reps}{progressionSuggestion.weight ? ` × ${progressionSuggestion.weight} kg` : ''}
+                </span>
+                <span className="mt-0.5 block text-xs text-gray-400">{progressionSuggestion.note}</span>
               </p>
             )}
           </div>
@@ -593,7 +627,25 @@ const WorkoutPresentation = () => {
       <Button size="lg" className="h-14 min-w-0 px-2 text-xs bg-workout-green text-white hover:bg-green-600 sm:text-sm" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
     </nav>
     <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle>Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
-      <div className="space-y-3">{actualSets.map((result, index) => { const planned = workout.sets[index]; const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise'; return <div key={index} className="border rounded-md p-3"><div className="flex items-center gap-2 mb-2"><Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} /><Label htmlFor={`completed-${index}`} className="font-medium flex-1">{name} · Set {result.setIndex + 1}</Label><span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2">{planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>Reps</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}{planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}{planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}{planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}</div></div>; })}</div>
+      <div className="space-y-3">{actualSets.map((result, index) => {
+        const planned = workout.sets[index];
+        const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise';
+        const tag = result.warmup ? ' · Warm-up' : result.amrap ? ' · AMRAP' : '';
+        return <div key={index} className={`border rounded-md p-3 ${result.warmup ? 'border-amber-400/40' : ''}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} />
+            <Label htmlFor={`completed-${index}`} className="font-medium flex-1">{name} · Set {result.setIndex + 1}{tag}</Label>
+            <span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>{result.amrap ? 'Reps done' : 'Reps'}</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}
+            {planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}
+            {planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}
+            {planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}
+            {!result.warmup && <div><Label htmlFor={`result-rpe-${index}`}>RPE (1–10)</Label><Input id={`result-rpe-${index}`} type="number" min="1" max="10" step="0.5" value={result.rpe ?? ''} onChange={e => updateResult(index, { rpe: e.target.value ? Number(e.target.value) : undefined })} /></div>}
+          </div>
+        </div>;
+      })}</div>
       <div className="space-y-2"><Label htmlFor="rpe">Perceived exertion (1–10)</Label><Input id="rpe" type="number" min="1" max="10" value={rpe} onChange={e => setRpe(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="completion-notes">Session notes</Label><Textarea id="completion-notes" value={completionNotes} onChange={e => setCompletionNotes(e.target.value)} placeholder="Energy, pain, achievements, substitutions…" /></div>
       {!resultsValid && <p className="text-sm text-destructive" role="alert">Check the entered workout values before saving.</p>}
       <DialogFooter className="sticky bottom-0 bg-background py-3">

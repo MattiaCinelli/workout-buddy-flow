@@ -25,6 +25,9 @@ export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sour
   // Set on the two exercise steps a unilateral set expands into, so the
   // presentation layer can make clear which limb to work now.
   side?: 'left' | 'right';
+  // Carried from the authored set for the presentation layer.
+  warmup?: boolean;
+  amrap?: boolean;
   // 'prep' is the leading "get in position" pause; 'switch' is the short
   // changeover between the two sides of a unilateral set; 'rest' is an
   // ordinary between-sets rest. Same countdown mechanics, different heading
@@ -44,7 +47,8 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
     const secondsPerRep = isReps ? getSecondsPerRep(exercise ?? {}) : undefined;
     const duration = isReps ? (secondsPerRep! * set.reps!) : set.duration;
     const exerciseStep: WorkoutStep = { type: 'exercise', exerciseId: set.exerciseId, sourceSetIndex,
-      setIndex, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep };
+      setIndex, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep,
+      warmup: set.warmup, amrap: set.amrap };
     if (exercise?.unilateral) {
       // One authored set becomes: left side → switch pause → right side.
       // Both sides keep the same sourceSetIndex/setIndex so progress

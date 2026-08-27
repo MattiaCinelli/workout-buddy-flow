@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, parseISO } from 'date-fns';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import { describeSeries } from '@/lib/chartA11y';
 import {
   BMI_CATEGORY_LABEL, bmiCategory, calculateBmi, getBodyProfile, setBodyProfile,
 } from '@/lib/bodyProfile';
@@ -141,9 +142,9 @@ export function BodyWeightCard() {
         )}
 
         {bodyMetrics.length >= 2 ? (
-          <div className="h-[220px]">
+          <div className="h-[220px]" role="img" aria-label={describeSeries('Body weight', chartData.map(point => point.weight), 'kg')}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+              <LineChart accessibilityLayer data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-xs" />
                 <YAxis yAxisId="weight" className="text-xs" unit="kg" domain={['auto', 'auto']} />

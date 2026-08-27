@@ -51,6 +51,26 @@ another `if (!db.objectStoreNames.contains(...))` block is all that a new store 
 existing user data is never dropped. Course records from the earlier schema are
 normalized in `useCourses` with unique item IDs and week/day defaults when loaded.
 
+The one optional user-supplied workout backing track lives in a **separate** IndexedDB
+database, `workout-buddy-audio` (`src/lib/customAudio.ts`), so a multi-MB blob never
+enters the sync or backup path.
+
+### Seeding and seed migration
+
+A hook with `defaults` seeds them when its store is empty (fresh install). With a
+`seedKey` as well, `src/lib/seedVersion.ts` also lets **existing** installs pick up
+defaults added later: bump `SEED_VERSION` when a `src/data/*.ts` list gains entries,
+and on next load each device additively inserts any default id it has never seen. It
+never touches a record the user edited or deleted — a deleted seed item leaves a
+tombstone row, and `SEED_IDS` keeps sync from compacting that tombstone away.
+
+### Soft delete under sync
+
+When a sync server is connected, `remove`/`clearAll` write a `deletedAt` tombstone
+instead of hard-deleting, so the deletion propagates and the record cannot resurrect on
+a later full pull. `src/lib/softDelete.ts`; tombstones are filtered from every
+in-memory view and compacted by `syncClient` once the server has them.
+
 DB helpers are intentionally small: collections expose the reads, upserts, deletes,
 bulk writes, or clears required by their hook. Writes use IndexedDB `put`, making them
 safe upserts by entity ID.
@@ -115,6 +135,14 @@ while history, courses or calendar records reference it. This prevents dangling 
 | `*` | Not found |
 
 Custom routes must be added **above** the catch-all `*` route.
+
+## Offline / PWA
+
+The installed Android app (Capacitor) serves its own assets and is offline-capable by
+construction. For the **web** build, `public/manifest.webmanifest` makes it installable
+and `public/sw.js` (registered from `src/main.tsx`, prod only) is a network-first
+service worker that caches whatever loads, so a later visit opens offline. App data is
+IndexedDB and is untouched by the service worker.
 
 ## Styling conventions
 

@@ -36,6 +36,16 @@ describe('buildWorkoutSteps', () => {
     expect(steps[1]).toMatchObject({ duration: 20, secondsPerRep: 5 });
   });
 
+  it('carries the warm-up and AMRAP flags onto the exercise step', () => {
+    const workout: WorkoutEntry = { ...baseWorkout, sets: [
+      { exerciseId: 'e-reps', reps: 10, warmup: true },
+      { exerciseId: 'e-reps', reps: 8, amrap: true },
+    ] };
+    const steps = buildWorkoutSteps(workout, [repsExercise]);
+    expect(steps[1]).toMatchObject({ type: 'exercise', warmup: true });
+    expect(steps[3]).toMatchObject({ type: 'exercise', amrap: true });
+  });
+
   it('leaves a time-based set duration untouched and does not stamp secondsPerRep', () => {
     const workout: WorkoutEntry = { ...baseWorkout, sets: [{ exerciseId: 'e-time', duration: 45 }] };
     const steps = buildWorkoutSteps(workout, [timeExercise]);

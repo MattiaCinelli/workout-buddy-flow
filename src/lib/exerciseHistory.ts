@@ -1,10 +1,11 @@
 import { WorkoutSession, WorkoutSetResult } from '@/data/workoutSessions';
 
 // Mirrors personalRecords.ts: prefer the logged actuals, fall back to the
-// planned sets for sessions saved before per-set results existed.
+// planned sets for sessions saved before per-set results existed. Warm-ups
+// are not "doing the exercise" for progress-tracking purposes.
 const completedSetsOf = (session: WorkoutSession): WorkoutSetResult[] =>
-  session.actualSets?.filter(set => set.completed)
-  ?? session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true }));
+  (session.actualSets ?? session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true })))
+    .filter(set => set.completed && !set.warmup);
 
 export interface ExerciseSessionEntry {
   sessionId: string;

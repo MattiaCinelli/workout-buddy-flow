@@ -3,7 +3,7 @@ import { Exercise } from '@/data/exercises';
 
 const HEADERS = [
   'date', 'workout', 'category', 'duration_min', 'perceived_exertion',
-  'exercise', 'set', 'completed', 'reps', 'weight_kg', 'duration_s', 'distance_m',
+  'exercise', 'set', 'set_kind', 'completed', 'reps', 'weight_kg', 'duration_s', 'distance_m', 'set_rpe',
 ] as const;
 
 const cell = (value: string | number | undefined | null): string => {
@@ -24,10 +24,11 @@ export const sessionsToCsv = (sessions: WorkoutSession[], exercises: Exercise[])
   for (const session of ordered) {
     const date = session.date.slice(0, 10);
     for (const set of setsOf(session)) {
+      const kind = set.warmup ? 'warmup' : set.amrap ? 'amrap' : 'working';
       rows.push([
         date, session.title, session.category, session.duration, session.perceivedExertion ?? '',
-        exerciseName(set.exerciseId), set.setIndex + 1, set.completed ? 'yes' : 'no',
-        set.reps ?? '', set.weight ?? '', set.duration ?? '', set.distance ?? '',
+        exerciseName(set.exerciseId), set.setIndex + 1, kind, set.completed ? 'yes' : 'no',
+        set.reps ?? '', set.weight ?? '', set.duration ?? '', set.distance ?? '', set.rpe ?? '',
       ].map(cell).join(','));
     }
   }

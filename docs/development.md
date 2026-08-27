@@ -35,6 +35,14 @@ workout controls at 320×568, system reduced-motion behavior, large text and hor
 overflow. When changing navigation, Settings or guided mode, keep these narrow-phone
 checks passing and manually inspect at least one landscape viewport on Android.
 
+## Unit / hook tests
+
+`npm run test:unit` (Vitest). Files run in the Node environment by default; a
+component or hook test opts into a DOM with a `// @vitest-environment jsdom` docblock
+and uses `@testing-library/react`. `src/test/setup.ts` registers the jest-dom
+matchers. Pure logic lives in `src/lib/*` with a sibling `*.test.ts` — prefer
+extracting logic there over testing it through a component.
+
 ## Working on the sync server
 
 `server/` has its own `package.json` and test suite, independent of the app above:

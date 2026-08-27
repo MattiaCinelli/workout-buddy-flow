@@ -7,6 +7,7 @@ import TodaysFocus from '@/components/dashboard/TodaysFocus';
 import WorkoutStreak from '@/components/dashboard/WorkoutStreak';
 import WeeklyGoal from '@/components/dashboard/WeeklyGoal';
 import QuickStats from '@/components/dashboard/QuickStats';
+import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { useData } from '@/contexts/DataContext';
 
 const Index = () => {
@@ -30,7 +31,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      
+      <OnboardingDialog />
+
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">

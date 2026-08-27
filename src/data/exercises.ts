@@ -1,5 +1,15 @@
 export type ExerciseLogType = 'reps' | 'time';
 
+export interface ExerciseProgression {
+  // 'linear' — add weight every session all target reps are hit.
+  // 'double' — climb the rep range first, then add weight and reset to the
+  // bottom of the range.
+  mode: 'linear' | 'double';
+  incrementKg?: number;  // weight step; defaults to DEFAULT_PROGRESSION_INCREMENT_KG
+  repRangeMin?: number;  // 'double' only
+  repRangeMax?: number;  // 'double' only
+}
+
 export interface Exercise {
   id: string;
   name: string;
@@ -27,6 +37,10 @@ export interface Exercise {
   // Applies to reps- and time-based moves alike (single-arm row, single-leg
   // plank, Bulgarian split squat…).
   unilateral?: boolean;
+  // Opt-in load progression. When set, the app suggests the next target
+  // from your logged history (see src/lib/progression.ts) — it never
+  // changes the workout template, only advises.
+  progression?: ExerciseProgression;
   instructions?: string; // How to perform it — shown to the user browsing the library and during a workout
   imageUrl?: string; // URL to the local image
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
@@ -56,7 +70,8 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 50,
     instructions: 'Bar across your upper back, feet shoulder-width apart. Bend knees and hips to lower until thighs are parallel to the floor, keeping your chest up and knees tracking over your toes, then drive back up.',
-    imageUrl: '/exercises/squat.svg'
+    imageUrl: '/exercises/squat.svg',
+    progression: { mode: 'linear', incrementKg: 2.5 }
   },
   {
     id: '2',
@@ -69,7 +84,8 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 40,
     instructions: 'Lie on the bench, grip the bar slightly wider than shoulder-width. Lower it to your mid-chest with control, then press back up to full arm extension without flaring your elbows too wide.',
-    imageUrl: '/exercises/bench-press.svg'
+    imageUrl: '/exercises/bench-press.svg',
+    progression: { mode: 'linear', incrementKg: 2.5 }
   },
   {
     id: '3',
@@ -82,7 +98,8 @@ export const exerciseList: Exercise[] = [
     defaultReps: 5,
     defaultWeight: 60,
     instructions: 'Stand with the bar over mid-foot, hinge at the hips to grip it just outside your knees. Keep your back flat and chest up as you drive through your heels to stand tall, then lower with control.',
-    imageUrl: '/exercises/hinge.svg'
+    imageUrl: '/exercises/hinge.svg',
+    progression: { mode: 'linear', incrementKg: 5 }
   },
   {
     id: '4',
@@ -205,7 +222,8 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 12,
     instructions: 'Hold one dumbbell or kettlebell against your chest with both hands. Sit down and back between your hips, keeping your chest tall and heels planted, until your thighs reach parallel, then stand.',
-    imageUrl: '/exercises/squat.svg'
+    imageUrl: '/exercises/squat.svg',
+    progression: { mode: 'double', incrementKg: 2, repRangeMin: 8, repRangeMax: 12 }
   },
   {
     id: '14',
@@ -257,7 +275,8 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 20,
     instructions: 'Stand with a slight knee bend, weight in front of your thighs. Push your hips straight back to lower the weight along your legs until you feel a hamstring stretch, then drive your hips forward to stand.',
-    imageUrl: '/exercises/hinge.svg'
+    imageUrl: '/exercises/hinge.svg',
+    progression: { mode: 'double', incrementKg: 2.5, repRangeMin: 8, repRangeMax: 12 }
   },
   {
     id: '18',

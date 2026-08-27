@@ -23,4 +23,20 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // The only chunk over the default 500 KB warning is `charts` (Recharts),
+    // and it is lazy-loaded — the Progress screens are the only things that
+    // pull it in. Everything on the critical path is well under.
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Split the heaviest third-party groups out of the main bundle so a
+        // first load doesn't ship the charting and date libraries up front.
+        manualChunks: {
+          charts: ["recharts"],
+          datefns: ["date-fns"],
+        },
+      },
+    },
+  },
 }));

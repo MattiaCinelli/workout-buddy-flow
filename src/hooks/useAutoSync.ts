@@ -17,16 +17,24 @@ const SYNC_INTERVAL_MS = 30_000;
 // whatever they're doing. The manual "Sync now" button in
 // Settings still surfaces errors, since that's an explicit,
 // in-the-moment action the user is watching.
+const MAX_BACKOFF_MS = 15 * 60_000;
+
 export const useAutoSync = () => {
   const {
     refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions,
     refreshMuscleGroups, refreshBodyMetrics,
   } = useData();
   const syncingRef = useRef(false);
+  const failuresRef = useRef(0);
+  const nextAllowedAtRef = useRef(0);
 
   useEffect(() => {
-    const runSync = async () => {
+    const runSync = async (force = false) => {
       if (!isConnected() || syncingRef.current) return;
+      // Back off after repeated failures (server down, phone offline) so a
+      // dead connection isn't hammered every 30s. A manual trigger or the
+      // app returning to the foreground clears the wait.
+      if (!force && Date.now() < nextAllowedAtRef.current) return;
       syncingRef.current = true;
       try {
         await syncAll();
@@ -34,8 +42,13 @@ export const useAutoSync = () => {
           refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
           refreshMuscleGroups(), refreshBodyMetrics(),
         ]);
+        failuresRef.current = 0;
+        nextAllowedAtRef.current = 0;
       } catch (error) {
-        console.warn('Background sync failed (will retry on the next interval):', error);
+        failuresRef.current += 1;
+        const wait = Math.min(SYNC_INTERVAL_MS * 2 ** Math.min(failuresRef.current, 5), MAX_BACKOFF_MS);
+        nextAllowedAtRef.current = Date.now() + wait;
+        console.warn(`Background sync failed (retry in ~${Math.round(wait / 1000)}s):`, error);
       } finally {
         syncingRef.current = false;
       }
@@ -45,7 +58,7 @@ export const useAutoSync = () => {
     const interval = window.setInterval(() => void runSync(), SYNC_INTERVAL_MS);
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') void runSync();
+      if (document.visibilityState === 'visible') void runSync(true);
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
 

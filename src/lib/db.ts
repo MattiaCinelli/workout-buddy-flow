@@ -238,29 +238,3 @@ export const deleteWorkoutSessionFromDB = async (id: string): Promise<void> => {
   const db = await getDB();
   await db.delete('workoutSessions', id);
 };
-
-// Initialize database with default data if empty
-export const initializeDB = async (
-  defaultExercises: Exercise[], 
-  defaultWorkouts: WorkoutEntry[]
-): Promise<{ exercises: Exercise[]; workouts: WorkoutEntry[] }> => {
-  const db = await getDB();
-  
-  // Check if exercises exist
-  const existingExercises = await db.getAll('exercises');
-  if (existingExercises.length === 0) {
-    await bulkSaveExercisesToDB(defaultExercises);
-  }
-  
-  // Check if workouts exist
-  const existingWorkouts = await db.getAll('workouts');
-  if (existingWorkouts.length === 0) {
-    await bulkSaveWorkoutsToDB(defaultWorkouts);
-  }
-  
-  // Return current state
-  const exercises = existingExercises.length > 0 ? existingExercises : defaultExercises;
-  const workouts = existingWorkouts.length > 0 ? existingWorkouts : defaultWorkouts;
-  
-  return { exercises, workouts };
-};

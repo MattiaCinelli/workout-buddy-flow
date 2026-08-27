@@ -28,6 +28,7 @@ export const useCourses = () => {
       remove: deleteCourseFromDB,
       bulkSave: bulkSaveCoursesToDB,
       defaults: defaultCourses,
+      seedKey: 'courses',
       errorMessage: 'Failed to load courses',
       transform: normalizeAndSort,
       stamp: () => ({ createdAt: new Date().toISOString() })

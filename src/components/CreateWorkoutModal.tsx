@@ -217,15 +217,24 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   };
 
   const updateSetValue = (
-    exerciseIndex: number, 
-    setIndex: number, 
-    field: keyof WorkoutSet, 
+    exerciseIndex: number,
+    setIndex: number,
+    field: keyof WorkoutSet,
     value: number | undefined
   ) => {
     const updatedExercises = [...selectedExercises];
     updatedExercises[exerciseIndex].sets[setIndex] = {
       ...updatedExercises[exerciseIndex].sets[setIndex],
       [field]: value
+    };
+    setSelectedExercises(updatedExercises);
+  };
+
+  const patchSet = (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSet>) => {
+    const updatedExercises = [...selectedExercises];
+    updatedExercises[exerciseIndex].sets[setIndex] = {
+      ...updatedExercises[exerciseIndex].sets[setIndex],
+      ...patch,
     };
     setSelectedExercises(updatedExercises);
   };
@@ -441,9 +450,28 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                           
                           <div className="space-y-3 mt-3">
                             {selectedEx.sets.map((set, setIndex) => (
-                              <div key={setIndex} className="flex flex-wrap items-center gap-2 p-2 bg-muted/40 rounded-md">
+                              <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
                                 <div className="font-medium min-w-[80px]">Set {setIndex + 1}</div>
-                                
+
+                                <Button
+                                  type="button" size="sm" className="h-7 px-2 text-xs"
+                                  variant={set.warmup ? 'default' : 'outline'} aria-pressed={!!set.warmup}
+                                  onClick={() => patchSet(exIndex, setIndex, { warmup: set.warmup ? undefined : true })}
+                                  disabled={isSubmitting}
+                                >
+                                  Warm-up
+                                </Button>
+                                {getLogType(selectedEx.exercise) === 'reps' && (
+                                  <Button
+                                    type="button" size="sm" className="h-7 px-2 text-xs"
+                                    variant={set.amrap ? 'default' : 'outline'} aria-pressed={!!set.amrap}
+                                    onClick={() => patchSet(exIndex, setIndex, { amrap: set.amrap ? undefined : true })}
+                                    disabled={isSubmitting}
+                                  >
+                                    AMRAP
+                                  </Button>
+                                )}
+
                                 {getLogType(selectedEx.exercise) === 'reps' ? (
                                   <div className="flex items-center">
                                     <Label htmlFor={`reps-${exIndex}-${setIndex}`} className="mr-2 text-xs">

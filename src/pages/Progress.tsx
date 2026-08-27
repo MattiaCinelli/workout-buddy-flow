@@ -38,6 +38,7 @@ import {
   Area,
 } from 'recharts';
 import { format, parseISO, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
+import { describeSeries } from '@/lib/chartA11y';
 import { BodyWeightCard } from '@/components/dashboard/BodyWeightCard';
 import { PersonalRecordsCard } from '@/components/dashboard/PersonalRecordsCard';
 import { muscleGroupLoad } from '@/lib/muscleGroupVolume';
@@ -257,9 +258,9 @@ const ProgressPage = () => {
                   <CardDescription>Number of workouts per week</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
+                  <div className="h-[300px]" role="img" aria-label={describeSeries('Workouts per week', weeklyData.map(d => d.workouts), 'workouts')}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={weeklyData}>
+                      <AreaChart accessibilityLayer data={weeklyData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="week" className="text-xs" />
                         <YAxis allowDecimals={false} className="text-xs" />
@@ -291,9 +292,9 @@ const ProgressPage = () => {
                   <CardDescription>Duration of each workout over time</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
+                  <div className="h-[300px]" role="img" aria-label={describeSeries('Workout duration', durationTrend.map(d => d.duration), 'minutes')}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={durationTrend}>
+                      <LineChart accessibilityLayer data={durationTrend}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="date" className="text-xs" />
                         <YAxis className="text-xs" unit="m" />
@@ -326,9 +327,9 @@ const ProgressPage = () => {
                   <CardDescription>Distribution of workout types</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
+                  <div className="h-[300px]" role="img" aria-label={`Workouts by category: ${categoryData.map(c => `${c.name} ${c.count}`).join(', ') || 'no data'}.`}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={categoryData} layout="vertical">
+                      <BarChart accessibilityLayer data={categoryData} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis type="number" allowDecimals={false} className="text-xs" />
                         <YAxis dataKey="name" type="category" className="text-xs" width={80} />
@@ -364,9 +365,10 @@ const ProgressPage = () => {
                       No sets tagged to muscle groups yet — add muscle groups to your exercises to see this.
                     </p>
                   ) : (
-                    <div style={{ height: Math.max(200, muscleData.length * 34) }}>
+                    <div style={{ height: Math.max(200, muscleData.length * 34) }}
+                      role="img" aria-label={`Sets per muscle group: ${muscleData.map(m => `${m.name} ${m.sets}`).join(', ')}.`}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={muscleData} layout="vertical">
+                        <BarChart accessibilityLayer data={muscleData} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis type="number" allowDecimals={false} className="text-xs" />
                           <YAxis dataKey="name" type="category" className="text-xs" width={90} />

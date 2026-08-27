@@ -43,6 +43,10 @@ const formSchema = z.object({
   defaultWeight: optionalNumber('Weight', 0, 1000),
   defaultDistance: optionalNumber('Distance', 0, 1000000),
   secondsPerRep: optionalNumber('Seconds per rep', 1, 60),
+  progressionMode: z.enum(['none', 'linear', 'double']).default('none'),
+  progressionIncrement: optionalNumber('Increment', 0.25, 50),
+  progressionRepMin: optionalNumber('Rep range min', 1, 100),
+  progressionRepMax: optionalNumber('Rep range max', 1, 100),
   instructions: z.string().optional(),
   imageUrl: z.string().optional(),
 });
@@ -66,7 +70,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(!!exercise?.secondsPerRep);
+  const [showAdvanced, setShowAdvanced] = useState(!!exercise?.secondsPerRep || !!exercise?.progression);
   const { muscleGroups: availableMuscleGroups } = useData();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -84,6 +88,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       defaultWeight: exercise?.defaultWeight?.toString() ?? '',
       defaultDistance: exercise?.defaultDistance?.toString() ?? '',
       secondsPerRep: exercise?.secondsPerRep?.toString() ?? '',
+      progressionMode: exercise?.progression?.mode ?? 'none',
+      progressionIncrement: exercise?.progression?.incrementKg?.toString() ?? '',
+      progressionRepMin: exercise?.progression?.repRangeMin?.toString() ?? '',
+      progressionRepMax: exercise?.progression?.repRangeMax?.toString() ?? '',
       instructions: exercise?.instructions || "",
       imageUrl: exercise?.imageUrl || "",
     },
@@ -103,6 +111,14 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       defaultWeight: toNumber(values.defaultWeight),
       defaultDistance: toNumber(values.defaultDistance),
       secondsPerRep: values.logType === 'reps' ? toNumber(values.secondsPerRep) : undefined,
+      progression: values.logType === 'reps' && values.progressionMode !== 'none'
+        ? {
+            mode: values.progressionMode,
+            incrementKg: toNumber(values.progressionIncrement),
+            repRangeMin: values.progressionMode === 'double' ? toNumber(values.progressionRepMin) : undefined,
+            repRangeMax: values.progressionMode === 'double' ? toNumber(values.progressionRepMax) : undefined,
+          }
+        : undefined,
       instructions: values.instructions || undefined,
       imageUrl: values.imageUrl,
     });
@@ -350,15 +366,56 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                   <Settings2 className="h-3.5 w-3.5 mr-1" /> Advanced
                 </Button>
               ) : (
-                <div className="space-y-1 pt-1">
-                  <label htmlFor="secondsPerRep" className="text-xs text-muted-foreground">
-                    Seconds per rep — paces the countdown during a workout (default {DEFAULT_SECONDS_PER_REP}s)
-                  </label>
-                  <Input
-                    id="secondsPerRep" type="number" min="1" max="60" className="bg-background w-32"
-                    placeholder={String(DEFAULT_SECONDS_PER_REP)}
-                    {...form.register("secondsPerRep")} disabled={isSubmitting}
-                  />
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-1">
+                    <label htmlFor="secondsPerRep" className="text-xs text-muted-foreground">
+                      Seconds per rep — paces the countdown during a workout (default {DEFAULT_SECONDS_PER_REP}s)
+                    </label>
+                    <Input
+                      id="secondsPerRep" type="number" min="1" max="60" className="bg-background w-32"
+                      placeholder={String(DEFAULT_SECONDS_PER_REP)}
+                      {...form.register("secondsPerRep")} disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-muted-foreground">
+                      Progression — suggest the next target from your logged history
+                    </label>
+                    <ToggleGroup
+                      type="single"
+                      value={form.watch('progressionMode')}
+                      onValueChange={value => value && form.setValue('progressionMode', value as 'none' | 'linear' | 'double')}
+                      className="justify-start"
+                      disabled={isSubmitting}
+                    >
+                      <ToggleGroupItem value="none" className="px-3 text-xs">Off</ToggleGroupItem>
+                      <ToggleGroupItem value="linear" className="px-3 text-xs">Linear</ToggleGroupItem>
+                      <ToggleGroupItem value="double" className="px-3 text-xs">Double</ToggleGroupItem>
+                    </ToggleGroup>
+                    {form.watch('progressionMode') !== 'none' && (
+                      <div className="flex flex-wrap gap-3 pt-1">
+                        <div className="space-y-1">
+                          <label htmlFor="progressionIncrement" className="text-xs text-muted-foreground">Weight step (kg)</label>
+                          <Input id="progressionIncrement" type="number" min="0.25" max="50" step="0.25"
+                            placeholder="2.5" className="bg-background w-24"
+                            {...form.register('progressionIncrement')} disabled={isSubmitting} />
+                        </div>
+                        {form.watch('progressionMode') === 'double' && <>
+                          <div className="space-y-1">
+                            <label htmlFor="progressionRepMin" className="text-xs text-muted-foreground">Rep range min</label>
+                            <Input id="progressionRepMin" type="number" min="1" max="100" className="bg-background w-20"
+                              {...form.register('progressionRepMin')} disabled={isSubmitting} />
+                          </div>
+                          <div className="space-y-1">
+                            <label htmlFor="progressionRepMax" className="text-xs text-muted-foreground">Rep range max</label>
+                            <Input id="progressionRepMax" type="number" min="1" max="100" className="bg-background w-20"
+                              {...form.register('progressionRepMax')} disabled={isSubmitting} />
+                          </div>
+                        </>}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -194,6 +194,12 @@ const WorkoutDetail = () => {
     setSelectedExercises(updated);
   };
 
+  const patchSet = (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSet>) => {
+    const updated = [...selectedExercises];
+    updated[exerciseIndex].sets[setIndex] = { ...updated[exerciseIndex].sets[setIndex], ...patch };
+    setSelectedExercises(updated);
+  };
+
   const handleDuplicateWorkout = async () => {
     try {
       const copy = await createWorkout({
@@ -423,8 +429,27 @@ const WorkoutDetail = () => {
 
                           <div className="space-y-3 mt-3">
                             {selectedEx.sets.map((set, setIndex) => (
-                              <div key={setIndex} className="flex flex-wrap items-center gap-2 p-2 bg-muted/40 rounded-md">
+                              <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
                                 <div className="font-medium min-w-[80px]">Set {setIndex + 1}</div>
+
+                                <Button
+                                  type="button" size="sm" className="h-7 px-2 text-xs"
+                                  variant={set.warmup ? 'default' : 'outline'} aria-pressed={!!set.warmup}
+                                  onClick={() => patchSet(exIndex, setIndex, { warmup: set.warmup ? undefined : true })}
+                                  disabled={isSubmitting}
+                                >
+                                  Warm-up
+                                </Button>
+                                {getLogType(selectedEx.exercise) === 'reps' && (
+                                  <Button
+                                    type="button" size="sm" className="h-7 px-2 text-xs"
+                                    variant={set.amrap ? 'default' : 'outline'} aria-pressed={!!set.amrap}
+                                    onClick={() => patchSet(exIndex, setIndex, { amrap: set.amrap ? undefined : true })}
+                                    disabled={isSubmitting}
+                                  >
+                                    AMRAP
+                                  </Button>
+                                )}
 
                                 {getLogType(selectedEx.exercise) === 'reps' ? (
                                   <div className="flex items-center">
