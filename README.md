@@ -107,3 +107,11 @@ Workout Buddy is designed for a person creating and following programs, optional
 across their own devices via self-hosted sync. It does not provide trainer/client
 accounts, remote assignments, sharing between unrelated users, or wearable
 integrations.
+
+## Licence
+
+Workout Buddy — the app in `src/` and the sync server in `server/` — is free
+software under the **GNU General Public License v3.0 or later**. You may use,
+study, share and modify it; if you distribute a modified version you must pass
+on the same freedoms and make your source available. See [LICENSE](LICENSE) for
+the full text.

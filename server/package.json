@@ -1,27 +1,28 @@
 {
-  "name": "workout-buddy-server",
-  "private": true,
-  "version": "0.1.0",
-  "description": "Self-hosted sync backend for Workout Buddy",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc && node -e \"require('fs').cpSync('src/db/migrations','dist/db/migrations',{recursive:true})\"",
-    "dev": "tsx watch src/index.ts",
-    "serve": "tsx src/index.ts",
-    "start": "node dist/index.js",
-    "test": "tsx --test src/test/*.test.ts",
-    "create-user": "tsx src/cli/create-user.ts",
-    "reset-password": "tsx src/cli/reset-password.ts"
-  },
-  "dependencies": {
-    "@fastify/cors": "^11.3.0",
-    "better-sqlite3": "^11.3.0",
-    "fastify": "^5.12.1"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
-    "@types/node": "^22.5.5",
-    "tsx": "^4.19.1",
-    "typescript": "^5.5.3"
-  }
+    "name": "workout-buddy-server",
+    "private": true,
+    "version": "1.0.0",
+    "license": "GPL-3.0-or-later",
+    "description": "Self-hosted sync backend for Workout Buddy",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc && node -e \"require('fs').cpSync('src/db/migrations','dist/db/migrations',{recursive:true})\"",
+        "dev": "tsx watch src/index.ts",
+        "serve": "tsx src/index.ts",
+        "start": "node dist/index.js",
+        "test": "tsx --test src/test/*.test.ts",
+        "create-user": "tsx src/cli/create-user.ts",
+        "reset-password": "tsx src/cli/reset-password.ts"
+    },
+    "dependencies": {
+        "@fastify/cors": "^11.3.0",
+        "better-sqlite3": "^11.3.0",
+        "fastify": "^5.12.1"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.11",
+        "@types/node": "^22.5.5",
+        "tsx": "^4.19.1",
+        "typescript": "^5.5.3"
+    }
 }
