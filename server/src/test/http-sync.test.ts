@@ -234,3 +234,17 @@ test('body metrics push and pull round-trip, isolated per user', async () => {
   const bobPull = await app.inject({ method: 'GET', url: '/sync/bodyMetrics', headers: bobHeaders });
   assert.deepEqual(bobPull.json().bodyMetrics, []);
 });
+
+test('workout favorite flag round-trips through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  const favoriteWorkout = {
+    id: 'w-fav', date: '2026-01-01', title: 'Leg Day', duration: 30, category: 'strength',
+    sets: [{ exerciseId: 'squat' }], favorite: true, updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+  await app.inject({ method: 'POST', url: '/sync/workouts', headers, payload: { workouts: [favoriteWorkout] } });
+
+  const pull = await app.inject({ method: 'GET', url: '/sync/workouts', headers });
+  assert.equal(pull.json().workouts[0].favorite, true);
+});

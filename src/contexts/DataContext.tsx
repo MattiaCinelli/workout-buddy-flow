@@ -177,7 +177,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const deleteWorkout = async (id: string) => {
-    const { blocked, reason } = checkWorkoutDeletion(id, scheduledWorkouts, courses, sessions);
+    const isFavorite = workouts.find(workout => workout.id === id)?.favorite ?? false;
+    const { blocked, reason } = checkWorkoutDeletion(id, scheduledWorkouts, courses, sessions, isFavorite);
     if (blocked) throw new Error(reason);
     return deleteWorkoutRaw(id);
   };

@@ -17,7 +17,9 @@ export interface SyncedWorkout {
   category: string;
   description?: string;
   sets: SyncedWorkoutSet[];
+  restBetweenSets?: number;
   restBetweenExercises?: number;
+  favorite?: boolean;
   notes?: string;
   updatedAt: string;
   deletedAt?: string;
@@ -31,7 +33,9 @@ interface WorkoutRow {
   category: string;
   description: string | null;
   sets: string;
+  rest_between_sets: number | null;
   rest_between_exercises: number | null;
+  favorite: number | null;
   notes: string | null;
   updated_at: string;
   deleted_at: string | null;
@@ -45,7 +49,9 @@ const fromRow = (row: WorkoutRow): SyncedWorkout => ({
   category: row.category,
   description: row.description ?? undefined,
   sets: JSON.parse(row.sets),
+  restBetweenSets: row.rest_between_sets ?? undefined,
   restBetweenExercises: row.rest_between_exercises ?? undefined,
+  favorite: row.favorite === 1,
   notes: row.notes ?? undefined,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at ?? undefined,
@@ -65,8 +71,8 @@ export const listChangedSince = (db: Db, userId: string, since?: string): Synced
 export const upsertWorkout = (db: Db, userId: string, workout: SyncedWorkout): SyncedWorkout => {
   const syncedAt = new Date().toISOString();
   db.prepare(`
-    INSERT INTO workouts (id, user_id, date, title, duration, category, description, sets, rest_between_exercises, notes, updated_at, deleted_at, synced_at)
-    VALUES (@id, @userId, @date, @title, @duration, @category, @description, @sets, @restBetweenExercises, @notes, @updatedAt, @deletedAt, @syncedAt)
+    INSERT INTO workouts (id, user_id, date, title, duration, category, description, sets, rest_between_sets, rest_between_exercises, favorite, notes, updated_at, deleted_at, synced_at)
+    VALUES (@id, @userId, @date, @title, @duration, @category, @description, @sets, @restBetweenSets, @restBetweenExercises, @favorite, @notes, @updatedAt, @deletedAt, @syncedAt)
     ON CONFLICT(id, user_id) DO UPDATE SET
       date = excluded.date,
       title = excluded.title,
@@ -74,7 +80,9 @@ export const upsertWorkout = (db: Db, userId: string, workout: SyncedWorkout): S
       category = excluded.category,
       description = excluded.description,
       sets = excluded.sets,
+      rest_between_sets = excluded.rest_between_sets,
       rest_between_exercises = excluded.rest_between_exercises,
+      favorite = excluded.favorite,
       notes = excluded.notes,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
@@ -89,7 +97,9 @@ export const upsertWorkout = (db: Db, userId: string, workout: SyncedWorkout): S
     category: workout.category,
     description: workout.description ?? null,
     sets: JSON.stringify(workout.sets),
+    restBetweenSets: workout.restBetweenSets ?? null,
     restBetweenExercises: workout.restBetweenExercises ?? null,
+    favorite: workout.favorite ? 1 : null,
     notes: workout.notes ?? null,
     updatedAt: workout.updatedAt,
     deletedAt: workout.deletedAt ?? null,

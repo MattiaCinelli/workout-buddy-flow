@@ -52,8 +52,17 @@ export const checkWorkoutDeletion = (
   workoutId: string,
   scheduledWorkouts: ScheduledWorkout[],
   courses: Course[],
-  sessions: WorkoutSession[]
+  sessions: WorkoutSession[],
+  isFavorite = false
 ): DeletionBlock => {
+  // Checked separately from (and before) the reference counts below —
+  // favoriting is a deliberate "protect this" action, not a dangling-
+  // reference risk, so it gets its own direct message rather than being
+  // folded into that list.
+  if (isFavorite) {
+    return { blocked: true, reason: 'This workout is marked as a favorite. Unfavorite it first, then you can delete it.' };
+  }
+
   const scheduleReferences = countWorkoutScheduleReferences(workoutId, scheduledWorkouts);
   const courseReferences = countWorkoutCourseReferences(workoutId, courses);
   const historyReferences = countWorkoutHistoryReferences(workoutId, sessions);

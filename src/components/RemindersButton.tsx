@@ -15,13 +15,20 @@ import { getNotificationSettings, setNotificationSettings, LEAD_MINUTE_OPTIONS }
 
 const leadLabel = (minutes: number) => minutes === 0 ? 'At the scheduled time' : `${minutes} minutes before`;
 
-// Reads what's actually registered with the OS (LocalNotifications.getPending())
-// rather than re-deriving "what should be scheduled" from calendar data — the
-// two can drift (a stale reminder from before a schedule was edited, a
-// permission that got revoked), so this shows ground truth, not an assumption.
-export function RemindersButton() {
+interface RemindersDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+// Fully controlled, and deliberately separate from whatever button opens
+// it (see RemindersTriggerButton below). This dialog is meant to be
+// mounted exactly ONCE, for the lifetime of the page — if it lived inside
+// a conditionally-unmounted container (e.g. a mobile menu that closes
+// itself the moment this opens), that container's unmount would tear this
+// dialog down in the same instant it opened, since a React unmount also
+// destroys anything the unmounting subtree rendered into a portal.
+export function RemindersDialog({ open, onOpenChange }: RemindersDialogProps) {
   const { scheduledWorkouts, getWorkoutById } = useData();
-  const [open, setOpen] = useState(false);
   const [tab, setTab] = useState('reminders');
   const [pending, setPending] = useState<PendingLocalNotificationSchema[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,10 +51,12 @@ export function RemindersButton() {
     }
   };
 
-  const handleOpen = () => {
-    setOpen(true);
-    setSettings(getNotificationSettings());
-    if (isNative) void load();
+  const handleOpenChange = (next: boolean) => {
+    onOpenChange(next);
+    if (next) {
+      setSettings(getNotificationSettings());
+      if (isNative) void load();
+    }
   };
 
   const cancelOne = async (id: number) => {
@@ -81,95 +90,111 @@ export function RemindersButton() {
   };
 
   return (
-    <>
-      <Button variant="ghost" size="icon" onClick={handleOpen} aria-label="Upcoming reminders">
-        <Bell className="h-5 w-5" />
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reminders</DialogTitle>
-            <DialogDescription>
-              {isNative
-                ? 'Notifications scheduled on this device for your upcoming workouts.'
-                : 'Reminders are scheduled through the installed app and only show up there — not in a browser tab.'}
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reminders</DialogTitle>
+          <DialogDescription>
+            {isNative
+              ? 'Notifications scheduled on this device for your upcoming workouts.'
+              : 'Reminders are scheduled through the installed app and only show up there — not in a browser tab.'}
+          </DialogDescription>
+        </DialogHeader>
 
-          {!isNative ? null : (
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="reminders">Upcoming ({pending.length})</TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
-              </TabsList>
+        {!isNative ? null : (
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="reminders">Upcoming ({pending.length})</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="reminders" className="pt-2">
-                {loading ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Loading…</p>
-                ) : pending.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    {settings.enabled
-                      ? 'No reminders scheduled. Set a reminder time when scheduling a workout on the calendar.'
-                      : 'Reminders are turned off — see the Settings tab to turn them back on.'}
-                  </p>
-                ) : (
-                  <ul className="space-y-2 max-h-80 overflow-y-auto">
-                    {pending.map(item => (
-                      <li key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{item.body}</p>
-                          {item.schedule?.at && (
-                            <p className="text-sm text-muted-foreground">
-                              {item.schedule.at.toLocaleString(undefined, {
-                                weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-                              })}
-                            </p>
-                          )}
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => cancelOne(item.id)}>Cancel</Button>
-                      </li>
+            <TabsContent value="reminders" className="pt-2">
+              {loading ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Loading…</p>
+              ) : pending.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {settings.enabled
+                    ? 'No reminders scheduled. Set a reminder time when scheduling a workout on the calendar.'
+                    : 'Reminders are turned off — see the Settings tab to turn them back on.'}
+                </p>
+              ) : (
+                <ul className="space-y-2 max-h-80 overflow-y-auto">
+                  {pending.map(item => (
+                    <li key={item.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{item.body}</p>
+                        {item.schedule?.at && (
+                          <p className="text-sm text-muted-foreground">
+                            {item.schedule.at.toLocaleString(undefined, {
+                              weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => cancelOne(item.id)}>Cancel</Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+
+            <TabsContent value="settings" className="pt-2 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="reminders-enabled">Workout reminders</Label>
+                  <p className="text-sm text-muted-foreground">Get notified before workouts you've scheduled on the calendar.</p>
+                </div>
+                <Switch
+                  id="reminders-enabled"
+                  checked={settings.enabled}
+                  disabled={applyingSettings}
+                  onCheckedChange={checked => void applySettings({ ...settings, enabled: checked })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="reminders-lead">Remind me</Label>
+                <Select
+                  value={String(settings.leadMinutes)}
+                  disabled={!settings.enabled || applyingSettings}
+                  onValueChange={value => void applySettings({ ...settings, leadMinutes: Number(value) })}
+                >
+                  <SelectTrigger id="reminders-lead">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEAD_MINUTE_OPTIONS.map(minutes => (
+                      <SelectItem key={minutes} value={String(minutes)}>{leadLabel(minutes)}</SelectItem>
                     ))}
-                  </ul>
-                )}
-              </TabsContent>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Applies to every workout you schedule, not just new ones.</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-              <TabsContent value="settings" className="pt-2 space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="reminders-enabled">Workout reminders</Label>
-                    <p className="text-sm text-muted-foreground">Get notified before workouts you've scheduled on the calendar.</p>
-                  </div>
-                  <Switch
-                    id="reminders-enabled"
-                    checked={settings.enabled}
-                    disabled={applyingSettings}
-                    onCheckedChange={checked => void applySettings({ ...settings, enabled: checked })}
-                  />
-                </div>
+interface RemindersTriggerButtonProps {
+  variant?: 'icon' | 'menu-item';
+  onClick: () => void;
+}
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="reminders-lead">Remind me</Label>
-                  <Select
-                    value={String(settings.leadMinutes)}
-                    disabled={!settings.enabled || applyingSettings}
-                    onValueChange={value => void applySettings({ ...settings, leadMinutes: Number(value) })}
-                  >
-                    <SelectTrigger id="reminders-lead">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LEAD_MINUTE_OPTIONS.map(minutes => (
-                        <SelectItem key={minutes} value={String(minutes)}>{leadLabel(minutes)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Applies to every workout you schedule, not just new ones.</p>
-                </div>
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+// Just a button — no dialog, no state. Safe to render anywhere, including
+// inside something that gets unmounted (a mobile drawer that closes
+// itself on click), because it owns nothing that would be lost.
+export function RemindersTriggerButton({ variant = 'icon', onClick }: RemindersTriggerButtonProps) {
+  return variant === 'icon' ? (
+    <Button variant="ghost" size="icon" onClick={onClick} aria-label="Upcoming reminders">
+      <Bell className="h-5 w-5" />
+    </Button>
+  ) : (
+    <Button variant="outline" className="flex items-center gap-2 w-full justify-start" onClick={onClick}>
+      <Bell className="h-4 w-4" />
+      <span>Reminders</span>
+    </Button>
   );
 }

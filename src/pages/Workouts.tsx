@@ -19,13 +19,15 @@ const WorkoutsPage = () => {
   const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const { workouts, workoutsLoading } = useData();
+  const { workouts, workoutsLoading, updateWorkout } = useData();
 
-  const filteredWorkouts = workouts.filter(workout => {
-    const matchesSearch = workout.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || workout.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredWorkouts = workouts
+    .filter(workout => {
+      const matchesSearch = workout.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || workout.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite));
 
   if (workoutsLoading) {
     return (
@@ -94,9 +96,10 @@ const WorkoutsPage = () => {
         {filteredWorkouts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredWorkouts.map(workout => (
-              <WorkoutCard 
-                key={workout.id} 
+              <WorkoutCard
+                key={workout.id}
                 workout={workout}
+                onToggleFavorite={w => updateWorkout(w.id, { favorite: !w.favorite })}
               />
             ))}
           </div>

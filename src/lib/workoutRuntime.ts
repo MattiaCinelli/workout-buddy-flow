@@ -5,6 +5,13 @@ import { Exercise, getSecondsPerRep } from '@/data/exercises';
 // begins, so the person has time to get into position after tapping Start.
 export const PREP_DURATION_SECONDS = 10;
 
+// A short breather between sets of the SAME exercise reads very
+// differently than the longer transition needed to get set up for a
+// DIFFERENT exercise — these are genuinely different kinds of rest, not
+// one setting doing double duty.
+export const DEFAULT_REST_BETWEEN_SETS = 5;
+export const DEFAULT_REST_BETWEEN_EXERCISES = 15;
+
 export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sourceSetIndex?: number;
   setIndex?: number; duration?: number; reps?: number; weight?: number; distance?: number;
   // Set only for reps-based exercise steps — lets the presentation layer
@@ -32,7 +39,9 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
       reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep });
     const next = workout.sets[sourceSetIndex + 1];
     if (next) steps.push({ type: 'rest', kind: 'rest', duration: set.restAfter ??
-      (next.exerciseId === set.exerciseId ? 30 : (workout.restBetweenExercises ?? 30)) });
+      (next.exerciseId === set.exerciseId
+        ? (workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS)
+        : (workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES)) });
   });
   return steps;
 };

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, ChevronRight, Activity, Trash2 } from "lucide-react";
+import { Calendar, Clock, ChevronRight, Activity, Trash2, Star } from "lucide-react";
 import { WorkoutSession } from '@/data/workoutSessions';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +13,12 @@ interface WorkoutCardProps {
   // have their own delete flow (Workouts page) with its own referential
   // integrity checks, so this stays opt-in per usage rather than global.
   onDelete?: (workout: WorkoutSession | WorkoutEntry) => void;
+  // Only meaningful for workout templates, not history entries — wired in
+  // from the Workouts page only.
+  onToggleFavorite?: (workout: WorkoutEntry) => void;
 }
 
-const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete }) => {
+const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onToggleFavorite }) => {
   const navigate = useNavigate();
   
   // Get unique exercises
@@ -64,9 +67,22 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete }) => {
       }}
     >
       <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-bold">{workout.title}</CardTitle>
-          <Badge className={`${getCategoryColor()} capitalize`}>
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {onToggleFavorite && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-amber-500"
+                onClick={e => { e.stopPropagation(); onToggleFavorite(workout as WorkoutEntry); }}
+                aria-label={workout.favorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Star className={`h-4 w-4 ${workout.favorite ? 'fill-amber-400 text-amber-500' : ''}`} />
+              </Button>
+            )}
+            <CardTitle className="text-lg font-bold truncate">{workout.title}</CardTitle>
+          </div>
+          <Badge className={`${getCategoryColor()} capitalize shrink-0`}>
             {workout.category}
           </Badge>
         </div>

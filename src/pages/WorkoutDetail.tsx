@@ -11,13 +11,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Trash2, Loader2, Star } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import ExerciseItem from '@/components/ExerciseItem';
+import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 
 interface SelectedExercise {
   exercise: Exercise;
@@ -38,6 +39,8 @@ const WorkoutDetail = () => {
   const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
+  const [restBetweenSets, setRestBetweenSets] = useState(DEFAULT_REST_BETWEEN_SETS);
+  const [restBetweenExercises, setRestBetweenExercises] = useState(DEFAULT_REST_BETWEEN_EXERCISES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('selected');
@@ -57,6 +60,8 @@ const WorkoutDetail = () => {
     setCategory(workout.category);
     setDescription(workout.description || '');
     setNotes(workout.notes || '');
+    setRestBetweenSets(workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS);
+    setRestBetweenExercises(workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES);
 
     const exerciseMap = new Map<string, WorkoutSet[]>();
     workout.sets.forEach(set => {
@@ -114,6 +119,8 @@ const WorkoutDetail = () => {
         description: description.trim() || undefined,
         duration: estimatedDuration,
         sets: allSets,
+        restBetweenSets,
+        restBetweenExercises,
         notes: notes.trim() || undefined,
       });
       toast({ title: 'Workout updated!', description: `"${title}" has been saved.` });
@@ -138,7 +145,8 @@ const WorkoutDetail = () => {
       weight: exercise.defaultWeight,
       duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
       distance: exercise.defaultDistance,
-      restAfter: 30,
+      // Left undefined — the runtime picks between restBetweenSets/
+      // restBetweenExercises dynamically based on same/different exercise.
     }));
     setSelectedExercises([...selectedExercises, { exercise, sets: defaultSets }]);
     setActiveTab('selected');
@@ -165,7 +173,6 @@ const WorkoutDetail = () => {
     updated[exerciseIndex].sets.push({
       exerciseId: current.exercise.id,
       reps: lastSet.reps, weight: lastSet.weight, duration: lastSet.duration, distance: lastSet.distance,
-      restAfter: 30,
     });
     setSelectedExercises(updated);
   };
@@ -212,8 +219,17 @@ const WorkoutDetail = () => {
             <span>Back</span>
           </Button>
           <Button
+            variant="outline"
+            size="icon"
+            className="ml-auto text-muted-foreground hover:text-amber-500"
+            onClick={() => updateWorkout(workout.id, { favorite: !workout.favorite })}
+            aria-label={workout.favorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Star className={`h-4 w-4 ${workout.favorite ? 'fill-amber-400 text-amber-500' : ''}`} />
+          </Button>
+          <Button
             size="sm"
-            className="ml-auto bg-workout-green hover:bg-green-600 text-white flex items-center gap-1"
+            className="bg-workout-green hover:bg-green-600 text-white flex items-center gap-1"
             onClick={() => navigate(`/workouts/${id}/session`)}
           >
             <Play className="h-4 w-4" />
@@ -245,6 +261,30 @@ const WorkoutDetail = () => {
                   <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="workout-rest-sets" className="text-right">Rest Between Sets</Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="workout-rest-sets" type="number" min="0" max="3600" className="w-24"
+                  value={restBetweenSets} onChange={e => setRestBetweenSets(e.target.value ? Number(e.target.value) : 0)}
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm text-muted-foreground">seconds — between sets of the same exercise</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="workout-rest-exercises" className="text-right">Rest Between Exercises</Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="workout-rest-exercises" type="number" min="0" max="3600" className="w-24"
+                  value={restBetweenExercises} onChange={e => setRestBetweenExercises(e.target.value ? Number(e.target.value) : 0)}
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm text-muted-foreground">seconds — when moving to a different exercise</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-4 items-start gap-4">
@@ -392,7 +432,7 @@ const WorkoutDetail = () => {
                                   <Label htmlFor={`rest-${exIndex}-${setIndex}`} className="mr-2 text-xs">Rest (sec):</Label>
                                   <Input
                                     id={`rest-${exIndex}-${setIndex}`} type="number" min="0" max="3600" className="h-8 w-20"
-                                    value={set.restAfter ?? 30}
+                                    value={set.restAfter ?? (setIndex < selectedEx.sets.length - 1 ? restBetweenSets : restBetweenExercises)}
                                     onChange={e => updateSetValue(exIndex, setIndex, 'restAfter', e.target.value ? Number(e.target.value) : undefined)}
                                     disabled={isSubmitting}
                                   />
@@ -425,14 +465,20 @@ const WorkoutDetail = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 mt-6 pt-4 border-t">
-            <Button
-              variant="destructive" type="button" onClick={() => setShowDeleteConfirm(true)}
-              disabled={isSubmitting || isDeleting} className="sm:mr-auto"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Workout
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-2 mt-6 pt-4 border-t items-start sm:items-center">
+            <div className="sm:mr-auto">
+              <Button
+                variant="destructive" type="button" onClick={() => setShowDeleteConfirm(true)}
+                disabled={isSubmitting || isDeleting || workout.favorite}
+                title={workout.favorite ? 'Unfavorite this workout to delete it' : undefined}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Workout
+              </Button>
+              {workout.favorite && (
+                <p className="text-xs text-muted-foreground mt-1">Unfavorite this workout to delete it.</p>
+              )}
+            </div>
             <Button
               type="submit" className="bg-workout-blue hover:bg-blue-600"
               disabled={!title || !category || selectedExercises.length === 0 || isSubmitting || isDeleting}

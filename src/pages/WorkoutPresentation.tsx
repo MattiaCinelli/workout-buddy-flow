@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { ChevronLeft, Minus, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -50,13 +51,8 @@ const WorkoutPresentation = () => {
   const [rpe, setRpe] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(() => localStorage.getItem(VOICE_PREF_KEY) !== 'false');
-  const [voicesReady, setVoicesReady] = useState(false);
   const lastSpokenRepRef = useRef<number | null>(null);
   const lastSpokenCountdownRef = useRef<number | null>(null);
-  // Retain the utterance until it finishes. Some WebView implementations
-  // can stop an utterance if the JavaScript object is garbage-collected.
-  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const speechWatchdogRef = useRef<number | null>(null);
 
   // A step transition is announced by voice AND felt as a vibration, so
   // the workout stays followable even when speech synthesis is unreliable
@@ -69,92 +65,36 @@ const WorkoutPresentation = () => {
     Haptics.impact({ style }).catch(() => undefined);
   }, []);
 
-  // Drops the announcement (rather than cancelling whatever's currently
-  // speaking) when the engine is busy. The "Begin!" cue and the first rep
-  // count both fire within milliseconds of each other at the start of every
-  // exercise — cancelling meant whichever fired second cut the first off
-  // mid-word, and in practice that made "Begin!" essentially never
-  // audible. Dropping the odd rep number when they collide is a much
-  // smaller loss than losing the announcement it collided with. Queuing
-  // instead of dropping was tried too, but then announcements pile up and
-  // drift further and further behind the actual countdown.
+  // Uses the native TTS engine on iOS/Android (via a Capacitor plugin)
+  // rather than the browser's SpeechSynthesis API directly — Android's
+  // WebView (what this app runs in once installed) doesn't implement
+  // SpeechSynthesis at all, only full browsers do. The plugin's web
+  // fallback still uses SpeechSynthesis under the hood, so behavior in a
+  // desktop/mobile browser is unchanged. Each call interrupts whatever is
+  // currently speaking (the plugin's default queue strategy), which is
+  // exactly what rapid rep-counting needs — no manual busy-tracking or
+  // watchdog timers required, unlike the raw Web Speech API.
   const speak = useCallback((text: string) => {
-    if (!voiceEnabled || !voicesReady || typeof window === 'undefined' || !window.speechSynthesis) return;
-    // Use our own lifecycle flag instead of SpeechSynthesis.speaking. On
-    // Android WebView that browser flag can remain stuck after an engine
-    // failure, which used to suppress every later cue.
-    if (activeUtteranceRef.current) return;
-
-    const synthesis = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.15;
-    // Prefer a local (on-device) voice over a network-backed one — some
-    // Chromium browsers default to a remote voice (e.g. a "Google US
-    // English" that synthesizes audio via a network call) whose events
-    // still fire normally even when that network call is blocked or fails,
-    // producing complete silence with no error anywhere.
-    const voices = synthesis.getVoices();
-    const language = navigator.language.toLowerCase();
-    const localVoice = voices.find(voice => voice.localService && voice.lang.toLowerCase() === language)
-      ?? voices.find(voice => voice.localService && voice.lang.toLowerCase().startsWith(language.split('-')[0]))
-      ?? voices.find(voice => voice.localService);
-    if (localVoice) utterance.voice = localVoice;
-
-    const finish = () => {
-      if (speechWatchdogRef.current !== null) window.clearTimeout(speechWatchdogRef.current);
-      speechWatchdogRef.current = null;
-      if (activeUtteranceRef.current === utterance) activeUtteranceRef.current = null;
-    };
-    utterance.onend = finish;
-    utterance.onerror = event => {
-      console.error(`Speech synthesis failed for "${text}":`, event.error, event);
-      finish();
-    };
-
-    activeUtteranceRef.current = utterance;
-    // Recover if a WebView/TTS engine accepts the request but never emits
-    // an end or error event. Short workout cues should never take this long.
-    speechWatchdogRef.current = window.setTimeout(() => {
-      if (activeUtteranceRef.current === utterance) {
-        console.warn(`Speech synthesis timed out for "${text}".`);
-        synthesis.cancel();
-        finish();
-      }
-    }, 5000);
-    synthesis.speak(utterance);
-  }, [voiceEnabled, voicesReady]);
+    if (!voiceEnabled) return;
+    TextToSpeech.speak({ text, rate: 1.15 }).catch((error: unknown) => {
+      // Every new cue interrupts whatever's still speaking (QueueStrategy's
+      // default, Flush) — on web that surfaces as the PREVIOUS call's
+      // promise rejecting with error "interrupted". That's this function
+      // working as intended, not a failure, so it's not worth logging.
+      const isSelfInterruption = typeof error === 'object' && error !== null
+        && 'error' in error && (error as { error?: string }).error === 'interrupted';
+      if (!isSelfInterruption) console.error(`Speech synthesis failed for "${text}":`, error);
+    });
+  }, [voiceEnabled]);
 
   const toggleVoice = () => {
     setVoiceEnabled(prev => {
       const next = !prev;
       localStorage.setItem(VOICE_PREF_KEY, String(next));
-      if (!next) {
-        window.speechSynthesis?.cancel();
-        activeUtteranceRef.current = null;
-        if (speechWatchdogRef.current !== null) window.clearTimeout(speechWatchdogRef.current);
-        speechWatchdogRef.current = null;
-      }
+      if (!next) void TextToSpeech.stop().catch(() => undefined);
       return next;
     });
   };
-
-  // Voice discovery is asynchronous in Chromium/WebView. Do not send the
-  // first cue into an empty engine: retry it after voiceschanged instead.
-  // A fallback keeps browsers that provide only a default voice usable even
-  // when they never expose a voice list or dispatch voiceschanged.
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const loadVoices = () => {
-      if (window.speechSynthesis.getVoices().length > 0) setVoicesReady(true);
-    };
-    loadVoices();
-    window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
-    const fallback = window.setTimeout(() => setVoicesReady(true), 2000);
-    return () => {
-      window.clearTimeout(fallback);
-      window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-    };
-  }, []);
 
   const requestWakeLock = useCallback(async () => {
     try {
@@ -242,19 +182,19 @@ const WorkoutPresentation = () => {
   // "Begin" for an exercise. This is the only place any of these fire, so
   // there's exactly one announcement per step, never a duplicate.
   useEffect(() => {
-    if (!restored || !voicesReady) return;
+    if (!restored) return;
     const step = steps[activeStep];
     if (step?.type === 'exercise') {
       const ex = exercises.find(item => item.id === step.exerciseId);
       // Deliberately just "Begin", not the exercise name too — the name is
       // already the on-screen heading, and every extra word here is time
-      // the engine spends "speaking" (see speak()'s busy check above)
-      // during which real rep-count announcements get silently dropped.
+      // the engine spends "speaking" during which real rep-count
+      // announcements would otherwise get interrupted.
       if (ex) speak('Begin');
     } else if (step?.type === 'rest') {
       speak(step.kind === 'prep' ? 'Get ready' : 'Start rest');
     }
-  }, [activeStep, restored, voicesReady, steps, exercises, speak]);
+  }, [activeStep, restored, steps, exercises, speak]);
 
   // A distinct buzz per step type, independent of voice readiness — this
   // is the fallback, so it shouldn't wait on anything voice-related.
@@ -265,14 +205,7 @@ const WorkoutPresentation = () => {
     else if (step?.type === 'rest') vibrate(step.kind === 'prep' ? ImpactStyle.Light : ImpactStyle.Medium);
   }, [activeStep, restored, steps, vibrate]);
 
-  useEffect(() => () => {
-    // Only cancel an utterance created by this screen. A global cancel here
-    // also kills the click-triggered "Begin" cue during React Strict Mode's
-    // development-only setup/cleanup replay.
-    if (activeUtteranceRef.current) window.speechSynthesis?.cancel();
-    activeUtteranceRef.current = null;
-    if (speechWatchdogRef.current !== null) window.clearTimeout(speechWatchdogRef.current);
-  }, []);
+  useEffect(() => () => { void TextToSpeech.stop().catch(() => undefined); }, []);
   // Reaching the end opens the completion dialog without changing
   // activeStep, so the effect above never fires to release this guard —
   // closing the dialog (without saving) and pressing Next again would
@@ -291,8 +224,7 @@ const WorkoutPresentation = () => {
 
   const previousStep = () => {
     if (activeStep === 0) return;
-    window.speechSynthesis?.cancel();
-    activeUtteranceRef.current = null;
+    void TextToSpeech.stop().catch(() => undefined);
     startStep(activeStep - 1);
   };
 
@@ -375,7 +307,7 @@ const WorkoutPresentation = () => {
   // its X (they're the same action, not "close the dialog but stay").
   const discardAndExit = () => {
     localStorage.removeItem(runtimeKey(workout?.id || id));
-    window.speechSynthesis?.cancel();
+    void TextToSpeech.stop().catch(() => undefined);
     navigate(`/workouts/${id}`);
   };
 

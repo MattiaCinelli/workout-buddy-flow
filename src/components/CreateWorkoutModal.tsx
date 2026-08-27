@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
+import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -34,7 +35,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
-  const [restBetweenExercises, setRestBetweenExercises] = useState(30);
+  const [restBetweenSets, setRestBetweenSets] = useState(DEFAULT_REST_BETWEEN_SETS);
+  const [restBetweenExercises, setRestBetweenExercises] = useState(DEFAULT_REST_BETWEEN_EXERCISES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('exercises');
@@ -79,6 +81,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
         date: new Date().toISOString().split('T')[0],
         duration: estimatedDuration,
         sets: allSets,
+        restBetweenSets,
         restBetweenExercises,
         notes: notes.trim() || undefined
       };
@@ -95,7 +98,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setCategory('');
       setDescription('');
       setNotes('');
-      setRestBetweenExercises(30);
+      setRestBetweenSets(DEFAULT_REST_BETWEEN_SETS);
+      setRestBetweenExercises(DEFAULT_REST_BETWEEN_EXERCISES);
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
@@ -134,7 +138,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       weight: exercise.defaultWeight,
       duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
       distance: exercise.defaultDistance,
-      restAfter: restBetweenExercises
+      // Left undefined rather than baked in here — the runtime picks
+      // between restBetweenSets/restBetweenExercises dynamically based on
+      // whether the next set is this same exercise or a different one.
+      // Pinning a value at creation time would freeze in whichever case
+      // applied then, and stop tracking it if sets get reordered later.
     }));
 
     // Add exercise with default sets
@@ -184,9 +192,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       weight: lastSet.weight,
       duration: lastSet.duration,
       distance: lastSet.distance,
-      restAfter: restBetweenExercises
+      // Same reasoning as handleSelectExercise — left undefined so the
+      // runtime's dynamic same/different-exercise default applies.
     };
-    
+
     updatedExercises[exerciseIndex].sets.push(newSet);
     setSelectedExercises(updatedExercises);
   };
@@ -227,7 +236,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setCategory('');
       setDescription('');
       setNotes('');
-      setRestBetweenExercises(30);
+      setRestBetweenSets(DEFAULT_REST_BETWEEN_SETS);
+      setRestBetweenExercises(DEFAULT_REST_BETWEEN_EXERCISES);
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
@@ -285,12 +295,31 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="workout-rest" className="text-right">
+              <Label htmlFor="workout-rest-sets" className="text-right">
+                Rest Between Sets
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="workout-rest-sets"
+                  type="number"
+                  min="0"
+                  max="3600"
+                  className="w-24"
+                  value={restBetweenSets}
+                  onChange={(e) => setRestBetweenSets(e.target.value ? Number(e.target.value) : 0)}
+                  disabled={isSubmitting}
+                />
+                <span className="text-sm text-muted-foreground">seconds — between sets of the same exercise</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="workout-rest-exercises" className="text-right">
                 Rest Between Exercises
               </Label>
               <div className="col-span-3 flex items-center gap-2">
                 <Input
-                  id="workout-rest"
+                  id="workout-rest-exercises"
                   type="number"
                   min="0"
                   max="3600"
@@ -299,7 +328,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                   onChange={(e) => setRestBetweenExercises(e.target.value ? Number(e.target.value) : 0)}
                   disabled={isSubmitting}
                 />
-                <span className="text-sm text-muted-foreground">seconds — used as the default for each exercise you add below</span>
+                <span className="text-sm text-muted-foreground">seconds — when moving to a different exercise</span>
               </div>
             </div>
 
@@ -511,7 +540,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                     min="0"
                                     max="3600"
                                     className="h-8 w-20"
-                                    value={set.restAfter ?? 30}
+                                    // This set's own rest comes next in the sequence — if it's not
+                                    // the last set of this exercise, the following set is another
+                                    // set of the SAME exercise (restBetweenSets); otherwise it's
+                                    // whatever exercise comes next (restBetweenExercises).
+                                    value={set.restAfter ?? (setIndex < selectedEx.sets.length - 1 ? restBetweenSets : restBetweenExercises)}
                                     onChange={(e) => updateSetValue(
                                       exIndex,
                                       setIndex,

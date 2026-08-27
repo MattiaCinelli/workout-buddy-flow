@@ -89,4 +89,15 @@ describe('checkWorkoutDeletion', () => {
     const result = checkWorkoutDeletion('w-2', [scheduledWorkout], [course], [session()]);
     expect(result.blocked).toBe(false);
   });
+
+  it('blocks deletion of a favorited workout even with no other references', () => {
+    const result = checkWorkoutDeletion('w-1', [], [], [], true);
+    expect(result.blocked).toBe(true);
+    expect(result.reason).toContain('favorite');
+  });
+
+  it('does not block deletion when isFavorite is false', () => {
+    const result = checkWorkoutDeletion('w-1', [], [], [], false);
+    expect(result.blocked).toBe(false);
+  });
 });
