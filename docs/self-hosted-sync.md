@@ -22,6 +22,7 @@ not an idealized end state — update the checklist below as things change.
 | Survives a full laptop reboot | ✅ verified — see "Running deployment" below |
 | Account UI (navbar indicator, not buried in a page settings menu) | ✅ built, verified — `src/components/AccountButton.tsx` |
 | Self-service account management (display name, email, password) | ✅ built, tested, verified live — see "Account management" below |
+| Manual one-way sync (force push / force pull) | ✅ built — `syncAll(direction)` in `src/lib/syncClient.ts`, "One-way sync" section in `SyncSettingsPanel.tsx`. See the one-way override design note below. |
 
 ## Why this exists
 
@@ -74,6 +75,25 @@ server is *yours*, not a vendor's.
   simply disappears gives other devices no signal to remove it locally too.
   Soft-deleting reuses the exact same last-write-wins upsert path as any
   other edit — no separate delete code path to keep in sync with it.
+- **Manual one-way overrides on top of the automatic merge.** The 30s
+  background sync and the "Sync now" button are always the bidirectional
+  merge above. Under "One-way sync" in Settings there are two escape
+  hatches for when that merge would do the wrong thing (a device with
+  stale data winning conflicts by clock skew, a freshly-wiped server, a
+  device that's drifted out of step):
+  - **Push this device to server** — `syncAll('push')`. Re-stamps every
+    local record's `updatedAt` to now so it wins the server's LWW compare
+    outright, pushes, and pulls nothing back. Conflict detection is
+    skipped because the overwrite is the point. Records that exist only on
+    the server are *not* deleted.
+  - **Replace this device with server** — `resetSyncState()` then
+    `syncAll('pull')`. Forgets the pull watermarks, re-pulls the whole
+    account, and lets every server version overwrite the local one.
+    Nothing is pushed. Records created locally but never synced are left
+    alone (a true wipe-and-restore is out of scope).
+  Both re-establish the conflict baseline from the merged result so the
+  next automatic sync doesn't report phantom conflicts. Both are behind a
+  confirm dialog that spells out the data-loss direction.
 
 ## Container packaging (`server/Dockerfile`)
 

@@ -1,8 +1,13 @@
 import { useState } from 'react';
-import { Loader2, RefreshCw, RotateCcw, Server, Unplug } from 'lucide-react';
+import { ChevronDown, Download, Loader2, RefreshCw, RotateCcw, Server, Unplug, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   getLastSyncedAt,
   getLoggedInEmail,
@@ -13,6 +18,7 @@ import {
   logout,
   resetSyncState,
   syncAll,
+  type SyncDirection,
 } from '@/lib/syncClient';
 import { SyncConflicts } from '@/components/SyncConflicts';
 import { useData } from '@/contexts/DataContext';
@@ -42,6 +48,8 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
   const [error, setError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(getLastSyncedAt());
   const [status, setStatus] = useState(getSyncStatus());
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [pendingDirection, setPendingDirection] = useState<'push' | 'pull' | null>(null);
 
   const refreshAll = () => Promise.all([
     refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
@@ -72,11 +80,11 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
     toast.success('Disconnected from sync server');
   };
 
-  const runSync = async (label: string) => {
+  const runSync = async (label: string, direction: SyncDirection = 'both') => {
     setSyncing(true);
     setError(null);
     try {
-      await syncAll();
+      await syncAll(direction);
       await refreshAll();
       setLastSyncedAt(getLastSyncedAt());
       toast.success(label);
@@ -93,6 +101,20 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
   const handleFullResync = () => {
     resetSyncState();
     return runSync('Full re-sync complete');
+  };
+
+  const handleConfirmOneWay = () => {
+    const direction = pendingDirection;
+    setPendingDirection(null);
+    if (direction === 'push') {
+      return runSync('Pushed this device to the server', 'push');
+    }
+    if (direction === 'pull') {
+      // Forget watermarks so this is a full re-pull, not just changes
+      // since the last sync.
+      resetSyncState();
+      return runSync("Replaced this device with the server's data", 'pull');
+    }
   };
 
   if (!connected) {
@@ -183,6 +205,55 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
         Automatic sync runs when the app opens and every 30 seconds while connected. Full re-sync re-pulls
         everything from the server — use it if data looks out of step.
       </p>
+
+      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="px-0 text-muted-foreground hover:bg-transparent">
+            <ChevronDown className={`mr-1 h-4 w-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+            One-way sync
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <p className="text-xs text-muted-foreground">
+            Normal sync merges both sides. These force one direction — use them to resolve a mess, not
+            day to day.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button variant="outline" onClick={() => setPendingDirection('push')} disabled={syncing}>
+              <Upload className="mr-2 h-4 w-4" />Push this device to server
+            </Button>
+            <Button variant="outline" onClick={() => setPendingDirection('pull')} disabled={syncing}>
+              <Download className="mr-2 h-4 w-4" />Replace this device with server
+            </Button>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <AlertDialog open={!!pendingDirection} onOpenChange={open => { if (!open) setPendingDirection(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDirection === 'push'
+                ? 'Push this device to the server?'
+                : "Replace this device with the server's data?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDirection === 'push'
+                ? "Every exercise, workout, course and record on this device will overwrite the server's copy, even where the server's version is newer. Nothing is pulled back. Data that only exists on the server and not here is not deleted."
+                : "The server's version of every record will overwrite what's on this device, even where this device's version is newer. Nothing is pushed. Records you created here but never synced are left alone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={syncing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={event => { event.preventDefault(); void handleConfirmOneWay(); }}
+              disabled={syncing}
+            >
+              {pendingDirection === 'push' ? 'Push to server' : 'Replace this device'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

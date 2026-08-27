@@ -150,6 +150,20 @@ export interface CollectionSyncResult {
   pulled: number;
 }
 
+// 'both' is the normal bidirectional merge. The one-way modes are manual,
+// deliberate overrides for when the automatic last-write-wins merge would
+// do the wrong thing:
+//   'push' — this device is authoritative. Every local record's updatedAt
+//            is bumped to now so it deterministically wins on the server,
+//            and nothing is pulled back. For "the server has stale/junk
+//            data, mine is correct".
+//   'pull' — the server is authoritative. Nothing local is pushed; server
+//            versions overwrite local ones. Pair with resetSyncState() to
+//            re-pull the whole account. For "this device is out of step,
+//            just give me what the server has". Records that only exist on
+//            this device (never pushed) are left untouched.
+export type SyncDirection = 'both' | 'push' | 'pull';
+
 interface CollectionSyncConfig<T extends SyncedRecord> {
   path: string;
   getAll: () => Promise<T[]>;
@@ -157,52 +171,86 @@ interface CollectionSyncConfig<T extends SyncedRecord> {
   remove: (id: string) => Promise<void>;
 }
 
-const syncCollection = async <T extends SyncedRecord>(config: CollectionSyncConfig<T>): Promise<CollectionSyncResult> => {
+const syncCollection = async <T extends SyncedRecord>(
+  config: CollectionSyncConfig<T>,
+  direction: SyncDirection = 'both',
+): Promise<CollectionSyncResult> => {
   const { path, getAll, save, remove } = config;
 
   // Records created before sync was configured (or before this field
   // existed at all) may not have updatedAt yet. Backfill and persist it
   // rather than silently excluding them from every future sync.
-  const localItems = await Promise.all((await getAll()).map(async item => {
+  let localItems = await Promise.all((await getAll()).map(async item => {
     if (item.updatedAt) return item;
     const stamped = { ...item, updatedAt: new Date().toISOString() };
     await save(stamped);
     return stamped;
   }));
 
-  // Push first: cheap at personal-library scale to push everything rather
-  // than track a per-record dirty flag, and the server's upsert is
-  // idempotent, so re-pushing unchanged rows is harmless. The response is
-  // the authoritative post-conflict state — save it back locally in case
-  // this device's own write lost a conflict to another device's newer one.
-  const pushed = await push(path, localItems);
-  try {
-    addConflicts(detectOverwrites(path, getBaseline(path), localItems, pushed));
-  } catch (error) {
-    console.warn(`Conflict detection for ${path} failed (sync itself is unaffected):`, error);
+  let pushed: T[] = [];
+  if (direction !== 'pull') {
+    // Push-only: declare this device authoritative by stamping every
+    // record with the same fresh updatedAt, so each one wins the server's
+    // last-write-wins comparison regardless of what's there now.
+    if (direction === 'push') {
+      const now = new Date().toISOString();
+      localItems = await Promise.all(localItems.map(async item => {
+        const stamped = { ...item, updatedAt: now };
+        await save(stamped);
+        return stamped;
+      }));
+    }
+
+    // Push: cheap at personal-library scale to push everything rather than
+    // track a per-record dirty flag, and the server's upsert is
+    // idempotent, so re-pushing unchanged rows is harmless. The response
+    // is the authoritative post-conflict state — save it back locally in
+    // case this device's own write lost a conflict to another device's
+    // newer one.
+    pushed = await push(path, localItems);
+    // Conflict detection only applies to the automatic merge. In push-only
+    // mode the overwrite is intentional, so there's no "lost edit" to
+    // surface.
+    if (direction === 'both') {
+      try {
+        addConflicts(detectOverwrites(path, getBaseline(path), localItems, pushed));
+      } catch (error) {
+        console.warn(`Conflict detection for ${path} failed (sync itself is unaffected):`, error);
+      }
+    }
+    await Promise.all(pushed.map(item => save(item)));
   }
-  await Promise.all(pushed.map(item => save(item)));
 
-  // Then pull anything changed on the server since our last watermark
-  // (everything, on a first sync) and merge it in.
-  const watermark = localStorage.getItem(watermarkKey(path)) ?? undefined;
-  const { items: pulled, serverTime } = await pull<T>(path, watermark);
-  await Promise.all(pulled.map(item => save(item)));
-
-  localStorage.setItem(watermarkKey(path), serverTime);
+  let pulled: T[] = [];
+  if (direction !== 'push') {
+    // Pull anything changed on the server since our last watermark
+    // (everything, on a first sync or after resetSyncState) and merge it
+    // in. In pull-only mode these server versions overwrite local ones.
+    const watermark = localStorage.getItem(watermarkKey(path)) ?? undefined;
+    const { items, serverTime } = await pull<T>(path, watermark);
+    pulled = items;
+    await Promise.all(pulled.map(item => save(item)));
+    localStorage.setItem(watermarkKey(path), serverTime);
+  }
 
   // Compact: a local tombstone whose deletion the server has now accepted
   // (push succeeded above) has done its job — other devices learn of the
   // delete from their own pulls, and the server keeps the authoritative
   // tombstone. Dropping the local row stops them accumulating forever.
   // Seed-item tombstones are kept: they are what stops a later seed
-  // migration re-adding something the user deleted.
-  const finalItems = await getAll();
-  const tombstones = finalItems.filter(item => item.deletedAt && !SEED_IDS.has(item.id));
-  await Promise.all(tombstones.map(item => remove(item.id)));
+  // migration re-adding something the user deleted. Skipped in pull-only
+  // mode, where nothing was pushed to confirm the server has the delete.
+  if (direction !== 'pull') {
+    const afterPush = await getAll();
+    const tombstones = afterPush.filter(item => item.deletedAt && !SEED_IDS.has(item.id));
+    await Promise.all(tombstones.map(item => remove(item.id)));
+  }
 
   // Snapshot the post-merge state so the next sync can tell which records
-  // this device changed in the meantime (see detectOverwrites).
+  // this device changed in the meantime (see detectOverwrites). Done for
+  // every direction so a one-way override doesn't leave a stale baseline
+  // that makes the next automatic sync report phantom conflicts.
+  const finalItems = await getAll();
   setBaseline(path, Object.fromEntries(
     finalItems.filter(item => item.updatedAt).map(item => [item.id, item.updatedAt as string]),
   ));
@@ -214,16 +262,16 @@ const syncCollection = async <T extends SyncedRecord>(config: CollectionSyncConf
 // one collection's sync fails partway through, the caller sees the error
 // and can retry, rather than this silently reporting partial success. The
 // failure is also recorded so the UI can surface it after a background run.
-export const syncAll = async (): Promise<CollectionSyncResult[]> => {
+export const syncAll = async (direction: SyncDirection = 'both'): Promise<CollectionSyncResult[]> => {
   try {
     const results = [
-      await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }),
-      await syncCollection<WorkoutEntry>({ path: 'workouts', getAll: getAllWorkoutsFromDB, save: saveWorkoutToDB, remove: deleteWorkoutFromDB }),
-      await syncCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB, remove: deleteScheduledWorkoutFromDB }),
-      await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB, remove: deleteCourseFromDB }),
-      await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB, remove: deleteWorkoutSessionFromDB }),
-      await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }),
-      await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }),
+      await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }, direction),
+      await syncCollection<WorkoutEntry>({ path: 'workouts', getAll: getAllWorkoutsFromDB, save: saveWorkoutToDB, remove: deleteWorkoutFromDB }, direction),
+      await syncCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB, remove: deleteScheduledWorkoutFromDB }, direction),
+      await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB, remove: deleteCourseFromDB }, direction),
+      await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB, remove: deleteWorkoutSessionFromDB }, direction),
+      await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }, direction),
+      await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }, direction),
     ];
     localStorage.setItem(lastSyncedAtKey, new Date().toISOString());
     localStorage.removeItem(lastErrorKey);
