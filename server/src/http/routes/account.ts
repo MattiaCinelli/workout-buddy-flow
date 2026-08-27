@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getUserByEmail, getUserById, updateDisplayName, updateEmail, updatePasswordHash } from '../../db/users';
-import { deleteOtherSessionsForUser } from '../../db/sessions';
+import { countOtherSessionsForUser, deleteOtherSessionsForUser } from '../../db/sessions';
+import { deleteAccount } from '../../db/account';
 import { hashPassword, verifyPassword } from '../../auth/password';
 import { requireAuth } from '../requireAuth';
 
@@ -16,6 +17,10 @@ interface UpdateEmailBody {
 interface ChangePasswordBody {
   currentPassword?: string;
   newPassword?: string;
+}
+
+interface DeleteAccountBody {
+  currentPassword?: string;
 }
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -90,6 +95,45 @@ export const registerAccountRoutes = (app: FastifyInstance) => {
     // the session that made this change stays valid since it already
     // proved it knows the new password by providing the old one correctly.
     deleteOtherSessionsForUser(app.db, user.id, request.sessionToken!);
+    reply.code(204).send();
+  });
+
+  // How many other devices currently hold a live session. No per-session
+  // detail (the sessions table is keyed by the token hash and has no
+  // stable public id) — just a count, which is all the "sign out other
+  // devices" affordance needs.
+  app.get('/account/sessions', { preHandler: requireAuth }, async (request, reply) => {
+    const otherDevices = countOtherSessionsForUser(app.db, request.userId!, request.sessionToken!);
+    reply.send({ otherDevices });
+  });
+
+  // Revoke every session except this one. No password re-check: this only
+  // ever reduces access, and the caller already holds a valid session.
+  // Those devices fall back to offline mode with their local data intact
+  // and have to reconnect.
+  app.post('/account/sessions/revoke-others', { preHandler: requireAuth }, async (request, reply) => {
+    deleteOtherSessionsForUser(app.db, request.userId!, request.sessionToken!);
+    reply.code(204).send();
+  });
+
+  // Irreversible. Requires re-proving the password (same bar as an email
+  // or password change), then removes the user, all their sessions, and
+  // every synced row they own. Nothing is tombstoned — other devices just
+  // start failing auth and keep working offline against their local copy.
+  app.delete<{ Body: DeleteAccountBody }>('/account', { preHandler: requireAuth }, async (request, reply) => {
+    const { currentPassword } = request.body ?? {};
+    if (!currentPassword) {
+      reply.code(400).send({ error: 'currentPassword is required' });
+      return;
+    }
+
+    const user = getUserById(app.db, request.userId!);
+    if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
+      reply.code(401).send({ error: 'Current password is incorrect' });
+      return;
+    }
+
+    deleteAccount(app.db, user.id);
     reply.code(204).send();
   });
 };

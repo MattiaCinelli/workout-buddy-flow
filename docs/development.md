@@ -17,6 +17,7 @@ Run these before handing off a change:
 ```sh
 npm run lint                         # ESLint; generated UI may emit non-blocking warnings
 npx tsc --noEmit -p tsconfig.app.json
+npm run test:unit
 npm run build
 npm run test:e2e
 ```
@@ -28,7 +29,9 @@ npx playwright install chromium
 ```
 
 End-to-end tests live in `e2e/`. The configuration starts Vite automatically on
-`127.0.0.1:4173` and uses a fresh browser context for each test.
+`127.0.0.1:4173`, and — for `e2e/sync.spec.ts` — also boots a throwaway sync
+server on `127.0.0.1:3999` (`e2e/support/sync-server.mjs`: fresh SQLite file and
+one seeded account per run). Each test uses a fresh browser context.
 
 `e2e/accessibility-mobile.spec.ts` exercises the Settings page at 360×640, the guided
 workout controls at 320×568, system reduced-motion behavior, large text and horizontal
@@ -37,11 +40,18 @@ checks passing and manually inspect at least one landscape viewport on Android.
 
 ## Unit / hook tests
 
-`npm run test:unit` (Vitest). Files run in the Node environment by default; a
-component or hook test opts into a DOM with a `// @vitest-environment jsdom` docblock
-and uses `@testing-library/react`. `src/test/setup.ts` registers the jest-dom
-matchers. Pure logic lives in `src/lib/*` with a sibling `*.test.ts` — prefer
-extracting logic there over testing it through a component.
+`npm run test:unit` (Vitest); `npm run test:coverage` for the same run with a v8
+coverage report (text summary + `coverage/` HTML, git-ignored). Files run in the
+Node environment by default; a component or hook test opts into a DOM with a
+`// @vitest-environment jsdom` docblock and uses `@testing-library/react`.
+`src/test/setup.ts` registers the jest-dom matchers and installs a working
+in-memory `localStorage` (Node ≥22 ships a broken global one that shadows
+jsdom's). Tests that need IndexedDB (`db.ts`, `restoreBackup`) start with
+`import 'fake-indexeddb/auto'`. Pure logic lives in `src/lib/*` with a sibling
+`*.test.ts` — prefer extracting logic there over testing it through a component. Modules that mock
+`@/lib/db` or other siblings referenced by a `vi.mock` factory define their
+shared spies/state through `vi.hoisted` (the factory is hoisted above top-level
+`const`s).
 
 ## CI
 

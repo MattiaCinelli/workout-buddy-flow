@@ -59,7 +59,9 @@ Open the URL printed by Vite. Useful verification commands:
 ```sh
 npm run lint
 npm run build
-npm run test:e2e
+npm run test:unit       # Vitest unit/hook tests
+npm run test:coverage   # the same, with a coverage report (coverage/)
+npm run test:e2e        # Playwright; boots the app + a throwaway sync server
 ```
 
 The first browser-test run may require `npx playwright install chromium`.
@@ -73,6 +75,7 @@ The first browser-test run may require `npx playwright install chromium`.
 | [docs/data-model.md](docs/data-model.md) | Every entity, field by field, and why it is shaped that way |
 | [docs/development.md](docs/development.md) | Project layout, how to add features, conventions, Android packaging |
 | [docs/self-hosted-sync.md](docs/self-hosted-sync.md) | Optional self-hosted sync server: status, design decisions, schema, deployment |
+| [CHANGELOG.md](CHANGELOG.md) | Release history, following Keep a Changelog + SemVer |
 
 ## Tech stack
 

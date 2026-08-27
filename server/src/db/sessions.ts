@@ -65,6 +65,24 @@ export const deleteOtherSessionsForUser = (db: Db, userId: string, keepToken: st
   db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(userId, hashToken(keepToken));
 };
 
+// Every session for the user, no exceptions. Used by the admin
+// reset-password CLI (there is no current session to keep — the point is
+// that whoever held the old password is locked out) and by account
+// deletion.
+export const deleteAllSessionsForUser = (db: Db, userId: string): void => {
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+};
+
+// How many *other* live sessions the user has — everything except the
+// caller's own token and anything already expired. Lets the account UI say
+// "signed in on N other devices" and decide whether to offer a revoke.
+export const countOtherSessionsForUser = (db: Db, userId: string, keepToken: string): number => {
+  const row = db
+    .prepare('SELECT COUNT(*) AS count FROM sessions WHERE user_id = ? AND token != ? AND expires_at > ?')
+    .get(userId, hashToken(keepToken), new Date().toISOString()) as { count: number };
+  return row.count;
+};
+
 export const deleteExpiredSessions = (db: Db): void => {
   db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(new Date().toISOString());
 };

@@ -8,6 +8,10 @@ import { BodyMetric } from '@/data/bodyMetrics';
 import { SEED_IDS } from './seedVersion';
 import { addConflicts, clearBaselines, clearConflicts, detectOverwrites, getBaseline, setBaseline } from './syncConflicts';
 import {
+  applyRemoteSettings, clearSettingsSnapshot, collectLocalSettings, getSettingsSnapshot,
+  isPristineSettings, serializeSettings, setSettingsSnapshot, type SyncableSettings,
+} from './settingsSync';
+import {
   getAllExercisesFromDB, saveExerciseToDB, deleteExerciseFromDB,
   getAllWorkoutsFromDB, saveWorkoutToDB, deleteWorkoutFromDB,
   getAllScheduledWorkoutsFromDB, saveScheduledWorkoutToDB, deleteScheduledWorkoutFromDB,
@@ -55,6 +59,23 @@ export const getSyncStatus = (): SyncStatus => ({
   lastErrorAt: localStorage.getItem(lastErrorAtKey),
 });
 
+// --- live "a sync is running right now" signal, for a navbar indicator.
+// Separate from getSyncStatus() (which is the *last* result, persisted):
+// this is transient in-memory state, true only while syncAll() is in
+// flight. A plain listener set rather than a context so any component —
+// or none — can subscribe without threading a provider through the tree.
+let activeSyncCount = 0;
+const syncActivityListeners = new Set<() => void>();
+export const isSyncing = (): boolean => activeSyncCount > 0;
+export const subscribeSyncActivity = (listener: () => void): (() => void) => {
+  syncActivityListeners.add(listener);
+  return () => { syncActivityListeners.delete(listener); };
+};
+const setSyncActive = (delta: 1 | -1) => {
+  activeSyncCount = Math.max(0, activeSyncCount + delta);
+  syncActivityListeners.forEach(listener => listener());
+};
+
 const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
 const errorMessageFrom = async (response: Response): Promise<string> => {
@@ -81,6 +102,23 @@ export const login = async (serverUrl: string, email: string, password: string):
 
 const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions', 'muscleGroups', 'bodyMetrics'];
 
+// Wipe every trace of the sync connection from this device. The app keeps
+// all its actual data (that lives in IndexedDB, untouched) and carries on
+// fully offline — this just returns it to the never-connected state.
+const clearLocalSyncState = (): void => {
+  localStorage.removeItem(serverUrlKey);
+  localStorage.removeItem(tokenKey);
+  localStorage.removeItem(emailKey);
+  localStorage.removeItem(displayNameKey);
+  localStorage.removeItem(lastSyncedAtKey);
+  localStorage.removeItem(lastErrorKey);
+  localStorage.removeItem(lastErrorAtKey);
+  COLLECTION_PATHS.forEach(path => localStorage.removeItem(watermarkKey(path)));
+  clearBaselines(COLLECTION_PATHS);
+  clearConflicts();
+  clearSettingsSnapshot();
+};
+
 export const logout = async (): Promise<void> => {
   const url = localStorage.getItem(serverUrlKey);
   const token = localStorage.getItem(tokenKey);
@@ -94,16 +132,7 @@ export const logout = async (): Promise<void> => {
       console.warn('Could not reach the server to revoke the session (clearing local state anyway):', error);
     }
   }
-  localStorage.removeItem(serverUrlKey);
-  localStorage.removeItem(tokenKey);
-  localStorage.removeItem(emailKey);
-  localStorage.removeItem(displayNameKey);
-  localStorage.removeItem(lastSyncedAtKey);
-  localStorage.removeItem(lastErrorKey);
-  localStorage.removeItem(lastErrorAtKey);
-  COLLECTION_PATHS.forEach(path => localStorage.removeItem(watermarkKey(path)));
-  clearBaselines(COLLECTION_PATHS);
-  clearConflicts();
+  clearLocalSyncState();
 };
 
 interface SyncedRecord {
@@ -258,11 +287,65 @@ const syncCollection = async <T extends SyncedRecord>(
   return { collection: path, pushed: pushed.length, pulled: pulled.length };
 };
 
+// Account-level preferences (theme, accessibility, height) as one blob.
+// Mirrors a collection sync's push/pull/both shape:
+//   'push' — this device's settings win outright (updatedAt = now).
+//   'pull' — take the server's, apply nothing if the server has none.
+//   'both' — last-write-wins: send `now` only if this device changed a
+//            setting since the last sync (snapshot differs), otherwise
+//            send the snapshot's timestamp so an untouched device can't
+//            beat another device's real edit on a clock tie.
+// A device that has never synced settings (no snapshot) sends an epoch
+// timestamp on 'both' *only if its settings are still untouched defaults*,
+// so a fresh install can't clobber a populated server — it adopts the
+// server's instead. If the user already changed something before the
+// first sync, that's a real choice and it's sent with `now`.
+const EPOCH = '1970-01-01T00:00:00.000Z';
+
+interface RemoteSettingsResponse {
+  settings: SyncableSettings | null;
+  updatedAt: string | null;
+}
+
+const syncSettings = async (direction: SyncDirection): Promise<void> => {
+  const local = collectLocalSettings();
+  const localJson = serializeSettings(local);
+
+  if (direction === 'pull') {
+    const remote = await authorizedRequest<RemoteSettingsResponse>('/settings', { method: 'GET' });
+    if (remote.settings && remote.updatedAt) {
+      applyRemoteSettings(remote.settings);
+      setSettingsSnapshot({ json: serializeSettings(remote.settings), updatedAt: remote.updatedAt });
+    }
+    return;
+  }
+
+  const snapshot = getSettingsSnapshot();
+  const now = new Date().toISOString();
+  const localUpdatedAt = direction === 'push'
+    ? now
+    : snapshot === null
+      ? (isPristineSettings(local) ? EPOCH : now)
+      : localJson === snapshot.json ? snapshot.updatedAt : now;
+
+  const winner = await authorizedRequest<RemoteSettingsResponse>('/settings', {
+    method: 'PUT',
+    body: JSON.stringify({ settings: local, updatedAt: localUpdatedAt }),
+  });
+
+  if (winner.settings && winner.updatedAt) {
+    const winnerJson = serializeSettings(winner.settings);
+    if (winnerJson !== localJson) applyRemoteSettings(winner.settings);
+    setSettingsSnapshot({ json: winnerJson, updatedAt: winner.updatedAt });
+  }
+};
+
 // Runs every collection in turn. Deliberately sequential and fail-fast: if
 // one collection's sync fails partway through, the caller sees the error
 // and can retry, rather than this silently reporting partial success. The
 // failure is also recorded so the UI can surface it after a background run.
 export const syncAll = async (direction: SyncDirection = 'both'): Promise<CollectionSyncResult[]> => {
+  setSyncActive(1);
   try {
     const results = [
       await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }, direction),
@@ -273,6 +356,15 @@ export const syncAll = async (direction: SyncDirection = 'both'): Promise<Collec
       await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }, direction),
       await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }, direction),
     ];
+    // Best-effort and non-fatal: an older server with no /settings route
+    // would 404 here, and that must not break data sync. Settings are the
+    // nice-to-have, the collections above are the point.
+    try {
+      await syncSettings(direction);
+    } catch (error) {
+      console.warn('Settings sync failed (data sync unaffected):', error);
+    }
+
     localStorage.setItem(lastSyncedAtKey, new Date().toISOString());
     localStorage.removeItem(lastErrorKey);
     localStorage.removeItem(lastErrorAtKey);
@@ -281,6 +373,8 @@ export const syncAll = async (direction: SyncDirection = 'both'): Promise<Collec
     localStorage.setItem(lastErrorKey, error instanceof Error ? error.message : 'Sync failed');
     localStorage.setItem(lastErrorAtKey, new Date().toISOString());
     throw error;
+  } finally {
+    setSyncActive(-1);
   }
 };
 
@@ -290,6 +384,10 @@ export const syncAll = async (direction: SyncDirection = 'both'): Promise<Collec
 export const resetSyncState = (): void => {
   COLLECTION_PATHS.forEach(path => localStorage.removeItem(watermarkKey(path)));
   clearBaselines(COLLECTION_PATHS);
+  // Drop the settings snapshot too: with no snapshot the next sync sends an
+  // epoch timestamp and re-adopts the server's settings, which is the point
+  // of a full re-sync ("this device is out of step, take the server's").
+  clearSettingsSnapshot();
 };
 
 // Cosmetic — no current-password confirmation, matching the server route.
@@ -319,4 +417,29 @@ export const changePassword = async (currentPassword: string, newPassword: strin
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword }),
   });
+};
+
+// How many other devices currently hold a live session for this account.
+export const getOtherDeviceCount = async (): Promise<number> => {
+  const body = await authorizedRequest<{ otherDevices: number }>('/account/sessions', { method: 'GET' });
+  return body.otherDevices;
+};
+
+// Revoke every session except this device's. Those devices drop to offline
+// mode (local data intact) and must reconnect. This device stays connected.
+export const revokeOtherSessions = async (): Promise<void> => {
+  await authorizedRequest('/account/sessions/revoke-others', { method: 'POST' });
+};
+
+// Permanently delete the account and everything synced to the server.
+// Requires the current password. On success the server session is already
+// gone, so there's nothing to revoke — just drop local sync state. The
+// app's own data in IndexedDB is untouched; it simply goes back to
+// offline-only.
+export const deleteAccount = async (currentPassword: string): Promise<void> => {
+  await authorizedRequest('/account', {
+    method: 'DELETE',
+    body: JSON.stringify({ currentPassword }),
+  });
+  clearLocalSyncState();
 };

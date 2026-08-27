@@ -5,6 +5,7 @@ import { registerAuthRoutes } from './routes/auth';
 import { registerSyncRoutes } from './routes/sync';
 import { registerHealthRoute } from './routes/health';
 import { registerAccountRoutes } from './routes/account';
+import { registerSettingsRoutes } from './routes/settings';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -34,11 +35,12 @@ export const buildApp = (db: Db): FastifyInstance => {
   // account profile/email endpoints) with no server-side error — the
   // browser just refuses the preflight. Keep this in sync with whatever
   // verbs the routes below actually use.
-  app.register(cors, { origin: true, methods: ['GET', 'POST', 'PATCH'] });
+  app.register(cors, { origin: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] });
 
   registerHealthRoute(app);
   registerAuthRoutes(app);
   registerAccountRoutes(app);
+  registerSettingsRoutes(app);
   registerSyncRoutes(app);
 
   return app;

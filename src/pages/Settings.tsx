@@ -106,7 +106,7 @@ const SettingsPage = () => {
               <CardDescription>Update the profile used by your sync server.</CardDescription>
             </CardHeader>
             <CardContent>
-              {connected ? <AccountProfileTab /> : (
+              {connected ? <AccountProfileTab onDisconnected={() => setConnected(false)} /> : (
                 <p className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
                   Connect to your sync server above to manage your display name, email, and password.
                 </p>

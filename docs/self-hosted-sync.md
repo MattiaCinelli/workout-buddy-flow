@@ -23,6 +23,12 @@ not an idealized end state — update the checklist below as things change.
 | Account UI (navbar indicator, not buried in a page settings menu) | ✅ built, verified — `src/components/AccountButton.tsx` |
 | Self-service account management (display name, email, password) | ✅ built, tested, verified live — see "Account management" below |
 | Manual one-way sync (force push / force pull) | ✅ built — `syncAll(direction)` in `src/lib/syncClient.ts`, "One-way sync" section in `SyncSettingsPanel.tsx`. See the one-way override design note below. |
+| Admin password recovery | ✅ built — `npm run reset-password -- <email>` (`server/src/cli/reset-password.ts`). There is no email/SMTP and no self-service reset endpoint by design; shell access to the server is the recovery path. Signs out every device on reset. |
+| Self-service account deletion | ✅ built, tested — `DELETE /account` (`server/src/http/routes/account.ts`), "Delete account" in `src/components/AccountProfileTab.tsx`. Requires the password; removes the user, all sessions, and every synced row in one transaction. Local IndexedDB data is untouched. |
+| Device / session control | ✅ built, tested — `GET /account/sessions` (count of other live sessions) + `POST /account/sessions/revoke-others`, surfaced as "Sign out other devices" in `AccountProfileTab.tsx`. No per-session detail (the table is keyed by token hash, no public id). |
+| Live "syncing now" navbar indicator | ✅ built — `subscribeSyncActivity` / `isSyncing` in `syncClient.ts`; `AccountButton.tsx` swaps to a spinner while `syncAll()` runs. |
+| Account-level settings sync (theme, accessibility, height) | ✅ built, tested — `GET`/`PUT /settings` (`server/src/http/routes/settings.ts`, `user_settings` table), client blob in `src/lib/settingsSync.ts` folded into `syncAll()`. Last-write-wins on a single per-user blob. Custom-audio file and notification/reminder settings stay device-local. |
+| Browser-level e2e coverage of the sync UI | ✅ built — `e2e/sync.spec.ts` drives the real Settings UI against a throwaway server (`e2e/support/sync-server.mjs`, wired as a second Playwright `webServer`): connect → sync → one-way controls → account controls → disconnect, plus a two-device preference-propagation test. This is the only coverage that goes through a real cross-origin fetch + CORS preflight rather than in-process `app.inject()`. |
 
 ## Why this exists
 
@@ -196,7 +202,14 @@ workout_sessions    id, user_id, workout_id, date, title, duration,
                     actual_sets, perceived_exertion,
                     completion_notes, updated_at, deleted_at       (002)
 users               + display_name (nullable)                     (004)
+user_settings       user_id (PK), data (JSON text), updated_at     (015)
 ```
+
+`user_settings` is the odd one out: `PRIMARY KEY (user_id)` — one row per
+user, not `(id, user_id)` — with no `deleted_at` and no `synced_at`, since
+the client fetches the whole blob every time rather than "changes since X".
+`data` is opaque JSON the server never parses; it only does last-write-wins
+on `updated_at`.
 
 One subtlety worth calling out: `scheduled_workouts` and `courses` each
 already have their own client-stamped `created_at`, separate from the
@@ -210,11 +223,26 @@ edit can never change when a record was originally created — verified in
 ```sh
 cd server
 npm install
-npm run create-user -- you@example.com   # prompts for a password
-npm run dev                              # starts on :3000 (PORT / HOST to override)
+npm run create-user -- you@example.com      # prompts for a password
+npm run reset-password -- you@example.com    # forgot it? re-set it (signs out every device)
+npm run dev                                  # starts on :3000 (PORT / HOST to override)
 npm test
 npx tsc --noEmit
 ```
+
+**Password recovery.** There is deliberately no "email me a reset link"
+flow — no SMTP dependency, no third party, and no self-service reset
+endpoint on a server that may be internet-reachable. Recovery is
+out-of-band: whoever runs the server runs `npm run reset-password -- <email>`
+on it (or `podman exec <container> npm run reset-password -- <email>`). It
+only touches an account that already exists, sets a new password, and
+deletes every session for that user so the old password — and any token
+derived from it — stops working immediately. Affected devices fall back to
+offline mode with their local data intact and reconnect with the new
+password. If you can't reach the server at all, sync isn't the system of
+record: every device still has its full data in IndexedDB, and JSON
+backup/restore (Settings → Data and backup) moves it between devices with
+no server involved.
 
 Endpoints that exist right now:
 
@@ -227,6 +255,11 @@ Endpoints that exist right now:
 | `PATCH /account/profile` | `Authorization: Bearer <token>` | `{ displayName }` — no password required, purely cosmetic. |
 | `PATCH /account/email` | `Authorization: Bearer <token>` | `{ currentPassword, email }` — rejects if the new email is already taken by another account. |
 | `POST /account/password` | `Authorization: Bearer <token>` | `{ currentPassword, newPassword }` (min 8 chars) — deletes every other session for the user (other devices are signed out and must reconnect with the new password), returns `204` with no body. |
+| `GET /account/sessions` | `Authorization: Bearer <token>` | `{ otherDevices: <number> }` — live sessions for this user other than the caller's own. No per-session detail: the `sessions` table is keyed by the token hash and has no public id. |
+| `POST /account/sessions/revoke-others` | `Authorization: Bearer <token>` | Deletes every session except the caller's. No password re-check — it only ever removes access, and the caller already holds a valid session. `204`, no body. |
+| `DELETE /account` | `Authorization: Bearer <token>` | `{ currentPassword }` — irreversibly deletes the user, all their sessions, and every synced row they own, in one transaction. No tombstone; other devices just start failing auth and keep working offline. `204`, no body. |
+| `GET /settings` | `Authorization: Bearer <token>` | `{ settings, updatedAt }` — the caller's account-level preferences blob; both fields are `null` if it was never set. |
+| `PUT /settings` | `Authorization: Bearer <token>` | `{ settings, updatedAt }` (`settings` an object, `updatedAt` an ISO string) — upserts the blob with last-write-wins on `updatedAt`, returns the winner. `settings` is opaque JSON the server never inspects. |
 | `GET /sync/<collection>?since=<ISO timestamp>` | `Authorization: Bearer <token>` | Rows for the caller changed after `since` (all of them if omitted), plus `serverTime`. Includes soft-deleted rows. |
 | `POST /sync/<collection>` | `Authorization: Bearer <token>` | `{ <collection>: [...] }`, up to 1000 per request, validated by JSON schema. Applies each with last-write-wins in one transaction and returns the post-merge state — a caller whose write lost a conflict gets told what actually won, not an echo of what it sent. |
 
@@ -251,7 +284,12 @@ readable rather than generated from column config.
   tracking a per-record dirty flag; the server's upsert is idempotent, so
   re-pushing unchanged rows is harmless at personal-library scale), saves
   back whatever the server says actually won each conflict, then pulls
-  anything changed since the last watermark and merges it in.
+  anything changed since the last watermark and merges it in. After the
+  seven collections it does one more round for the account settings blob
+  (see "Settings sync" below). `syncAll(direction)` takes `'both'`
+  (default), `'push'`, or `'pull'` — the one-way modes are manual overrides
+  from the "One-way sync" panel for forcing a direction when the automatic
+  merge would do the wrong thing.
 - UI lives on the dedicated Settings page, with reusable controls in
   `src/components/SyncSettingsPanel.tsx`. It is opened from the explicit
   Settings navigation item or the account icon in the navbar
@@ -311,21 +349,56 @@ Resolution is still last-write-wins per record — the change is that a
 - No server change was needed: the push response already returns the
   post-merge winner, which is all the client needs to notice the mismatch.
 
-## Not synced (deliberate, for now)
+## Settings sync (`src/lib/settingsSync.ts`)
 
-- **Settings** — accessibility / notification / body-profile (height) /
-  music preferences live in `localStorage` and are device-local. Syncing
-  the account-level ones needs a `settings` collection + server endpoint;
-  not built yet.
+Account-level preferences follow the library across devices, folded into
+the same `syncAll()` pass as the collections:
+
+- **What syncs**: the theme choice (`localStorage['theme']`), the whole
+  accessibility block (text size, motion, haptics, voice cues, the
+  generative background-music toggle and its volume), and the body-profile
+  height. Read via `collectLocalSettings()`, written back via
+  `applyRemoteSettings()` which also fires the existing theme/accessibility
+  change events so a pulled change shows on screen immediately (body-profile
+  height has no event and lands on the next render that reads it).
+- **How it syncs**: one JSON blob per user, not a collection —
+  `user_settings` is keyed by `user_id` alone (migration
+  `015_user_settings.sql`), and the client always `GET`s / `PUT`s the whole
+  thing. Last-write-wins on a client `updatedAt`, exactly like a record.
+  "Changed since last sync" is detected by comparing a deterministic
+  (key-sorted) serialisation against a stored snapshot — the same
+  baseline-diff trick `syncConflicts.ts` uses — so none of the dozens of
+  `setTheme` / `setAccessibilitySettings` call sites needed touching.
+- **First-sync safety**: a device that has never synced settings and whose
+  preferences are still untouched defaults (`isPristineSettings`) sends an
+  epoch timestamp on a normal (`both`) sync, so a fresh install can't
+  overwrite a populated server — it adopts the server's instead. If the
+  user *did* change something before that first sync, it's a real choice
+  and goes up with a `now` timestamp. `push` / `pull` one-way modes and
+  `resetSyncState()` behave as they do for collections.
+- **Pristine detection** leans on a `stableStringify` that drops
+  `undefined`-valued keys, matching `JSON.stringify` — without that,
+  `getBodyProfile()`'s `{ heightCm: undefined }` serialised differently
+  from `{}` and every fresh device looked "modified". Caught by the
+  `e2e/sync.spec.ts` two-device test, invisible to the unit tests.
+- **Non-fatal**: if the server has no `/settings` route (an older build),
+  the `PUT` 404s, that one error is swallowed with a warning, and data sync
+  is unaffected.
+
+## Not synced (deliberate)
+
+- **Notification / reminder settings** — device-centric (reminders only
+  fire on the phone you actually carry) and applying a pulled value would
+  need a re-schedule pass. Left in `localStorage`, per device.
 - **Custom workout audio** — a multi-MB blob in its own IndexedDB database
   (`src/lib/customAudio.ts`); a per-device choice, left local.
 
 ## Account management (`src/components/AccountProfileTab.tsx`)
 
 Once connected, the Settings page's **Account** section lets a user manage their
-own account — display name, email, password — without needing shell/CLI
-access to the server. Three independent mini-forms, each with its own save
-button and error state:
+own account — display name, email, password, connected devices, and
+deletion — without needing shell/CLI access to the server. Independent
+mini-forms, each with its own save button and error state:
 
 - **Display name**: purely cosmetic, no password required. Stored for use
   anywhere the app displays
@@ -343,6 +416,17 @@ button and error state:
   calling `.json()` on an empty 204 body throws "Unexpected end of JSON
   input" rather than returning something falsy, so the 204 status is
   checked explicitly before parsing).
+- **Other devices**: `GET /account/sessions` returns a count of the user's
+  *other* live sessions; **Sign out other devices**
+  (`POST /account/sessions/revoke-others`) drops all of them, keeping only
+  the current one. For a lost or shared device, without having to change
+  the password. No password re-check — it only removes access.
+- **Delete account**: a danger-zone action behind a confirm dialog that
+  re-asks for the password. `DELETE /account` removes the user, every
+  session, and all synced rows in one server-side transaction. The app's
+  own IndexedDB data is **not** touched — this device (and every other)
+  simply reverts to offline-only. `clearLocalSyncState()` then wipes the
+  local connection state so the UI returns to the disconnected view.
 
 Verified live end-to-end against a running server, not just via the unit
 tests in `server/src/test/http-account.test.ts`: connected, set a display
@@ -416,6 +500,16 @@ rejected with 401.
    bug is invisible to the 58-test suite no matter how thorough it is.
    Only caught by driving a real browser (Playwright, in this case) through
    the actual UI and reading its console errors.
+
+That gap is now permanent coverage, not a one-off: `e2e/sync.spec.ts`
+runs the Settings sync flow in a real Chromium against a throwaway server
+that `playwright.config.ts` boots as a second `webServer`
+(`e2e/support/sync-server.mjs` — fresh SQLite file, one seeded account,
+port 3999). It exercises a genuine cross-origin `fetch` + CORS preflight,
+which `app.inject()` never does. Its two-device test — set a preference on
+one context, sync, connect a second context, sync, see it applied —
+immediately earned its keep by catching the `stableStringify`/`undefined`
+bug in pristine-settings detection described under "Settings sync" above.
 
 ### Android-specific requirement (two separate settings, both needed)
 

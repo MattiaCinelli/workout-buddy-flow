@@ -17,9 +17,10 @@ export interface AccessibilitySettings {
 const STORAGE_KEY = 'workout-buddy-accessibility-settings';
 export const ACCESSIBILITY_CHANGE_EVENT = 'workout-buddy-accessibility-change';
 
-const defaults: AccessibilitySettings = {
+export const ACCESSIBILITY_DEFAULTS: AccessibilitySettings = {
   textSize: 'standard', motion: 'system', haptics: true, voiceCues: true, backgroundMusic: false, musicVolume: 0.5,
 };
+const defaults = ACCESSIBILITY_DEFAULTS;
 
 export const getAccessibilitySettings = (): AccessibilitySettings => {
   try {

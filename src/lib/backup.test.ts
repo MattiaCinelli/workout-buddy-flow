@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildExerciseShare, buildWorkoutShare, importShare, parseShare, summarizeShareImport,
+  buildExerciseShare, buildWorkoutShare, importShare, parseBackup, parseShare, summarizeShareImport,
   ShareImportDeps, WorkoutBuddyShare,
 } from './backup';
 import { Exercise } from '@/data/exercises';
@@ -178,5 +178,84 @@ describe('summarizeShareImport', () => {
     );
     const summary = summarizeShareImport(share, [exercise({ id: 'x', name: 'Single-arm Row' })], []);
     expect(summary).toEqual({ newExercises: 1, reusedExercises: 1, newMuscleGroups: 2, workouts: 1 });
+  });
+});
+
+// --- whole-device backup parsing (the data-loss-risk path) -----------------
+
+const v3 = (over: Record<string, unknown> = {}) => JSON.stringify({
+  format: 'workout-buddy-backup', version: 3, exportedAt: '2026-01-01T00:00:00.000Z',
+  data: {
+    exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [],
+    muscleGroups: [], bodyMetrics: [],
+  },
+  ...over,
+});
+
+describe('parseBackup', () => {
+  it('accepts a current (v3) backup', () => {
+    const { data, warnings } = parseBackup(v3());
+    expect(data.version).toBe(3);
+    expect(warnings).toEqual([]);
+  });
+
+  it('accepts legacy v1 (no muscleGroups / bodyMetrics required)', () => {
+    const { data } = parseBackup(JSON.stringify({
+      format: 'workout-buddy-backup', version: 1, exportedAt: '2025-01-01T00:00:00.000Z',
+      data: { exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [] },
+    }));
+    expect(data.version).toBe(1);
+  });
+
+  it('rejects a non-backup, an unknown version, and a missing store', () => {
+    expect(() => parseBackup('{"format":"nope"}')).toThrow(/not a supported/i);
+    expect(() => parseBackup(v3({ version: 9 }))).toThrow(/not a supported/i);
+    expect(() => parseBackup(JSON.stringify({
+      format: 'workout-buddy-backup', version: 2, exportedAt: 'x',
+      data: { exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [] },
+    }))).toThrow(/missing bodyMetrics/i);
+  });
+
+  it('rejects an oversized file before parsing it', () => {
+    expect(() => parseBackup('x'.repeat(128 * 1024 * 1024 + 1))).toThrow(/too large/i);
+  });
+
+  it('strips a dangerous exercise imageUrl but keeps a valid https one', () => {
+    const { data } = parseBackup(v3({
+      data: {
+        exercises: [
+          { id: 'a', name: 'A', category: 'strength', muscleGroups: [], difficulty: 'beginner', imageUrl: 'javascript:alert(1)' },
+          { id: 'b', name: 'B', category: 'strength', muscleGroups: [], difficulty: 'beginner', imageUrl: 'https://example.com/x.png' },
+        ],
+        workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+      },
+    }));
+    const [a, b] = (data.data.exercises as { imageUrl?: string }[]);
+    expect(a.imageUrl).toBeUndefined();
+    expect(b.imageUrl).toBe('https://example.com/x.png');
+  });
+
+  it('keeps only whitelisted v3 preferences and drops an oversized one', () => {
+    const { data } = parseBackup(v3({
+      preferences: { theme: 'dark', 'not-a-real-key': 'x', 'workout-buddy-body-profile': 'y'.repeat(200_000) },
+    }));
+    expect((data as { preferences: Record<string, string> }).preferences).toEqual({ theme: 'dark' });
+  });
+
+  it('drops an invalid audio track with a warning', () => {
+    const { data, warnings } = parseBackup(v3({ audioTrack: { name: 'x', type: 'audio/mp3', dataUrl: 'data:text/html,<b>' } }));
+    expect((data as { audioTrack?: unknown }).audioTrack).toBeUndefined();
+    expect(warnings.some(w => /audio track was dropped/i.test(w))).toBe(true);
+  });
+
+  it('warns about a set that references an exercise not in the backup', () => {
+    const { warnings } = parseBackup(v3({
+      data: {
+        exercises: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+        workouts: [{ id: 'w', title: 'Orphan', date: '2026-01-01', duration: 1, category: 'strength',
+          sets: [{ exerciseId: 'missing', reps: 5 }] }],
+      },
+    }));
+    expect(warnings.length).toBeGreaterThan(0);
   });
 });

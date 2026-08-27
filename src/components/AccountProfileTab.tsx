@@ -1,19 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Loader2 } from 'lucide-react';
-import { getDisplayName, getLoggedInEmail, updateDisplayName, updateEmail, changePassword } from '@/lib/syncClient';
+import {
+  getDisplayName, getLoggedInEmail, updateDisplayName, updateEmail, changePassword,
+  getOtherDeviceCount, revokeOtherSessions, deleteAccount,
+} from '@/lib/syncClient';
 import { toast } from 'sonner';
 
 const MIN_PASSWORD_LENGTH = 8;
 
-// Three independent mini-forms (display name, email, password), each with
-// its own save button and error state — email/password changes require
-// re-entering the current password (server-enforced, not just a client
-// nicety: server/src/http/routes/account.ts rejects these without it),
-// display name doesn't since it's purely cosmetic.
-export function AccountProfileTab() {
+interface AccountProfileTabProps {
+  // Called after the account is deleted, so the surrounding page can drop
+  // back to the disconnected view.
+  onDisconnected?: () => void;
+}
+
+// Independent mini-forms (display name, email, password), each with its own
+// save button and error state — email/password changes require re-entering
+// the current password (server-enforced, not just a client nicety:
+// server/src/http/routes/account.ts rejects these without it), display name
+// doesn't since it's purely cosmetic. Below them: device-session control
+// and an irreversible delete-account action.
+export function AccountProfileTab({ onDisconnected }: AccountProfileTabProps) {
   const [displayName, setDisplayName] = useState(getDisplayName() ?? '');
   const [savingName, setSavingName] = useState(false);
 
@@ -27,6 +41,49 @@ export function AccountProfileTab() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const [otherDevices, setOtherDevices] = useState<number | null>(null);
+  const [revoking, setRevoking] = useState(false);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Best-effort — a stale count just means the button still shows; the
+    // revoke call itself is harmless when there's nothing to revoke.
+    getOtherDeviceCount().then(setOtherDevices).catch(() => setOtherDevices(null));
+  }, []);
+
+  const handleRevokeOthers = async () => {
+    setRevoking(true);
+    try {
+      await revokeOtherSessions();
+      setOtherDevices(0);
+      toast.success('Other devices signed out. They will need to reconnect.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not sign out other devices');
+    } finally {
+      setRevoking(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await deleteAccount(deletePassword);
+      setDeleteOpen(false);
+      setDeletePassword('');
+      toast.success('Account deleted. This device is now offline-only; your data stays on it.');
+      onDisconnected?.();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Could not delete account');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleSaveName = async () => {
     const trimmed = displayName.trim();
@@ -136,6 +193,77 @@ export function AccountProfileTab() {
           {savingPassword ? 'Changing…' : 'Change password'}
         </Button>
       </div>
+
+      <div className="space-y-2 border-t pt-4">
+        <Label>Other devices</Label>
+        <p className="text-sm text-muted-foreground">
+          {otherDevices === null
+            ? 'Signed in on this device.'
+            : otherDevices === 0
+              ? 'No other devices are signed in.'
+              : `Signed in on ${otherDevices} other device${otherDevices === 1 ? '' : 's'}.`}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Sign out every device except this one — for a lost or shared device. They keep their local
+          data and can reconnect with your password.
+        </p>
+        <Button
+          variant="outline"
+          onClick={handleRevokeOthers}
+          disabled={revoking || otherDevices === 0}
+          className="w-full"
+        >
+          {revoking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+          {revoking ? 'Signing out…' : 'Sign out other devices'}
+        </Button>
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-destructive/40 p-4">
+        <Label className="text-destructive">Delete account</Label>
+        <p className="text-xs text-muted-foreground">
+          Permanently deletes your account and everything synced to the server. It does not touch the
+          data on this device — the app keeps working offline. Other devices drop to offline mode too.
+          This cannot be undone.
+        </p>
+        <Button variant="destructive" onClick={() => setDeleteOpen(true)} className="w-full">
+          Delete account
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={open => { if (!open && !deleting) { setDeleteOpen(false); setDeletePassword(''); setDeleteError(null); } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your account and all server-side data will be permanently removed. The workouts, exercises
+              and history on this device stay put and the app keeps working offline. Enter your password
+              to confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            type="password"
+            autoComplete="current-password"
+            value={deletePassword}
+            onChange={e => setDeletePassword(e.target.value)}
+            disabled={deleting}
+            placeholder="Current password"
+          />
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={event => { event.preventDefault(); void handleDeleteAccount(); }}
+              disabled={deleting || !deletePassword}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting…' : 'Delete account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
