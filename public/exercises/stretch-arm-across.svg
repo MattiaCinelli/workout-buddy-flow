@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Cross-body shoulder stretch illustration">
+  <line x1="20" y1="184" x2="220" y2="184" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="48" r="15" fill="#475569" stroke="none"/>
+    <path d="M120 63 L120 126"/>
+    <path d="M120 126 L106 182 M120 126 L134 182"/>
+    <path d="M126 82 L70 90"/>
+    <path d="M120 100 L78 86"/>
+  </g>
+</svg>

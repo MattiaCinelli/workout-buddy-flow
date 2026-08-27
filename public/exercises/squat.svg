@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Squat illustration">
+  <line x1="20" y1="180" x2="220" y2="180" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="46" r="15" fill="#475569" stroke="none"/>
+    <path d="M120 61 L120 108"/>
+    <path d="M120 108 L98 140 L98 178"/>
+    <path d="M120 108 L142 140 L142 178"/>
+    <path d="M120 74 L96 92 M120 74 L144 92"/>
+  </g>
+  <line x1="78" y1="70" x2="162" y2="70" stroke="#2563eb" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="78" cy="70" r="12" fill="#2563eb"/>
+  <circle cx="162" cy="70" r="12" fill="#2563eb"/>
+</svg>

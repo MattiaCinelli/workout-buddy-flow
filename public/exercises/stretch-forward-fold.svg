@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Forward fold stretch illustration">
+  <line x1="20" y1="182" x2="220" y2="182" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="150" r="14" fill="#475569" stroke="none"/>
+    <path d="M118 136 L112 84"/>
+    <path d="M112 84 L112 178"/>
+    <path d="M112 84 L124 130 L120 152"/>
+  </g>
+</svg>

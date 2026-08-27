@@ -40,12 +40,16 @@ import {
 import { format, parseISO, endOfWeek, eachWeekOfInterval, subMonths, isWithinInterval } from 'date-fns';
 import { BodyWeightCard } from '@/components/dashboard/BodyWeightCard';
 import { PersonalRecordsCard } from '@/components/dashboard/PersonalRecordsCard';
+import { muscleGroupLoad } from '@/lib/muscleGroupVolume';
 
 const ProgressPage = () => {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState('3months');
   const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
-  const { sessions: workouts, sessionsLoading: workoutsLoading, clearAllSessions: clearAllWorkouts } = useData();
+  const {
+    sessions: workouts, exercises, muscleGroups,
+    sessionsLoading: workoutsLoading, clearAllSessions: clearAllWorkouts,
+  } = useData();
 
   const dateRange = useMemo(() => {
     const end = new Date();
@@ -120,6 +124,15 @@ const ProgressPage = () => {
         count,
       }));
   }, [filteredWorkouts]);
+
+  const muscleData = useMemo(() => {
+    const groupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
+    return muscleGroupLoad(filteredWorkouts, exercises).map(row => ({
+      name: groupName(row.muscleGroupId),
+      sets: row.sets,
+      volume: row.volume,
+    }));
+  }, [filteredWorkouts, exercises, muscleGroups]);
 
   // Duration trend data
   const durationTrend = useMemo(() => {
@@ -234,6 +247,7 @@ const ProgressPage = () => {
               <TabsTrigger value="frequency">Workout Frequency</TabsTrigger>
               <TabsTrigger value="duration">Duration Trend</TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>
+              <TabsTrigger value="muscles">Muscle Groups</TabsTrigger>
             </TabsList>
 
             <TabsContent value="frequency">
@@ -334,6 +348,41 @@ const ProgressPage = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="muscles">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Muscle Group Volume</CardTitle>
+                  <CardDescription>Completed working sets per muscle group in this period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {muscleData.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      No sets tagged to muscle groups yet — add muscle groups to your exercises to see this.
+                    </p>
+                  ) : (
+                    <div style={{ height: Math.max(200, muscleData.length * 34) }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={muscleData} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis type="number" allowDecimals={false} className="text-xs" />
+                          <YAxis dataKey="name" type="category" className="text-xs" width={90} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--card))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                            }}
+                            formatter={(value: number, name) => [value, name === 'sets' ? 'Sets' : 'Volume (kg)']}
+                          />
+                          <Bar dataKey="sets" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="sets" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

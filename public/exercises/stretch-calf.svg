@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Standing calf stretch illustration">
+  <line x1="20" y1="182" x2="220" y2="182" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <rect x="188" y="40" width="12" height="142" rx="4" fill="#94a3b8" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="86" cy="60" r="14" fill="#475569" stroke="none"/>
+    <path d="M90 74 L124 104"/>
+    <path d="M124 104 L84 130 L64 178"/>
+    <path d="M124 104 L160 128 L182 150"/>
+    <path d="M100 88 L150 74 M108 96 L152 82"/>
+  </g>
+</svg>

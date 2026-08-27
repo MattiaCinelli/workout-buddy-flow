@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Cobra stretch illustration">
+  <line x1="20" y1="176" x2="220" y2="176" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="60" cy="72" r="13" fill="#475569" stroke="none"/>
+    <path d="M64 84 C78 120 120 150 200 150"/>
+    <path d="M74 96 L74 150"/>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Child's pose illustration">
+  <line x1="20" y1="172" x2="220" y2="172" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="58" cy="150" r="12" fill="#475569" stroke="none"/>
+    <path d="M70 152 L150 132"/>
+    <path d="M150 132 L176 164 L176 166"/>
+    <path d="M150 132 L150 166"/>
+    <path d="M84 150 L40 158"/>
+  </g>
+</svg>

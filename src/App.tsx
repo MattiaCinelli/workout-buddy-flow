@@ -1,13 +1,14 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DataProvider } from "@/contexts/DataContext";
 import AutoSync from "@/components/AutoSync";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ExercisesPage from "./pages/Exercises";
+import ExerciseProgress from "./pages/ExerciseProgress";
 import WorkoutDetail from "./pages/WorkoutDetail";
 import WorkoutPresentation from "./pages/WorkoutPresentation";
 import CalendarPage from "./pages/Calendar";
@@ -20,10 +21,8 @@ import EditCourse from "./pages/EditCourse";
 import SettingsPage from "./pages/Settings";
 import { AccessibilityController } from "./components/AccessibilityController";
 
-const queryClient = new QueryClient();
-
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <ErrorBoundary>
     <TooltipProvider>
       <DataProvider>
         <AutoSync />
@@ -34,6 +33,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/exercises" element={<ExercisesPage />} />
+            <Route path="/exercises/:id/progress" element={<ExerciseProgress />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/workouts" element={<WorkoutsPage />} />
@@ -53,7 +53,7 @@ const App = () => (
         </BrowserRouter>
       </DataProvider>
     </TooltipProvider>
-  </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

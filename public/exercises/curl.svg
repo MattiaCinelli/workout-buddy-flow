@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Biceps curl illustration">
+  <line x1="20" y1="184" x2="220" y2="184" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="50" r="15" fill="#475569" stroke="none"/>
+    <path d="M120 65 L120 128"/>
+    <path d="M120 128 L106 182 M120 128 L134 182"/>
+    <path d="M120 84 L100 110 L118 74"/>
+    <path d="M120 84 L140 110 L122 74"/>
+  </g>
+  <circle cx="118" cy="70" r="10" fill="#2563eb"/>
+  <circle cx="122" cy="70" r="10" fill="#2563eb"/>
+</svg>

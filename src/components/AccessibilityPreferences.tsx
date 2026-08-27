@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AccessibilitySettings, getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
+import { CustomMusicPicker } from '@/components/CustomMusicPicker';
 import { cn } from '@/lib/utils';
 
 export function AccessibilityPreferences() {
@@ -37,6 +38,13 @@ export function AccessibilityPreferences() {
     <div className="flex items-center justify-between gap-4"><div><Label htmlFor="accessibility-haptics">Haptic cues</Label>
       <p className="text-sm text-muted-foreground">Vibrate when workout steps change.</p></div>
       <Switch id="accessibility-haptics" checked={settings.haptics} onCheckedChange={checked => change({ haptics: checked })} />
+    </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4"><div><Label htmlFor="accessibility-music">Background music</Label>
+        <p className="text-sm text-muted-foreground">Plays during guided workouts. Toggle it anytime from the workout screen too.</p></div>
+        <Switch id="accessibility-music" checked={settings.backgroundMusic} onCheckedChange={checked => change({ backgroundMusic: checked })} />
+      </div>
+      {settings.backgroundMusic && <CustomMusicPicker />}
     </div>
   </div>;
 }

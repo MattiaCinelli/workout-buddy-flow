@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isConnected } from '@/lib/syncClient';
+import { isLiveRecord } from '@/lib/softDelete';
 
 export interface IndexedDBCollectionConfig<T extends { id: string }, StampedKeys extends keyof T = never> {
   getAll: () => Promise<T[]>;
@@ -48,11 +50,12 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
     const isFirstLoad = !hasLoadedOnceRef.current;
     try {
       if (isFirstLoad) setIsLoading(true);
-      let loaded = await getAll();
-      if (loaded.length === 0 && defaults?.length) {
-        if (bulkSave) await bulkSave(defaults);
-        loaded = defaults;
-      }
+      const stored = await getAll();
+      // Seed only when the store is genuinely empty (fresh install). A user
+      // who deleted everything under sync has tombstone rows, not zero rows,
+      // and must not have the defaults reappear.
+      const loaded = stored.length === 0 && defaults?.length ? defaults : stored.filter(isLiveRecord);
+      if (stored.length === 0 && defaults?.length && bulkSave) await bulkSave(defaults);
       setItems(transform ? transform(loaded) : loaded);
       setError(null);
     } catch (err) {
@@ -98,14 +101,24 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
   const remove = useCallback(async (id: string): Promise<T | null> => {
     const target = itemsRef.current.find(item => item.id === id);
     if (!target) return null;
-    await configRef.current.remove(id);
+    // Under sync, leave a tombstone so the deletion propagates instead of
+    // the record resurrecting on the next full pull. Offline, hard-delete.
+    if (isConnected()) {
+      const now = new Date().toISOString();
+      await configRef.current.save({ ...target, deletedAt: now, updatedAt: now } as T);
+    } else {
+      await configRef.current.remove(id);
+    }
     setItems(prev => prev.filter(item => item.id !== id));
     return target;
   }, []);
 
   const clearAll = useCallback(async (): Promise<void> => {
-    const { clearAll: clearAllFromDB, remove: removeFromDB } = configRef.current;
-    if (clearAllFromDB) {
+    const { clearAll: clearAllFromDB, remove: removeFromDB, save } = configRef.current;
+    if (isConnected()) {
+      const now = new Date().toISOString();
+      for (const item of itemsRef.current) await save({ ...item, deletedAt: now, updatedAt: now } as T);
+    } else if (clearAllFromDB) {
       await clearAllFromDB();
     } else {
       for (const item of itemsRef.current) await removeFromDB(item.id);

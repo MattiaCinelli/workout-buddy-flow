@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Neck stretch illustration">
+  <line x1="20" y1="186" x2="220" y2="186" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="134" cy="54" r="16" fill="#475569" stroke="none"/>
+    <path d="M126 66 L110 118"/>
+    <path d="M110 118 L98 182 M110 118 L122 182"/>
+    <path d="M116 90 L150 40 L140 34"/>
+    <path d="M112 104 L86 120"/>
+  </g>
+</svg>

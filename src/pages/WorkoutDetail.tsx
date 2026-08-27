@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star } from 'lucide-react';
+import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
@@ -32,7 +32,7 @@ interface SelectedExercise {
 const WorkoutDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { workouts, exercises, workoutsLoading, updateWorkout, deleteWorkout, muscleGroups } = useData();
+  const { workouts, exercises, workoutsLoading, createWorkout, updateWorkout, deleteWorkout, muscleGroups } = useData();
   const { toast } = useToast();
   const workout = workouts.find(w => w.id === id);
 
@@ -192,6 +192,27 @@ const WorkoutDetail = () => {
     const updated = [...selectedExercises];
     updated[exerciseIndex].sets[setIndex] = { ...updated[exerciseIndex].sets[setIndex], [field]: value };
     setSelectedExercises(updated);
+  };
+
+  const handleDuplicateWorkout = async () => {
+    try {
+      const copy = await createWorkout({
+        title: `${workout.title} (copy)`,
+        description: workout.description,
+        category: workout.category,
+        date: new Date().toISOString(),
+        duration: workout.duration,
+        sets: workout.sets.map(set => ({ ...set })),
+        restBetweenSets: workout.restBetweenSets,
+        restBetweenExercises: workout.restBetweenExercises,
+        notes: workout.notes,
+      });
+      toast({ title: 'Workout duplicated', description: `"${copy.title}" is ready to edit.` });
+      navigate(`/workouts/${copy.id}`);
+    } catch (error) {
+      console.error('Failed to duplicate workout:', error);
+      toast({ title: 'Could not duplicate workout', variant: 'destructive' });
+    }
   };
 
   const handleShareWorkout = async () => {
@@ -498,6 +519,10 @@ const WorkoutDetail = () => {
                 <p className="text-xs text-muted-foreground mt-1">Unfavorite this workout to delete it.</p>
               )}
             </div>
+            <Button type="button" variant="outline" onClick={handleDuplicateWorkout} disabled={isSubmitting || isDeleting}>
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicate
+            </Button>
             <Button
               type="submit" className="bg-workout-blue hover:bg-blue-600"
               disabled={!title || !category || selectedExercises.length === 0 || isSubmitting || isDeleting}

@@ -6,12 +6,17 @@ export interface AccessibilitySettings {
   motion: MotionPreference;
   haptics: boolean;
   voiceCues: boolean;
+  // A soft generative ambient bed during guided workouts. Off by default —
+  // music is a strong preference and should never start unasked.
+  backgroundMusic: boolean;
 }
 
 const STORAGE_KEY = 'workout-buddy-accessibility-settings';
 export const ACCESSIBILITY_CHANGE_EVENT = 'workout-buddy-accessibility-change';
 
-const defaults: AccessibilitySettings = { textSize: 'standard', motion: 'system', haptics: true, voiceCues: true };
+const defaults: AccessibilitySettings = {
+  textSize: 'standard', motion: 'system', haptics: true, voiceCues: true, backgroundMusic: false,
+};
 
 export const getAccessibilitySettings = (): AccessibilitySettings => {
   try {
@@ -22,6 +27,7 @@ export const getAccessibilitySettings = (): AccessibilitySettings => {
       motion: parsed.motion === 'reduced' || parsed.motion === 'full' ? parsed.motion : 'system',
       haptics: typeof parsed.haptics === 'boolean' ? parsed.haptics : true,
       voiceCues: typeof parsed.voiceCues === 'boolean' ? parsed.voiceCues : legacyVoice !== 'false',
+      backgroundMusic: typeof parsed.backgroundMusic === 'boolean' ? parsed.backgroundMusic : false,
     };
   } catch { return defaults; }
 };

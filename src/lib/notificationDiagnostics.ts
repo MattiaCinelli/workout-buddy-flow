@@ -64,6 +64,19 @@ export const requestNotificationPermission = async (): Promise<PermState> => {
   }
 };
 
+// Fires a one-off notification a few seconds out, so the user can confirm
+// end to end that reminders actually reach the notification shade.
+export const sendTestNotification = async (): Promise<void> => {
+  await LocalNotifications.schedule({
+    notifications: [{
+      id: 424242,
+      title: 'Workout Buddy',
+      body: 'Test reminder — notifications are working.',
+      schedule: { at: new Date(Date.now() + 3000), allowWhileIdle: true },
+    }],
+  });
+};
+
 // Sends the user to the system screen for exact alarms (Android 12+). On
 // older Android the plugin resolves 'granted' without navigating.
 export const openExactAlarmSettings = async (): Promise<PermState> => {

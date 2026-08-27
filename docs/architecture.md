@@ -126,6 +126,14 @@ mode and have caused real bugs in this project — do not reintroduce them.
 Theme switching lives in `src/hooks/useTheme.ts` and `src/components/ThemeToggle.tsx`
 (toggles the `dark` class on the document root, persisted locally).
 
+## Guided-workout audio
+
+Optional background music during a guided workout — either a generated Web Audio
+ambient bed (no asset, offline) or a user-supplied file stored in its own
+IndexedDB database. Lives in `src/lib/ambientAudio.ts`, `src/lib/customAudio.ts`
+and `src/hooks/useWorkoutMusic.ts`; see `docs/workout-audio.md` for the full
+picture. Distinct from the guided-mode voice and haptic cues.
+
 ## Self-hosted sync (optional, in progress)
 
 `server/` is a separate Node.js/TypeScript project — its own `package.json`, not part

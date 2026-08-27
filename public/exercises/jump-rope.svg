@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Jumping rope illustration">
+  <path d="M64 96 C64 200 176 200 176 96" fill="none" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="52" r="15" fill="#475569" stroke="none"/>
+    <path d="M120 67 L120 124"/>
+    <path d="M120 124 L106 162 M120 124 L134 162"/>
+    <path d="M120 82 L92 96 M120 82 L148 96"/>
+  </g>
+</svg>

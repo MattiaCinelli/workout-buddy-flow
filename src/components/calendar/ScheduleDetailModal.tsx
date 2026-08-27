@@ -143,18 +143,21 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   const moveOccurrence = async () => {
     if (!moveDate) return;
     setRecovering(true);
+    let createdScheduleId: string | undefined;
     try {
       if (schedule.recurrence === 'none') {
         await updateScheduledWorkout(schedule.id, { startDate: moveDate });
       } else {
         const skippedDates = [...new Set([...(schedule.skippedDates ?? []), schedule.displayDate])];
-        await updateScheduledWorkout(schedule.id, { skippedDates });
-        await createScheduledWorkout({ workoutId: schedule.workoutId, startDate: moveDate,
+        const created = await createScheduledWorkout({ workoutId: schedule.workoutId, startDate: moveDate,
           startTime: schedule.startTime, endTime: schedule.endTime, recurrence: 'none', notes: schedule.notes });
+        createdScheduleId = created.id;
+        await updateScheduledWorkout(schedule.id, { skippedDates });
       }
       toast({ title: 'Workout rescheduled', description: `Moved to ${format(parseISO(moveDate), 'MMMM d, yyyy')}.` });
       setMoveOpen(false); onClose();
     } catch {
+      if (createdScheduleId) await deleteScheduledWorkout(createdScheduleId).catch(() => null);
       toast({ title: 'Could not reschedule workout', description: 'No calendar changes were completed.', variant: 'destructive' });
     } finally { setRecovering(false); }
   };

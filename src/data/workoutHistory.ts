@@ -23,4 +23,78 @@ export interface WorkoutEntry {
   deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
 }
 
-export const workoutHistory: WorkoutEntry[] = [];
+const strengthSet = (exerciseId: string, reps: number, weight?: number): WorkoutSet =>
+  weight === undefined ? { exerciseId, reps } : { exerciseId, reps, weight };
+
+const holdSet = (exerciseId: string, duration: number): WorkoutSet => ({ exerciseId, duration });
+
+// Seed templates written on a fresh install (see useWorkouts). They exist so
+// a new user has something runnable to open, and something to copy and edit
+// into their own. The two strength/mobility ones are also the building
+// blocks of the seed "Strength & Stretch Starter" course (see courses.ts),
+// so their ids must stay stable.
+export const workoutHistory: WorkoutEntry[] = [
+  {
+    id: 'seed-strength',
+    date: '2025-01-03T09:00:00.000Z',
+    title: 'Full-Body Strength (Dumbbell)',
+    category: 'strength',
+    description: 'A balanced beginner strength session hitting every major muscle group with dumbbells. Three sets of each, run it twice a week.',
+    duration: 40,
+    restBetweenSets: 60,
+    restBetweenExercises: 120,
+    sets: [
+      strengthSet('13', 10, 12), strengthSet('13', 10, 12), strengthSet('13', 10, 12),
+      strengthSet('14', 10, 10), strengthSet('14', 10, 10), strengthSet('14', 10, 10),
+      strengthSet('15', 10, 12), strengthSet('15', 10, 12), strengthSet('15', 10, 12),
+      strengthSet('16', 10, 7), strengthSet('16', 10, 7), strengthSet('16', 10, 7),
+      strengthSet('17', 10, 20), strengthSet('17', 10, 20), strengthSet('17', 10, 20),
+      strengthSet('18', 12), strengthSet('18', 12), strengthSet('18', 12),
+      holdSet('11', 40), holdSet('11', 40), holdSet('11', 40),
+    ],
+  },
+  {
+    id: 'seed-mobility',
+    date: '2025-01-02T09:00:00.000Z',
+    title: 'Full-Body Mobility & Stretch',
+    category: 'flexibility',
+    description: 'A head-to-toe static stretch routine. Ease into each hold, breathe, and never stretch into pain. Great on rest days or after a workout.',
+    duration: 15,
+    restBetweenSets: 5,
+    restBetweenExercises: 10,
+    sets: [
+      holdSet('32', 40),
+      holdSet('31', 40),
+      holdSet('34', 30), holdSet('34', 30),
+      holdSet('33', 25), holdSet('33', 25),
+      holdSet('27', 30), holdSet('27', 30),
+      holdSet('28', 30), holdSet('28', 30),
+      holdSet('29', 30), holdSet('29', 30),
+      holdSet('30', 30), holdSet('30', 30),
+      holdSet('35', 30), holdSet('35', 30),
+      holdSet('36', 20), holdSet('36', 20),
+      holdSet('37', 30), holdSet('37', 30),
+      holdSet('38', 20), holdSet('38', 20),
+    ],
+  },
+  {
+    id: 'seed-bodyweight',
+    date: '2025-01-01T09:00:00.000Z',
+    title: 'No-Equipment Full-Body',
+    category: 'strength',
+    description: 'A full-body strength circuit that needs nothing but the floor — good for travelling or days away from the gym.',
+    duration: 25,
+    restBetweenSets: 45,
+    restBetweenExercises: 75,
+    sets: [
+      strengthSet('22', 15), strengthSet('22', 15), strengthSet('22', 15),
+      strengthSet('5', 10), strengthSet('5', 10), strengthSet('5', 10),
+      strengthSet('18', 12), strengthSet('18', 12), strengthSet('18', 12),
+      strengthSet('19', 10), strengthSet('19', 10), strengthSet('19', 10),
+      strengthSet('23', 20), strengthSet('23', 20), strengthSet('23', 20),
+      strengthSet('25', 10), strengthSet('25', 10), strengthSet('25', 10),
+      strengthSet('24', 10), strengthSet('24', 10), strengthSet('24', 10),
+      holdSet('11', 40), holdSet('11', 40),
+    ],
+  },
+];

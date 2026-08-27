@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Balance board illustration">
+  <path d="M70 158 L170 158" stroke="#2563eb" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="120" cy="172" r="12" fill="none" stroke="#2563eb" stroke-width="8"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="46" r="15" fill="#475569" stroke="none"/>
+    <path d="M120 61 L120 112"/>
+    <path d="M120 112 L104 150 M120 112 L136 150"/>
+    <path d="M120 76 L88 72 M120 76 L152 72"/>
+  </g>
+</svg>

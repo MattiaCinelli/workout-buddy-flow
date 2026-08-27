@@ -34,6 +34,8 @@ with all data stored on the device.
 7. **Correctable and accessible.** Mistaken history and calendar actions can be
    corrected without rebuilding a program. Device-level large text, reduced motion,
    voice and haptic preferences keep guided sessions usable in varied environments.
+   Optional background music during a guided workout — a built-in generated ambient
+   bed, or an audio file of your own — is described in `docs/workout-audio.md`.
 
 ## Core concepts
 

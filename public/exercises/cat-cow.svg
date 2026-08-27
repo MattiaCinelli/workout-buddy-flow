@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Cat-cow stretch illustration">
+  <line x1="20" y1="176" x2="220" y2="176" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="52" cy="120" r="12" fill="#475569" stroke="none"/>
+    <path d="M62 116 C100 78 140 78 178 118"/>
+    <path d="M64 128 L64 172"/>
+    <path d="M178 118 L178 172"/>
+  </g>
+</svg>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer, TrendingUp } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
@@ -40,6 +41,7 @@ const getDifficultyColor = (difficulty: string) => {
 // immediately drop you into editing it.
 export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetailModalProps) {
   const { muscleGroups } = useData();
+  const navigate = useNavigate();
   const [sharing, setSharing] = useState(false);
 
   const handleShare = async () => {
@@ -112,7 +114,10 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
           </div>
         )}
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="outline" className="sm:mr-auto" onClick={() => { onClose(); navigate(`/exercises/${exercise.id}/progress`); }}>
+            <TrendingUp className="h-4 w-4 mr-2" /> Progress
+          </Button>
           <Button variant="outline" onClick={handleShare} disabled={sharing}>
             {sharing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Share2 className="h-4 w-4 mr-2" />} Share
           </Button>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Kneeling hip flexor stretch illustration">
+  <line x1="20" y1="182" x2="220" y2="182" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="118" cy="52" r="14" fill="#475569" stroke="none"/>
+    <path d="M118 66 L120 116"/>
+    <path d="M120 116 L84 140 L64 178"/>
+    <path d="M120 116 L156 140 L156 178"/>
+    <path d="M120 84 L98 108 M120 84 L142 104"/>
+  </g>
+</svg>

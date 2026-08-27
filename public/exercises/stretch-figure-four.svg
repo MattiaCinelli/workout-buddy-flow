@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Figure-four glute stretch illustration">
+  <line x1="20" y1="176" x2="220" y2="176" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="52" cy="120" r="13" fill="#475569" stroke="none"/>
+    <path d="M64 124 L120 138"/>
+    <path d="M120 138 L150 104 L150 66"/>
+    <path d="M120 138 L96 108 L134 92"/>
+    <path d="M104 133 L150 84"/>
+  </g>
+</svg>

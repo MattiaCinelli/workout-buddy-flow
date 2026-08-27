@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Glute bridge illustration">
+  <line x1="20" y1="176" x2="220" y2="176" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="54" cy="150" r="13" fill="#475569" stroke="none"/>
+    <path d="M64 144 L128 108"/>
+    <path d="M128 108 L166 132 L166 172"/>
+    <path d="M128 108 L128 172"/>
+  </g>
+</svg>

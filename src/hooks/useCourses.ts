@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { Course, CourseWorkout } from '@/data/courses';
-import { getAllCoursesFromDB, saveCourseToDB, deleteCourseFromDB } from '@/lib/db';
+import { Course, CourseWorkout, defaultCourses } from '@/data/courses';
+import { getAllCoursesFromDB, saveCourseToDB, deleteCourseFromDB, bulkSaveCoursesToDB } from '@/lib/db';
 import { useIndexedDBCollection } from './useIndexedDBCollection';
 
 // Normalizes course records from earlier schema versions (unique item IDs,
@@ -26,6 +26,8 @@ export const useCourses = () => {
       getAll: getAllCoursesFromDB,
       save: saveCourseToDB,
       remove: deleteCourseFromDB,
+      bulkSave: bulkSaveCoursesToDB,
+      defaults: defaultCourses,
       errorMessage: 'Failed to load courses',
       transform: normalizeAndSort,
       stamp: () => ({ createdAt: new Date().toISOString() })

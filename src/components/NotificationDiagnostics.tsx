@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
+import { AlertTriangle, BellRing, CheckCircle2, RefreshCw, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   NotificationDiagnostics as Diagnostics, PermState, canDeliverReminders,
-  getNotificationDiagnostics, openExactAlarmSettings, requestNotificationPermission,
+  getNotificationDiagnostics, openExactAlarmSettings, requestNotificationPermission, sendTestNotification,
 } from '@/lib/notificationDiagnostics';
 
 interface Props {
@@ -130,6 +131,23 @@ const NotificationDiagnostics = ({ remindersEnabled, refreshKey = 0 }: Props) =>
           <XCircle className="h-3.5 w-3.5 shrink-0" />
           Once blocked, Android won't re-prompt — you'll need to change it in system settings.
         </p>
+      )}
+
+      {diagnostics.notifications === 'granted' && (
+        <Button
+          type="button" size="sm" variant="outline" disabled={busy}
+          onClick={() => void run(async () => {
+            try {
+              await sendTestNotification();
+              toast.success('Test notification scheduled — it should appear in a few seconds.');
+            } catch (error) {
+              console.error('Test notification failed:', error);
+              toast.error('Could not send a test notification.');
+            }
+          })}
+        >
+          <BellRing className="mr-2 h-4 w-4" />Send a test notification
+        </Button>
       )}
     </div>
   );

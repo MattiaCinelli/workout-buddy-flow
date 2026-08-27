@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Push-up illustration">
+  <line x1="20" y1="178" x2="220" y2="178" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="52" cy="96" r="13" fill="#475569" stroke="none"/>
+    <path d="M64 100 L176 132"/>
+    <path d="M176 132 L200 172"/>
+    <path d="M84 106 L80 150 L110 172"/>
+  </g>
+</svg>

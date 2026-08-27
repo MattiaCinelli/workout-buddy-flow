@@ -19,12 +19,14 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CalendarIcon, Search, X, Filter, Dumbbell, Loader2 } from 'lucide-react';
+import { CalendarIcon, Download, Search, X, Filter, Dumbbell, Loader2 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import WorkoutCard from '@/components/WorkoutCard';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
+import { sessionsToCsv } from '@/lib/historyCsv';
+import { saveTextFile } from '@/lib/downloadFile';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -41,8 +43,18 @@ const HistoryPage: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   
-  const { sessions: workouts, deleteSession, updateSession, uncompleteWorkoutInCourse } = useData();
+  const { sessions: workouts, exercises, deleteSession, updateSession, uncompleteWorkoutInCourse } = useData();
   const { toast } = useToast();
+
+  const exportCsv = async () => {
+    try {
+      const csv = sessionsToCsv(filteredAndSortedWorkouts, exercises);
+      await saveTextFile(csv, `workout-history-${format(new Date(), 'yyyy-MM-dd')}.csv`, 'text/csv;charset=utf-8');
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      toast({ title: 'Could not export history', variant: 'destructive' });
+    }
+  };
   const [pendingDelete, setPendingDelete] = useState<WorkoutSession | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
@@ -140,13 +152,16 @@ const HistoryPage: React.FC = () => {
       
       <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-6">
           <div>
             <h1 className="text-3xl font-bold">Workout History</h1>
             <p className="text-muted-foreground">
               {workouts.length} workout{workouts.length !== 1 ? 's' : ''} logged
             </p>
           </div>
+          <Button variant="outline" onClick={exportCsv} disabled={filteredAndSortedWorkouts.length === 0}>
+            <Download className="h-4 w-4 mr-2" />Export CSV
+          </Button>
         </div>
 
         {/* Filters */}

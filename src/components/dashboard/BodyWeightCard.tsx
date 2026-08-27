@@ -8,8 +8,24 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, parseISO } from 'date-fns';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import {
+  BMI_CATEGORY_LABEL, bmiCategory, calculateBmi, getBodyProfile, setBodyProfile,
+} from '@/lib/bodyProfile';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
+
+const BMI_CATEGORY_CLASS: Record<ReturnType<typeof bmiCategory>, string> = {
+  underweight: 'text-amber-600 dark:text-amber-400',
+  normal: 'text-accent',
+  overweight: 'text-amber-600 dark:text-amber-400',
+  obese: 'text-destructive',
+};
+
+const describeBmi = (weightKg: number, heightCm?: number): string | null => {
+  if (!heightCm) return null;
+  const value = calculateBmi(weightKg, heightCm);
+  return value === null ? null : `${value}`;
+};
 
 export function BodyWeightCard() {
   const { bodyMetrics, createBodyMetric, deleteBodyMetric } = useData();
@@ -17,10 +33,22 @@ export function BodyWeightCard() {
   const [weight, setWeight] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [heightCm, setHeightCm] = useState<number | undefined>(() => getBodyProfile().heightCm);
+
+  const updateHeight = (raw: string) => {
+    const parsed = Number(raw);
+    const next = raw.trim() && parsed > 0 && parsed < 300 ? parsed : undefined;
+    setHeightCm(next);
+    setBodyProfile({ heightCm: next });
+  };
 
   const chartData = useMemo(() =>
-    bodyMetrics.map(m => ({ date: format(parseISO(m.date), 'MMM d'), weight: m.weight })),
-  [bodyMetrics]);
+    bodyMetrics.map(m => ({
+      date: format(parseISO(m.date), 'MMM d'),
+      weight: m.weight,
+      bmi: heightCm ? calculateBmi(m.weight, heightCm) ?? undefined : undefined,
+    })),
+  [bodyMetrics, heightCm]);
 
   const handleLog = async () => {
     const parsedWeight = Number(weight);
@@ -56,6 +84,7 @@ export function BodyWeightCard() {
   const latest = bodyMetrics[bodyMetrics.length - 1];
   const previous = bodyMetrics[bodyMetrics.length - 2];
   const change = latest && previous ? latest.weight - previous.weight : undefined;
+  const latestBmi = latest && heightCm ? calculateBmi(latest.weight, heightCm) : null;
 
   return (
     <Card>
@@ -83,6 +112,16 @@ export function BodyWeightCard() {
           <Button onClick={handleLog} disabled={saving || !date || !weight}>Log</Button>
         </div>
 
+        <div className="flex items-center gap-2">
+          <Label htmlFor="bw-height" className="text-xs text-muted-foreground">Height (cm)</Label>
+          <Input
+            id="bw-height" type="number" min="50" max="272" step="1" className="w-24"
+            value={heightCm ?? ''} onChange={e => updateHeight(e.target.value)}
+            placeholder="—"
+          />
+          <span className="text-xs text-muted-foreground">Used to show BMI. Stored on this device only.</span>
+        </div>
+
         {latest && (
           <p className="text-sm text-muted-foreground">
             Latest: <span className="font-medium text-foreground">{latest.weight} kg</span> on {format(parseISO(latest.date), 'MMM d, yyyy')}
@@ -90,6 +129,13 @@ export function BodyWeightCard() {
               <span className={change > 0 ? 'text-destructive' : 'text-accent'}>
                 {' '}({change > 0 ? '+' : ''}{change.toFixed(1)} kg since last entry)
               </span>
+            )}
+            {latestBmi !== null && (
+              <>
+                {' · '}BMI <span className={`font-medium ${BMI_CATEGORY_CLASS[bmiCategory(latestBmi)]}`}>
+                  {latestBmi} ({BMI_CATEGORY_LABEL[bmiCategory(latestBmi)]})
+                </span>
+              </>
             )}
           </p>
         )}
@@ -100,12 +146,18 @@ export function BodyWeightCard() {
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="date" className="text-xs" />
-                <YAxis className="text-xs" unit="kg" domain={['auto', 'auto']} />
+                <YAxis yAxisId="weight" className="text-xs" unit="kg" domain={['auto', 'auto']} />
+                {latestBmi !== null && (
+                  <YAxis yAxisId="bmi" orientation="right" className="text-xs" width={30} domain={['auto', 'auto']} />
+                )}
                 <Tooltip
                   contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                  formatter={(value: number) => [`${value} kg`, 'Weight']}
+                  formatter={(value: number, name) => name === 'BMI' ? [value, 'BMI'] : [`${value} kg`, 'Weight']}
                 />
-                <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} />
+                <Line yAxisId="weight" type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} name="Weight" />
+                {latestBmi !== null && (
+                  <Line yAxisId="bmi" type="monotone" dataKey="bmi" stroke="hsl(var(--accent))" strokeWidth={2} dot={false} name="BMI" connectNulls />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -115,14 +167,20 @@ export function BodyWeightCard() {
 
         {bodyMetrics.length > 0 && (
           <ul className="space-y-1 max-h-40 overflow-y-auto">
-            {[...bodyMetrics].reverse().map(metric => (
-              <li key={metric.id} className="flex items-center justify-between text-sm rounded-md border px-3 py-1.5">
-                <span>{format(parseISO(metric.date), 'MMM d, yyyy')} — {metric.weight} kg{metric.notes ? ` · ${metric.notes}` : ''}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(metric.id)} aria-label="Delete entry">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </li>
-            ))}
+            {[...bodyMetrics].reverse().map(metric => {
+              const bmi = describeBmi(metric.weight, heightCm);
+              return (
+                <li key={metric.id} className="flex items-center justify-between text-sm rounded-md border px-3 py-1.5">
+                  <span>
+                    {format(parseISO(metric.date), 'MMM d, yyyy')} — {metric.weight} kg
+                    {bmi ? ` · BMI ${bmi}` : ''}{metric.notes ? ` · ${metric.notes}` : ''}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDelete(metric.id)} aria-label="Delete entry">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

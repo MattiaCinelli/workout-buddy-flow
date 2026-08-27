@@ -30,10 +30,10 @@ describe('buildWorkoutSteps', () => {
     expect(steps[1]).toMatchObject({ type: 'exercise', reps: 10, duration: 20, secondsPerRep: 2 });
   });
 
-  it('falls back to the default 3 seconds per rep when the exercise has none set', () => {
+  it('falls back to the default 5 seconds per rep when the exercise has none set', () => {
     const workout: WorkoutEntry = { ...baseWorkout, sets: [{ exerciseId: 'unknown-exercise', reps: 4 }] };
     const steps = buildWorkoutSteps(workout, []);
-    expect(steps[1]).toMatchObject({ duration: 12, secondsPerRep: 3 });
+    expect(steps[1]).toMatchObject({ duration: 20, secondsPerRep: 5 });
   });
 
   it('leaves a time-based set duration untouched and does not stamp secondsPerRep', () => {

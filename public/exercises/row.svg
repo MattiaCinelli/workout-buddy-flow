@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Bent-over row illustration">
+  <line x1="20" y1="182" x2="220" y2="182" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="72" cy="60" r="14" fill="#475569" stroke="none"/>
+    <path d="M84 66 L150 92"/>
+    <path d="M150 92 L150 150 L150 180"/>
+    <path d="M150 92 L176 130 L176 180"/>
+    <path d="M110 80 L112 118"/>
+  </g>
+  <line x1="100" y1="118" x2="124" y2="118" stroke="#2563eb" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="112" cy="118" r="12" fill="#2563eb"/>
+</svg>

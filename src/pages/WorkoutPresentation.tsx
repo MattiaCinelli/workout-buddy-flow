@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { ArrowLeft, ArrowLeftRight, ArrowRight, ChevronLeft, Info, Minus, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowRight, ChevronLeft, Info, Minus, Music, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { PlateCalculator } from '@/components/PlateCalculator';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -16,13 +17,27 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 import { buildWorkoutSteps, remainingSeconds } from '@/lib/workoutRuntime';
-import { detectNewPersonalRecords, PRKind } from '@/lib/personalRecords';
+import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
+import { describeSetResult, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
+import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
+
+// The single headline number for a "PR" badge — whichever dimension this
+// exercise is actually measured in.
+const bestRecordLabel = (record?: PersonalRecord): string | null => {
+  if (!record) return null;
+  if (record.maxWeight) return `${record.maxWeight.value} kg`;
+  if (record.maxDuration) return formatLoggedDuration(record.maxDuration.value);
+  if (record.maxDistance) return formatLoggedDistance(record.maxDistance.value);
+  if (record.maxReps) return `${record.maxReps.value} reps`;
+  return null;
+};
 
 type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; timeLeft: number;
   deadline: number | null; paused: boolean };
@@ -69,8 +84,25 @@ const WorkoutPresentation = () => {
   const [rpe, setRpe] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(() => getAccessibilitySettings().voiceCues);
+  const [musicEnabled, setMusicEnabled] = useState(() => getAccessibilitySettings().backgroundMusic);
   const lastSpokenRepRef = useRef<number | null>(null);
   const lastSpokenCountdownRef = useRef<number | null>(null);
+
+  // "Last time" reference and personal best for the exercise on screen —
+  // shown so the target is visible before the set starts, and pre-computed
+  // for the upcoming exercise too so it can appear on the rest screen while
+  // there's time to set up.
+  const personalRecords = useMemo(() => computePersonalRecords(sessions), [sessions]);
+  const currentExerciseId = steps[activeStep]?.type === 'exercise' ? steps[activeStep]?.exerciseId : undefined;
+  const upcomingExerciseId = steps[activeStep + 1]?.type === 'exercise' ? steps[activeStep + 1]?.exerciseId : undefined;
+  const currentExerciseLast = useMemo(
+    () => currentExerciseId ? lastExerciseSession(currentExerciseId, sessions) : null,
+    [currentExerciseId, sessions],
+  );
+  const upcomingExerciseLast = useMemo(
+    () => upcomingExerciseId ? lastExerciseSession(upcomingExerciseId, sessions) : null,
+    [upcomingExerciseId, sessions],
+  );
 
   // A step transition is announced by voice AND felt as a vibration, so
   // the workout stays followable even when speech synthesis is unreliable
@@ -114,6 +146,18 @@ const WorkoutPresentation = () => {
       return next;
     });
   };
+
+  const toggleMusic = () => {
+    setMusicEnabled(prev => {
+      const next = !prev;
+      setAccessibilitySettings({ ...getAccessibilitySettings(), backgroundMusic: next });
+      return next;
+    });
+  };
+
+  // Backing track (the user's own file, or the generated ambient bed) plays
+  // for the whole session, pausing only for the completion dialog.
+  useWorkoutMusic(musicEnabled, restored && !completionOpen);
 
   const requestWakeLock = useCallback(async () => {
     try {
@@ -406,6 +450,7 @@ const WorkoutPresentation = () => {
     : 0;
   const upcomingExercise = upcoming?.exerciseId
     ? exercises.find(item => item.id === upcoming.exerciseId) : undefined;
+  const currentBestLabel = bestRecordLabel(currentExerciseId ? personalRecords.get(currentExerciseId) : undefined);
   const resultsValid = actualSets.every(result =>
     (result.reps === undefined || (result.reps >= 0 && result.reps <= 1000)) &&
     (result.weight === undefined || (result.weight >= 0 && result.weight <= 1000)) &&
@@ -419,6 +464,9 @@ const WorkoutPresentation = () => {
       <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-white" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-6 w-6" /></Button>
       <h1 className="text-lg sm:text-xl font-bold truncate">{workout.title}</h1>
       <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className={`h-11 w-11 text-white ${musicEnabled ? '' : 'opacity-40'}`} onClick={toggleMusic} aria-label={musicEnabled ? 'Turn off background music' : 'Turn on background music'} aria-pressed={musicEnabled}>
+          <Music className="h-5 w-5" />
+        </Button>
         <Button variant="ghost" size="icon" className="h-11 w-11 text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
           {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </Button>
@@ -469,11 +517,38 @@ const WorkoutPresentation = () => {
           ) : current.reps ? (
             <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : null}
+          {current.weight ? (
+            <div className="mb-2 flex justify-center">
+              <PlateCalculator initialWeight={current.weight}
+                triggerClassName="border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white" />
+            </div>
+          ) : null}
           {current.duration && <>
             <p className="my-4 text-5xl font-bold flex items-center justify-center gap-2" role="timer" aria-label={`${timeLeft} seconds remaining`}><Timer className="h-8 w-8" aria-hidden="true" />{formatTime(timeLeft)}</p>
             <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
           </>}
         </div>
+        {(currentExerciseLast || currentBestLabel) && (
+          <div className="mx-auto w-full max-w-xs rounded-xl border border-white/15 bg-white/5 p-3 text-left text-sm landscape:hidden">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                {currentExerciseLast
+                  ? `Last time · ${formatDistanceToNow(parseISO(currentExerciseLast.date), { addSuffix: true })}`
+                  : 'Your best'}
+              </span>
+              {currentBestLabel && (
+                <span className="shrink-0 rounded-full bg-workout-green/20 px-2 py-0.5 text-xs font-semibold text-workout-green">
+                  PR {currentBestLabel}
+                </span>
+              )}
+            </div>
+            {currentExerciseLast && (
+              <p className="text-gray-200">
+                {currentExerciseLast.sets.map(set => describeSetResult(set)).join('   ·   ')}
+              </p>
+            )}
+          </div>
+        )}
       </> : <>
         <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
           {current.kind === 'switch' ? <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /> : <Timer className="h-4 w-4" aria-hidden="true" />}
@@ -501,6 +576,11 @@ const WorkoutPresentation = () => {
               <p className="mt-1 text-sm text-gray-400">
                 {upcoming.reps ? `${upcoming.reps} reps` : formatTime(upcoming.duration || 0)}
                 {upcoming.weight ? ` · ${upcoming.weight} kg` : ''}
+              </p>
+            )}
+            {upcomingExerciseLast && (
+              <p className="mt-2 text-xs text-gray-500">
+                Last: {upcomingExerciseLast.sets.map(set => describeSetResult(set)).join(' · ')}
               </p>
             )}
           </div>

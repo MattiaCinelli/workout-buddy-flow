@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Downward dog illustration">
+  <line x1="20" y1="178" x2="220" y2="178" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 172 L120 60 L180 172"/>
+    <circle cx="102" cy="96" r="12" fill="#475569" stroke="none"/>
+  </g>
+</svg>

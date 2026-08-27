@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Forearm plank illustration">
+  <line x1="20" y1="170" x2="220" y2="170" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="50" cy="96" r="13" fill="#475569" stroke="none"/>
+    <path d="M62 100 L190 128"/>
+    <path d="M190 128 L210 166"/>
+    <path d="M70 104 L64 164 L96 164 L74 108"/>
+  </g>
+</svg>

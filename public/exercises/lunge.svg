@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Lunge illustration">
+  <line x1="20" y1="182" x2="220" y2="182" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="120" cy="48" r="14" fill="#475569" stroke="none"/>
+    <path d="M120 62 L120 112"/>
+    <path d="M120 112 L92 138 L92 178"/>
+    <path d="M120 112 L152 140 L172 178"/>
+    <path d="M120 80 L104 116 M120 80 L138 116"/>
+  </g>
+  <line x1="100" y1="120" x2="100" y2="116" stroke="#2563eb" stroke-width="0"/>
+  <circle cx="104" cy="120" r="10" fill="#2563eb"/>
+  <circle cx="138" cy="120" r="10" fill="#2563eb"/>
+</svg>

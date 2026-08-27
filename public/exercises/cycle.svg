@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Cycling illustration">
+  <circle cx="64" cy="150" r="30" fill="none" stroke="#94a3b8" stroke-width="7" opacity="0.6"/>
+  <circle cx="182" cy="150" r="30" fill="none" stroke="#94a3b8" stroke-width="7" opacity="0.6"/>
+  <path d="M64 150 L120 150 L150 104 L182 150 M120 150 L150 104" fill="none" stroke="#2563eb" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="123" cy="150" r="7" fill="#2563eb"/>
+  <g fill="none" stroke="#475569" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="150" cy="52" r="14" fill="#475569" stroke="none"/>
+    <path d="M148 66 L150 104"/>
+    <path d="M150 104 L124 138 M150 104 L172 132"/>
+    <path d="M150 80 L118 96"/>
+  </g>
+</svg>
