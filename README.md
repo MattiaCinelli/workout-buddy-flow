@@ -8,6 +8,17 @@ depending on any third-party cloud.
 
 Runs in the browser and packages into an installable Android app with Capacitor.
 
+## Install on Android
+
+Download the APK from the [latest GitHub Release](https://github.com/MattiaCinelli/workout-buddy-flow/releases/latest),
+open it on your Android phone, and approve **Install unknown apps** if Android asks.
+The APK is the installer; no server or account is required.
+
+Android may show a warning because the app is downloaded outside Google Play. Only
+install APKs published by this repository. Future releases install as updates and
+retain local app data, provided they use the same signing key. Making a JSON backup
+from Progress settings before an update is still recommended.
+
 ## Features
 
 - **Exercise library** — create, edit and delete exercises with category, muscle

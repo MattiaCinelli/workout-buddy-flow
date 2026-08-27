@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
 import { useData } from '@/contexts/DataContext';
@@ -35,6 +36,7 @@ const formSchema = z.object({
   muscleGroups: z.array(z.string()).default([]),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   logType: z.enum(['reps', 'time']),
+  unilateral: z.boolean().default(false),
   defaultSets: optionalNumber('Sets', 1, 100),
   defaultReps: optionalNumber('Reps', 0, 1000),
   defaultDuration: optionalNumber('Duration', 0, 86400),
@@ -75,6 +77,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       muscleGroups: exercise?.muscleGroups || [],
       difficulty: exercise?.difficulty || 'beginner',
       logType: exercise ? getLogType(exercise) : 'reps',
+      unilateral: exercise?.unilateral ?? false,
       defaultSets: exercise?.defaultSets?.toString() ?? '3',
       defaultReps: exercise?.defaultReps?.toString() ?? '',
       defaultDuration: exercise?.defaultDuration?.toString() ?? '',
@@ -93,6 +96,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       muscleGroups: values.muscleGroups,
       difficulty: values.difficulty,
       logType: values.logType,
+      unilateral: values.unilateral || undefined,
       defaultSets: toNumber(values.defaultSets),
       defaultReps: values.logType === 'reps' ? toNumber(values.defaultReps) : undefined,
       defaultDuration: values.logType === 'time' ? toNumber(values.defaultDuration) : undefined,
@@ -285,6 +289,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                   <ToggleGroupItem value="reps" className="px-4">Reps (e.g. push-ups)</ToggleGroupItem>
                   <ToggleGroupItem value="time" className="px-4">Time (e.g. a plank hold)</ToggleGroupItem>
                 </ToggleGroup>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="unilateral"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div className="space-y-0.5">
+                <FormLabel>One limb at a time</FormLabel>
+                <p className="text-xs text-muted-foreground">
+                  Splits every set into a left side, then a right side, with a short switch pause between.
+                </p>
+              </div>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
               </FormControl>
             </FormItem>
           )}

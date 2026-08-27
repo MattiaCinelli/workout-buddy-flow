@@ -1,4 +1,4 @@
-package com.example.app;
+package com.mattiacinelli.workoutbuddy;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { ChevronLeft, Minus, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowRight, ChevronLeft, Info, Minus, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -26,6 +27,19 @@ type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; 
 type WakeLockLike = { release: () => Promise<void>; released?: boolean };
 const runtimeKey = (id: string) => `workout-buddy-active:${id}`;
 const VOICE_PREF_KEY = 'workout-buddy-voice-enabled';
+
+// A left-to-right fill that mirrors the numeric countdown, so time
+// remaining is readable at a glance without parsing digits. Colours are
+// passed in (`tone`) because the same bar is reused on the dark exercise
+// screen and the rest screen with different accents.
+const CountdownBar = ({ percent, tone }: { percent: number; tone: string }) => (
+  <div className="mx-auto w-full max-w-xs h-2 overflow-hidden rounded-full bg-white/15"
+    role="progressbar" aria-label="Time elapsed"
+    aria-valuenow={Math.round(percent)} aria-valuemin={0} aria-valuemax={100}>
+    <div className={`h-full ${tone} transition-[width] duration-200 ease-linear`}
+      style={{ width: `${percent}%` }} />
+  </div>
+);
 
 const WorkoutPresentation = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -186,13 +200,14 @@ const WorkoutPresentation = () => {
     const step = steps[activeStep];
     if (step?.type === 'exercise') {
       const ex = exercises.find(item => item.id === step.exerciseId);
-      // Deliberately just "Begin", not the exercise name too — the name is
-      // already the on-screen heading, and every extra word here is time
-      // the engine spends "speaking" during which real rep-count
-      // announcements would otherwise get interrupted.
-      if (ex) speak('Begin');
+      // Deliberately just "Begin" (or which side, for a unilateral set) —
+      // not the exercise name too. The name is already the on-screen
+      // heading, and every extra word here is time the engine spends
+      // "speaking" during which real rep-count announcements would
+      // otherwise get interrupted.
+      if (ex) speak(step.side ? `${step.side} side` : 'Begin');
     } else if (step?.type === 'rest') {
-      speak(step.kind === 'prep' ? 'Get ready' : 'Start rest');
+      speak(step.kind === 'prep' ? 'Get ready' : step.kind === 'switch' ? 'Switch sides' : 'Start rest');
     }
   }, [activeStep, restored, steps, exercises, speak]);
 
@@ -366,14 +381,21 @@ const WorkoutPresentation = () => {
   const remainingWorkoutSeconds = timeLeft + steps.slice(activeStep + 1)
     .reduce((total, step) => total + (step.duration || 0), 0);
   const activeSetNumber = ((current?.sourceSetIndex ?? steps[activeStep - 1]?.sourceSetIndex) ?? 0) + 1;
+  const sideLabel = (side?: 'left' | 'right') => side === 'left' ? 'Left side' : side === 'right' ? 'Right side' : '';
   const upcomingLabel = upcoming?.type === 'rest'
-    ? `Rest · ${formatTime(upcoming.duration || 0)}`
+    ? (upcoming.kind === 'switch' ? 'Switch sides' : `Rest · ${formatTime(upcoming.duration || 0)}`)
     : upcoming?.exerciseId
-      ? exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'
+      ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.side ? ` · ${sideLabel(upcoming.side)}` : ''}`
       : 'Finish workout';
   const currentRepNumber = current?.secondsPerRep && current.reps && current.duration
     ? Math.min(current.reps, Math.floor((current.duration - timeLeft) / current.secondsPerRep) + 1)
     : undefined;
+  const activeStepDuration = current?.duration || 0;
+  const countdownPercent = activeStepDuration > 0
+    ? Math.min(100, Math.max(0, ((activeStepDuration - timeLeft) / activeStepDuration) * 100))
+    : 0;
+  const upcomingExercise = upcoming?.exerciseId
+    ? exercises.find(item => item.id === upcoming.exerciseId) : undefined;
   const resultsValid = actualSets.every(result =>
     (result.reps === undefined || (result.reps >= 0 && result.reps <= 1000)) &&
     (result.weight === undefined || (result.weight >= 0 && result.weight <= 1000)) &&
@@ -395,29 +417,58 @@ const WorkoutPresentation = () => {
     </header>
     <section className="px-4 space-y-2" aria-label="Workout progress">
       <div className="flex justify-between text-xs sm:text-sm text-gray-300">
-        <span>{current.kind === 'prep' ? 'Getting started' : `Set ${activeSetNumber} of ${workout.sets.length}`}</span>
+        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Switch sides' : `Set ${activeSetNumber} of ${workout.sets.length}`}</span>
         <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
       </div>
       <Progress value={((activeStep + 1) / steps.length) * 100} className="h-2" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
-      <p className="text-center text-sm text-gray-300">Next: {upcomingLabel}</p>
+      {current.type === 'exercise' && <p className="text-center text-sm text-gray-300">Next: {upcomingLabel}</p>}
     </section>
-    <main className="flex-1 flex flex-col items-center justify-center p-4 pb-28">
+    <main className="flex-1 flex flex-col items-center justify-center overflow-y-auto p-4 pb-28">
       {current.type === 'exercise' && exercise ? <>
         {exercise.imageUrl && <img src={exercise.imageUrl} alt={exercise.name} className="mb-6 w-full max-w-xs h-48 object-contain rounded-lg" />}
-        <div className="text-center mb-8"><h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}</h2><p className="text-xl text-gray-400">Exercise set {(current.setIndex || 0) + 1}</p>
-          {exercise.instructions && <p className="mt-3 max-w-md text-sm text-gray-300">{exercise.instructions}</p>}
+        <div className="text-center mb-8">
+          {current.side && (
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-workout-green/20 px-4 py-1.5 text-workout-green">
+              {current.side === 'left' ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+              <span className="text-sm font-bold uppercase tracking-wide">{sideLabel(current.side)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-center gap-2">
+            <h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}{current.side ? ` — ${sideLabel(current.side)}` : ''}</h2>
+            {exercise.instructions && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+                    aria-label={`How to perform ${exercise.name}`}>
+                    <Info className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="center" className="text-left text-sm">
+                  <p className="mb-1 font-semibold">{exercise.name}</p>
+                  <p className="text-muted-foreground">{exercise.instructions}</p>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+          <p className="text-xl text-gray-400">Exercise set {(current.setIndex || 0) + 1}</p>
           {currentRepNumber !== undefined ? (
             <p className="my-4 text-4xl font-bold">Rep {currentRepNumber} of {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : current.reps ? (
             <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : null}
-          {current.duration && <p className="my-4 text-5xl font-bold flex items-center gap-2" role="timer" aria-label={`${timeLeft} seconds remaining`}><Timer className="h-8 w-8" aria-hidden="true" />{formatTime(timeLeft)}</p>}
+          {current.duration && <>
+            <p className="my-4 text-5xl font-bold flex items-center justify-center gap-2" role="timer" aria-label={`${timeLeft} seconds remaining`}><Timer className="h-8 w-8" aria-hidden="true" />{formatTime(timeLeft)}</p>
+            <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
+          </>}
         </div>
       </> : <>
-        <h2 className="text-3xl font-bold mb-2" aria-live="polite">{current.kind === 'prep' ? 'Get Ready' : 'Rest'}</h2>
-        {current.kind === 'prep' && <p className="text-gray-400 mb-4">Get into position — your workout starts in a moment.</p>}
-        <div className="text-7xl font-bold mb-8" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
-        <div className="flex gap-3">
+        <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
+          {current.kind === 'switch' ? <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /> : <Timer className="h-4 w-4" aria-hidden="true" />}
+          <span className="text-sm font-semibold uppercase tracking-wide">{current.kind === 'prep' ? 'Get ready' : current.kind === 'switch' ? 'Switch sides' : 'Rest'}</span>
+        </div>
+        <div className="text-7xl font-bold" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : current.kind === 'switch' ? 'until the other side' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
+        <div className="mt-4 w-full"><CountdownBar percent={countdownPercent} tone="bg-workout-purple" /></div>
+        <div className="mt-6 flex gap-3">
           <Button variant="outline" className="border-white/40 bg-transparent text-white" onClick={() => adjustRestTime(-15)} aria-label="Subtract 15 seconds">
             <Minus className="mr-1 h-4 w-4" />15s
           </Button>
@@ -425,12 +476,28 @@ const WorkoutPresentation = () => {
             <Plus className="mr-1 h-4 w-4" />15s
           </Button>
         </div>
+        {upcoming && (
+          <div className="mt-8 w-full max-w-xs rounded-2xl border border-white/15 bg-white/5 p-4 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-workout-green">Next up</p>
+            {upcomingExercise?.imageUrl && (
+              <img src={upcomingExercise.imageUrl} alt={upcomingExercise.name}
+                className="mx-auto mb-3 h-36 w-full rounded-lg object-contain" />
+            )}
+            <p className="text-2xl font-bold">{upcomingLabel}</p>
+            {upcoming.type === 'exercise' && (upcoming.reps || upcoming.duration) && (
+              <p className="mt-1 text-sm text-gray-400">
+                {upcoming.reps ? `${upcoming.reps} reps` : formatTime(upcoming.duration || 0)}
+                {upcoming.weight ? ` · ${upcoming.weight} kg` : ''}
+              </p>
+            )}
+          </div>
+        )}
       </>}
     </main>
     <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-2 border-t border-white/15 bg-gray-900/95 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur" aria-label="Workout controls">
       <Button size="lg" variant="outline" className="h-14 border-white/40 bg-transparent text-white" onClick={previousStep} disabled={activeStep === 0}><ChevronLeft className="mr-1 h-5 w-5" />Previous</Button>
       <Button size="lg" className="h-14 bg-workout-purple text-white" onClick={togglePause}>{paused ? <Play className="mr-1 h-5 w-5" /> : <Pause className="mr-1 h-5 w-5" />}{paused ? 'Resume' : 'Pause'}</Button>
-      <Button size="lg" className="h-14 bg-workout-green text-white hover:bg-green-600" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
+      <Button size="lg" className="h-14 bg-workout-green text-white hover:bg-green-600" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
     </nav>
     <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle>Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
       <div className="space-y-3">{actualSets.map((result, index) => { const planned = workout.sets[index]; const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise'; return <div key={index} className="border rounded-md p-3"><div className="flex items-center gap-2 mb-2"><Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} /><Label htmlFor={`completed-${index}`} className="font-medium flex-1">{name} · Set {result.setIndex + 1}</Label><span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span></div><div className="grid grid-cols-2 md:grid-cols-4 gap-2">{planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>Reps</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}{planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}{planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}{planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}</div></div>; })}</div>

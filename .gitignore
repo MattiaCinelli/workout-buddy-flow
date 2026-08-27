@@ -14,6 +14,10 @@ test-results
 playwright-report
 *.local
 
+# Android release signing keys must never be committed.
+*.jks
+*.keystore
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

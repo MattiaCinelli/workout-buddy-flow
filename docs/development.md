@@ -138,6 +138,43 @@ contents into the native project.
 IndexedDB works inside the Capacitor WebView, so the entire database ships with the
 app and persists across restarts and updates — no server required.
 
+### Publishing an installable APK on GitHub
+
+The `Android release` GitHub Actions workflow builds and publishes a signed APK when
+a semantic-version tag such as `v0.2.0` is pushed. Signing requires a one-time setup.
+
+Generate the signing key somewhere outside this repository and keep it permanently:
+
+```sh
+keytool -genkeypair -v \
+  -keystore workout-buddy-release.jks \
+  -alias workout-buddy \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Never commit the `.jks` file or its passwords. Back it up securely: losing it means
+new releases cannot update existing installations. In the GitHub repository, open
+**Settings → Secrets and variables → Actions** and create these repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Output of `base64 < workout-buddy-release.jks | tr -d '\n'` |
+| `ANDROID_KEYSTORE_PASSWORD` | Password chosen for the keystore |
+| `ANDROID_KEY_ALIAS` | `workout-buddy` (or the alias chosen above) |
+| `ANDROID_KEY_PASSWORD` | Password chosen for the key |
+
+Then publish a release:
+
+```sh
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+When the workflow finishes, GitHub creates a Release containing
+`workout-buddy-v0.2.0.apk`. Users can download it from the repository Releases page.
+Use a new, increasing semantic version for every release. The workflow uses GitHub's
+monotonically increasing run number as Android's internal version code.
+
 ### Android troubleshooting
 
 **`Unable to locate a Java Runtime`**

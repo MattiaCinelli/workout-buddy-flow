@@ -12,16 +12,24 @@ export const PREP_DURATION_SECONDS = 10;
 export const DEFAULT_REST_BETWEEN_SETS = 5;
 export const DEFAULT_REST_BETWEEN_EXERCISES = 15;
 
+// The brief pause inserted between the left and right side of a unilateral
+// set — just long enough to reset position and switch limbs.
+export const SWITCH_SIDES_DURATION_SECONDS = 5;
+
 export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sourceSetIndex?: number;
   setIndex?: number; duration?: number; reps?: number; weight?: number; distance?: number;
   // Set only for reps-based exercise steps — lets the presentation layer
   // announce which rep it's on as the (synthesized) countdown ticks past
   // each secondsPerRep-sized interval.
   secondsPerRep?: number;
-  // Distinguishes the leading "get in position" pause from an ordinary
-  // between-sets rest — same countdown mechanics, different announcement
-  // and heading text in the presentation layer.
-  kind?: 'prep' | 'rest' };
+  // Set on the two exercise steps a unilateral set expands into, so the
+  // presentation layer can make clear which limb to work now.
+  side?: 'left' | 'right';
+  // 'prep' is the leading "get in position" pause; 'switch' is the short
+  // changeover between the two sides of a unilateral set; 'rest' is an
+  // ordinary between-sets rest. Same countdown mechanics, different heading
+  // and announcement in the presentation layer.
+  kind?: 'prep' | 'rest' | 'switch' };
 
 // A rep-based set has no natural duration of its own — it's built here so
 // reps and timed exercises can share one countdown mechanism ("follow
@@ -35,8 +43,18 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
     const exercise = exercises.find(item => item.id === set.exerciseId);
     const secondsPerRep = isReps ? getSecondsPerRep(exercise ?? {}) : undefined;
     const duration = isReps ? (secondsPerRep! * set.reps!) : set.duration;
-    steps.push({ type: 'exercise', exerciseId: set.exerciseId, sourceSetIndex, setIndex,
-      reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep });
+    const exerciseStep: WorkoutStep = { type: 'exercise', exerciseId: set.exerciseId, sourceSetIndex,
+      setIndex, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep };
+    if (exercise?.unilateral) {
+      // One authored set becomes: left side → switch pause → right side.
+      // Both sides keep the same sourceSetIndex/setIndex so progress
+      // counting and results logging still map back to the one authored set.
+      steps.push({ ...exerciseStep, side: 'left' });
+      steps.push({ type: 'rest', kind: 'switch', duration: SWITCH_SIDES_DURATION_SECONDS });
+      steps.push({ ...exerciseStep, side: 'right' });
+    } else {
+      steps.push(exerciseStep);
+    }
     const next = workout.sets[sourceSetIndex + 1];
     if (next) steps.push({ type: 'rest', kind: 'rest', duration: set.restAfter ??
       (next.exerciseId === set.exerciseId

@@ -61,6 +61,9 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
             {exercise.name}
             <Badge className={getCategoryColor(exercise.category)}>{exercise.category}</Badge>
             <Badge variant="outline" className={getDifficultyColor(exercise.difficulty)}>{exercise.difficulty}</Badge>
+            {exercise.unilateral && (
+              <Badge variant="outline" className="border-workout-green/50 text-workout-green">One limb at a time</Badge>
+            )}
           </DialogTitle>
           <DialogDescription>{muscleGroupNames || 'No muscle groups tagged'}</DialogDescription>
         </DialogHeader>

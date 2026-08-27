@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.example.app',
-  appName: 'workout-buddy',
+  appId: 'com.mattiacinelli.workoutbuddy',
+  appName: 'Workout Buddy',
   webDir: 'dist',
   // The app is served internally over a virtual https://localhost origin.
   // Without both of these, the WebView blocks fetches to a real http://

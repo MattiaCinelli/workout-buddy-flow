@@ -21,6 +21,12 @@ export interface Exercise {
   secondsPerRep?: number;
   defaultWeight?: number; // optional, e.g. a loaded exercise's usual working weight
   defaultDistance?: number; // optional, meters — e.g. a usual run/ride distance
+  // Performed one limb at a time — the workout runtime splits every set of
+  // this exercise into a Left side then a Right side (with a short "switch
+  // sides" pause between), and the presentation layer labels each clearly.
+  // Applies to reps- and time-based moves alike (single-arm row, single-leg
+  // plank, Bulgarian split squat…).
+  unilateral?: boolean;
   instructions?: string; // How to perform it — shown to the user browsing the library and during a workout
   imageUrl?: string; // URL to the local image
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
