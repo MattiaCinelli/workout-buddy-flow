@@ -9,8 +9,8 @@ export const PREP_DURATION_SECONDS = 10;
 // differently than the longer transition needed to get set up for a
 // DIFFERENT exercise — these are genuinely different kinds of rest, not
 // one setting doing double duty.
-export const DEFAULT_REST_BETWEEN_SETS = 5;
-export const DEFAULT_REST_BETWEEN_EXERCISES = 15;
+export const DEFAULT_REST_BETWEEN_SETS = 10;
+export const DEFAULT_REST_BETWEEN_EXERCISES = 30;
 
 // The brief pause inserted between the left and right side of a unilateral
 // set — just long enough to reset position and switch limbs.

@@ -16,7 +16,7 @@ import { Exercise, getLogType } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
-import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
+import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 
@@ -294,11 +294,9 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                   <SelectValue placeholder="Select workout type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="strength">Strength</SelectItem>
-                  <SelectItem value="cardio">Cardio</SelectItem>
-                  <SelectItem value="flexibility">Flexibility</SelectItem>
-                  <SelectItem value="balance">Balance</SelectItem>
-                  <SelectItem value="mixed">Mixed</SelectItem>
+                  {WORKOUT_CATEGORIES.map(value => (
+                    <SelectItem key={value} value={value}>{WORKOUT_CATEGORY_LABELS[value]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

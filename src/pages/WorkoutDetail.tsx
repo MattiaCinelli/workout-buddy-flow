@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
-import { WorkoutSet, WorkoutEntry } from '@/data/workoutHistory';
+import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
@@ -249,7 +249,7 @@ const WorkoutDetail = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6 max-w-3xl">
+      <main className="flex-1 container mx-auto pt-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] px-4 md:px-6 max-w-3xl">
         <div className="flex items-center gap-2 mb-6">
           <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={() => navigate('/workouts')}>
             <ArrowLeft className="h-4 w-4" />
@@ -300,11 +300,9 @@ const WorkoutDetail = () => {
                   <SelectValue placeholder="Select workout type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="strength">Strength</SelectItem>
-                  <SelectItem value="cardio">Cardio</SelectItem>
-                  <SelectItem value="flexibility">Flexibility</SelectItem>
-                  <SelectItem value="balance">Balance</SelectItem>
-                  <SelectItem value="mixed">Mixed</SelectItem>
+                  {WORKOUT_CATEGORIES.map(value => (
+                    <SelectItem key={value} value={value}>{WORKOUT_CATEGORY_LABELS[value]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -530,8 +528,12 @@ const WorkoutDetail = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 mt-6 pt-4 border-t items-start sm:items-center">
-            <div className="sm:mr-auto">
+          {/* On mobile the row stacks bottom-up (flex-col-reverse) so the
+              primary action — Save — sits at the top of the group, clear
+              of the phone's home/gesture bar, and the destructive Delete
+              ends up furthest from a stray thumb. */}
+          <div className="flex flex-col-reverse sm:flex-row gap-2 mt-6 pt-4 border-t items-stretch sm:items-center [&>button]:w-full sm:[&>button]:w-auto">
+            <div className="sm:mr-auto [&>button]:w-full sm:[&>button]:w-auto">
               <Button
                 variant="destructive" type="button" onClick={() => setShowDeleteConfirm(true)}
                 disabled={isSubmitting || isDeleting || workout.favorite}

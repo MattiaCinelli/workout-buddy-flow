@@ -6,6 +6,7 @@ import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import ImportShareButton from '@/components/ImportShareButton';
 import WorkoutCard from '@/components/WorkoutCard';
 import { useData } from '@/contexts/DataContext';
+import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import {
@@ -84,11 +85,9 @@ const WorkoutsPage = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="strength">Strength</SelectItem>
-              <SelectItem value="cardio">Cardio</SelectItem>
-              <SelectItem value="flexibility">Flexibility</SelectItem>
-              <SelectItem value="balance">Balance</SelectItem>
-              <SelectItem value="mixed">Mixed</SelectItem>
+              {WORKOUT_CATEGORIES.map(value => (
+                <SelectItem key={value} value={value}>{WORKOUT_CATEGORY_LABELS[value]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

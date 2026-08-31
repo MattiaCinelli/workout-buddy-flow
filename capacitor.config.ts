@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import type { CapacitorConfig } from '@capacitor/cli';
 
 // Allowing the Android WebView to talk to a sync server over plain HTTP
@@ -5,10 +6,14 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // sniffable / MITM-able on any shared network. So it is OFF by default:
 // point the app at an HTTPS sync server.
 //
-// A self-hoster who genuinely needs LAN-only HTTP (no TLS on their box) can
-// opt in at build time:
-//   WB_ALLOW_INSECURE_SYNC=1 npm run android:sync
-const allowInsecureSync = process.env.WB_ALLOW_INSECURE_SYNC === '1';
+// A self-hoster who genuinely needs LAN-only HTTP (no TLS on their box)
+// opts in, one of two ways:
+//   - per build:  WB_ALLOW_INSECURE_SYNC=1 npm run android:sync
+//   - permanently on this machine:  touch android/.allow-insecure-sync
+//     (git-ignored, so it never reaches CI — release builds stay
+//     HTTPS-only regardless).
+const allowInsecureSync =
+  process.env.WB_ALLOW_INSECURE_SYNC === '1' || existsSync('android/.allow-insecure-sync');
 
 const config: CapacitorConfig = {
   appId: 'com.mattiacinelli.workoutbuddy',

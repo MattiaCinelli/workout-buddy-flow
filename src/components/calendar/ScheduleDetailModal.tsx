@@ -70,6 +70,8 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
         return 'bg-workout-green/20 text-workout-green border-workout-green';
       case 'balance':
         return 'bg-purple-500/20 text-purple-600 border-purple-500';
+      case 'warm-up':
+        return 'bg-workout-orange/20 text-workout-orange border-workout-orange';
       default:
         return 'bg-muted text-muted-foreground border-muted-foreground/40';
     }

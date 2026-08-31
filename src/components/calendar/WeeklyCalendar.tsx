@@ -44,6 +44,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         return 'bg-workout-green/20 border-workout-green text-workout-green';
       case 'balance':
         return 'bg-purple-500/20 border-purple-500 text-purple-600';
+      case 'warm-up':
+        return 'bg-workout-orange/20 border-workout-orange text-workout-orange';
       default:
         return 'bg-muted border-muted-foreground/40 text-muted-foreground';
     }

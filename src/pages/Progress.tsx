@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Trash2 } from "lucide-react";
 import Navbar from '@/components/Navbar';
 import { useData } from '@/contexts/DataContext';
+import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -106,22 +107,18 @@ const ProgressPage = () => {
 
   // Category breakdown
   const categoryData = useMemo(() => {
-    const categories: Record<string, number> = {
-      strength: 0,
-      cardio: 0,
-      flexibility: 0,
-      balance: 0,
-      mixed: 0,
-    };
-    
+    const categories: Record<string, number> = Object.fromEntries(
+      WORKOUT_CATEGORIES.map(category => [category, 0]),
+    );
+
     filteredWorkouts.forEach(w => {
       categories[w.category]++;
     });
-    
+
     return Object.entries(categories)
       .filter(([_, count]) => count > 0)
       .map(([name, count]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
+        name: WORKOUT_CATEGORY_LABELS[name as keyof typeof WORKOUT_CATEGORY_LABELS] ?? name,
         count,
       }));
   }, [filteredWorkouts]);

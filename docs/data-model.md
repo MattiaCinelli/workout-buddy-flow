@@ -55,8 +55,9 @@ interface WorkoutEntry {
   date: string;         // ISO date
   title: string;
   duration: number;     // minutes
-  category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
+  category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed' | 'warm-up';
   sets: WorkoutSet[];
+  restBetweenSets?: number;      // seconds, default gap between sets of the same exercise
   restBetweenExercises?: number; // seconds, default gap between different exercises
   notes?: string;
 }

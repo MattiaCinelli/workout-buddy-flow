@@ -55,6 +55,8 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
         return 'bg-workout-green';
       case 'balance':
         return 'bg-purple-500';
+      case 'warm-up':
+        return 'bg-workout-orange';
       default:
         return 'bg-muted-foreground';
     }

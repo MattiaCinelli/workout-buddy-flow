@@ -41,6 +41,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, on
       case 'flexibility': return 'bg-workout-purple text-white';
       case 'balance': return 'bg-workout-yellow text-black';
       case 'mixed': return 'bg-workout-green text-white';
+      case 'warm-up': return 'bg-workout-orange text-white';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -53,10 +54,11 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, on
   return (
     <Card 
       className="workout-card overflow-hidden border-l-4 hover:shadow-lg cursor-pointer transition-all" 
-      style={{ borderLeftColor: workout.category === 'strength' ? '#3B82F6' : 
+      style={{ borderLeftColor: workout.category === 'strength' ? '#3B82F6' :
                                workout.category === 'cardio' ? '#EF4444' :
                                workout.category === 'flexibility' ? '#8B5CF6' :
-                               workout.category === 'balance' ? '#F59E0B' : '#10B981' }}
+                               workout.category === 'balance' ? '#F59E0B' :
+                               workout.category === 'warm-up' ? '#F97316' : '#10B981' }}
       onClick={handleCardClick}
       role="link"
       tabIndex={0}

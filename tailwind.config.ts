@@ -70,6 +70,7 @@ export default {
 					red: '#EF4444',
 					yellow: '#F59E0B',
 					purple: '#8B5CF6',
+					orange: '#F97316',
 				},
 			},
 			borderRadius: {

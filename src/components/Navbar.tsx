@@ -104,12 +104,25 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-card shadow-sm py-4 px-6 border-b">
       <div className="container mx-auto flex justify-between items-center">
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => navigate('/')}
-        >
-          <Dumbbell className="h-6 w-6 text-primary" />
-          <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WorkoutBuddy</span>
+        <div className="flex items-center gap-1">
+          {/* Menu sits before the logo, mobile only — thumb-reachable on
+              the left edge, next to the left-edge open-swipe zone. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          <div
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => navigate('/')}
+          >
+            <Dumbbell className="h-6 w-6 text-primary" />
+            <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WorkoutBuddy</span>
+          </div>
         </div>
 
         {/* Desktop navigation */}
@@ -131,13 +144,10 @@ const Navbar: React.FC = () => {
           <ThemeToggle />
         </div>
 
-        {/* Mobile top bar */}
+        {/* Mobile top bar — menu lives on the left, next to the logo */}
         <div className="md:hidden flex items-center gap-1">
           <AccountButton />
           <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)} aria-label="Open menu">
-            <Menu className="h-6 w-6" />
-          </Button>
         </div>
       </div>
 

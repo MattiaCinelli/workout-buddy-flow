@@ -246,7 +246,7 @@ const WorkoutPresentation = () => {
 
   // Announces whenever a new step starts (including the very first, once
   // initial restore/setup has picked the right starting step) — "Get
-  // ready" for the leading prep pause, "Start rest" for an ordinary rest,
+  // ready" for the leading prep pause, "Rest" for an ordinary rest,
   // "Begin" for an exercise. This is the only place any of these fire, so
   // there's exactly one announcement per step, never a duplicate.
   useEffect(() => {
@@ -254,14 +254,15 @@ const WorkoutPresentation = () => {
     const step = steps[activeStep];
     if (step?.type === 'exercise') {
       const ex = exercises.find(item => item.id === step.exerciseId);
-      // Deliberately just "Begin" (or which side, for a unilateral set) —
-      // not the exercise name too. The name is already the on-screen
-      // heading, and every extra word here is time the engine spends
-      // "speaking" during which real rep-count announcements would
-      // otherwise get interrupted.
-      if (ex) speak(step.side ? `${step.side} side` : 'Begin');
+      // Deliberately terse — not the exercise name too. The name is
+      // already the on-screen heading, and every extra word here is time
+      // the engine spends "speaking" during which real rep-count
+      // announcements would otherwise get interrupted. For a unilateral
+      // set the side is called out as part of the start cue so it's
+      // unambiguous which limb to work first.
+      if (ex) speak(step.side ? `Begin ${step.side} side` : 'Begin');
     } else if (step?.type === 'rest') {
-      speak(step.kind === 'prep' ? 'Get ready' : step.kind === 'switch' ? 'Switch sides' : 'Start rest');
+      speak(step.kind === 'prep' ? 'Get ready' : step.kind === 'switch' ? 'Switch sides' : 'Rest');
     }
   }, [activeStep, restored, steps, exercises, speak]);
 

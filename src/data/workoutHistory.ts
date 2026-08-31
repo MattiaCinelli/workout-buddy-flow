@@ -14,12 +14,28 @@ export interface WorkoutSet {
   amrap?: boolean;
 }
 
+// The kinds a whole workout can be tagged as (distinct from an exercise's
+// category). 'warm-up' exists so a light preparatory session can be
+// dropped into a course ahead of the main workout. Single source of truth
+// for every category <Select>, the History/Progress filters and the card
+// colours — add here, not in each screen.
+export const WORKOUT_CATEGORIES = ['strength', 'cardio', 'flexibility', 'balance', 'mixed', 'warm-up'] as const;
+export type WorkoutCategory = (typeof WORKOUT_CATEGORIES)[number];
+export const WORKOUT_CATEGORY_LABELS: Record<WorkoutCategory, string> = {
+  strength: 'Strength',
+  cardio: 'Cardio',
+  flexibility: 'Flexibility',
+  balance: 'Balance',
+  mixed: 'Mixed',
+  'warm-up': 'Warm-up',
+};
+
 export interface WorkoutEntry {
   id: string;
   date: string;
   title: string;
   duration: number; // in minutes
-  category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
+  category: WorkoutCategory;
   description?: string; // what this workout is / who it's for — shown in the workout list
   favorite?: boolean; // protects against accidental deletion — see checkWorkoutDeletion
   sets: WorkoutSet[];
@@ -48,8 +64,8 @@ export const workoutHistory: WorkoutEntry[] = [
     category: 'strength',
     description: 'A balanced beginner strength session hitting every major muscle group with dumbbells. Three sets of each, run it twice a week.',
     duration: 40,
-    restBetweenSets: 60,
-    restBetweenExercises: 120,
+    restBetweenSets: 10,
+    restBetweenExercises: 30,
     sets: [
       strengthSet('13', 10, 12), strengthSet('13', 10, 12), strengthSet('13', 10, 12),
       strengthSet('14', 10, 10), strengthSet('14', 10, 10), strengthSet('14', 10, 10),
@@ -67,8 +83,8 @@ export const workoutHistory: WorkoutEntry[] = [
     category: 'flexibility',
     description: 'A head-to-toe static stretch routine. Ease into each hold, breathe, and never stretch into pain. Great on rest days or after a workout.',
     duration: 15,
-    restBetweenSets: 5,
-    restBetweenExercises: 10,
+    restBetweenSets: 10,
+    restBetweenExercises: 30,
     sets: [
       holdSet('32', 40),
       holdSet('31', 40),
@@ -91,8 +107,8 @@ export const workoutHistory: WorkoutEntry[] = [
     category: 'strength',
     description: 'A full-body strength circuit that needs nothing but the floor — good for travelling or days away from the gym.',
     duration: 25,
-    restBetweenSets: 45,
-    restBetweenExercises: 75,
+    restBetweenSets: 10,
+    restBetweenExercises: 30,
     sets: [
       strengthSet('22', 15), strengthSet('22', 15), strengthSet('22', 15),
       strengthSet('5', 10), strengthSet('5', 10), strengthSet('5', 10),

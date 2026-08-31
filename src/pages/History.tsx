@@ -28,11 +28,12 @@ import { useToast } from '@/hooks/use-toast';
 import { sessionsToCsv } from '@/lib/historyCsv';
 import { saveTextFile } from '@/lib/downloadFile';
 import { WorkoutSession } from '@/data/workoutSessions';
+import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS, WorkoutCategory } from '@/data/workoutHistory';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { SessionCorrectionDialog } from '@/components/SessionCorrectionDialog';
 
-type CategoryFilter = 'all' | 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed';
+type CategoryFilter = 'all' | WorkoutCategory;
 type SortOption = 'newest' | 'oldest' | 'duration-high' | 'duration-low';
 
 const HistoryPage: React.FC = () => {
@@ -139,11 +140,7 @@ const HistoryPage: React.FC = () => {
 
   const categories: { value: CategoryFilter; label: string }[] = [
     { value: 'all', label: 'All Categories' },
-    { value: 'strength', label: 'Strength' },
-    { value: 'cardio', label: 'Cardio' },
-    { value: 'flexibility', label: 'Flexibility' },
-    { value: 'balance', label: 'Balance' },
-    { value: 'mixed', label: 'Mixed' },
+    ...WORKOUT_CATEGORIES.map(value => ({ value, label: WORKOUT_CATEGORY_LABELS[value] })),
   ];
 
   return (
