@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildWorkoutSteps } from './workoutRuntime';
+import {
+  buildWorkoutSteps, isSelfPacedStep, remainingSeconds, stepClockSeconds, stepStartAnnouncement,
+  type WorkoutStep,
+} from './workoutRuntime';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { Exercise } from '@/data/exercises';
 
@@ -88,5 +91,54 @@ describe('buildWorkoutSteps', () => {
     };
     const steps = buildWorkoutSteps(workout, [repsExercise, timeExercise]);
     expect(steps[2]).toMatchObject({ type: 'rest', duration: 90 });
+  });
+});
+
+// --- presentation-layer step helpers -------------------------------------
+
+const step = (over: Partial<WorkoutStep>): WorkoutStep => ({ type: 'exercise', ...over });
+
+describe('isSelfPacedStep', () => {
+  it('is true only for a reps-based exercise (secondsPerRep set)', () => {
+    expect(isSelfPacedStep(step({ type: 'exercise', reps: 10, secondsPerRep: 3 }))).toBe(true);
+  });
+
+  it('is false for a timed exercise, a rest, and undefined', () => {
+    expect(isSelfPacedStep(step({ type: 'exercise', duration: 40 }))).toBe(false);
+    expect(isSelfPacedStep(step({ type: 'rest', kind: 'rest', duration: 30 }))).toBe(false);
+    expect(isSelfPacedStep(undefined)).toBe(false);
+  });
+});
+
+describe('stepClockSeconds', () => {
+  it('is 0 for a self-paced reps exercise — no countdown, no auto-advance', () => {
+    expect(stepClockSeconds(step({ type: 'exercise', reps: 10, secondsPerRep: 3, duration: 30 }))).toBe(0);
+  });
+
+  it('is the duration for a timed exercise and for a rest', () => {
+    expect(stepClockSeconds(step({ type: 'exercise', duration: 40 }))).toBe(40);
+    expect(stepClockSeconds(step({ type: 'rest', kind: 'prep', duration: 10 }))).toBe(10);
+  });
+});
+
+describe('stepStartAnnouncement', () => {
+  it('announces "Begin" for a bilateral exercise and the side for a unilateral one', () => {
+    expect(stepStartAnnouncement(step({ type: 'exercise' }))).toBe('Begin');
+    expect(stepStartAnnouncement(step({ type: 'exercise', side: 'left' }))).toBe('Begin left side');
+    expect(stepStartAnnouncement(step({ type: 'exercise', side: 'right' }))).toBe('Begin right side');
+  });
+
+  it('announces the right cue for each kind of rest', () => {
+    expect(stepStartAnnouncement(step({ type: 'rest', kind: 'prep' }))).toBe('Get ready');
+    expect(stepStartAnnouncement(step({ type: 'rest', kind: 'switch' }))).toBe('Switch sides');
+    expect(stepStartAnnouncement(step({ type: 'rest', kind: 'rest' }))).toBe('Rest');
+  });
+});
+
+describe('remainingSeconds', () => {
+  it('rounds up and never goes negative', () => {
+    expect(remainingSeconds(10_000, 4_100)).toBe(6);
+    expect(remainingSeconds(10_000, 10_000)).toBe(0);
+    expect(remainingSeconds(10_000, 12_000)).toBe(0);
   });
 });

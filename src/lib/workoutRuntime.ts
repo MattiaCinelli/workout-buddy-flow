@@ -70,3 +70,26 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
 
 export const remainingSeconds = (deadline: number, now = Date.now()) =>
   Math.max(0, Math.ceil((deadline - now) / 1000));
+
+// --- how the presentation layer should treat a given step ------------------
+
+// A reps-based exercise (secondsPerRep is set) is self-paced: no countdown
+// clock, no progress bar, no spoken cue past "Begin", and it never
+// auto-advances — the user does their reps and presses Next. Everything
+// else (rests, the prep/switch pauses, and genuinely *timed* exercises)
+// runs a real countdown and auto-advances when it hits zero.
+export const isSelfPacedStep = (step: WorkoutStep | undefined): boolean =>
+  step?.type === 'exercise' && !!step.secondsPerRep;
+
+// Seconds to run a countdown for when this step starts. 0 means "no clock"
+// — the step just sits until the user advances it.
+export const stepClockSeconds = (step: WorkoutStep | undefined): number =>
+  step && !isSelfPacedStep(step) ? (step.duration ?? 0) : 0;
+
+// The single phrase spoken (once) when the step becomes active.
+export const stepStartAnnouncement = (step: WorkoutStep | undefined): string => {
+  if (step?.type === 'exercise') return step.side ? `Begin ${step.side} side` : 'Begin';
+  if (step?.kind === 'prep') return 'Get ready';
+  if (step?.kind === 'switch') return 'Switch sides';
+  return 'Rest';
+};

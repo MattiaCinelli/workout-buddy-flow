@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { buildWorkoutSteps, remainingSeconds } from '@/lib/workoutRuntime';
+import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
 import { logDiagnostic } from '@/lib/diagnosticLog';
 import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
 import { describeSetResult, exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
@@ -88,7 +88,6 @@ const WorkoutPresentation = () => {
   const [voiceEnabled, setVoiceEnabled] = useState(() => getAccessibilitySettings().voiceCues);
   const [musicEnabled, setMusicEnabled] = useState(() => getAccessibilitySettings().backgroundMusic);
   const musicVolume = useRef(getAccessibilitySettings().musicVolume).current;
-  const lastSpokenRepRef = useRef<number | null>(null);
   const lastSpokenCountdownRef = useRef<number | null>(null);
 
   // "Last time" reference and personal best for the exercise on screen —
@@ -195,18 +194,18 @@ const WorkoutPresentation = () => {
       setPaused(saved.paused);
       const remaining = saved.deadline && !saved.paused
         ? remainingSeconds(saved.deadline) : saved.timeLeft;
-      // A reps-based set never auto-advances (see the tick effect below),
-      // so resuming one that had already elapsed shouldn't skip it either
-      // — leave the user on it to press Next themselves.
-      const savedStep = steps[saved.activeStep];
-      const savedIsRepsBased = savedStep?.type === 'exercise' && !!savedStep.secondsPerRep && !!savedStep.reps;
-      const restoredStep = remaining === 0 && saved.deadline && !savedIsRepsBased && saved.activeStep + 1 < steps.length
+      // A reps-based set is self-paced and never auto-advances, so resuming
+      // one that had "elapsed" shouldn't skip it — leave the user on it to
+      // press Next. An elapsed rest or timed exercise still rolls forward.
+      const savedIsSelfPaced = isSelfPacedStep(steps[saved.activeStep]);
+      const restoredStep = remaining === 0 && saved.deadline && !savedIsSelfPaced && saved.activeStep + 1 < steps.length
         ? saved.activeStep + 1 : saved.activeStep;
-      const restoredDuration = restoredStep === saved.activeStep ? remaining : (steps[restoredStep].duration || 0);
+      const restoredDuration = isSelfPacedStep(steps[restoredStep]) ? 0
+        : restoredStep === saved.activeStep ? remaining : (steps[restoredStep].duration || 0);
       setActiveStep(restoredStep);
       setTimeLeft(restoredDuration);
       setDeadline(saved.paused || restoredDuration <= 0 ? null : Date.now() + restoredDuration * 1000);
-      if (remaining === 0 && saved.deadline && !savedIsRepsBased && saved.activeStep + 1 >= steps.length) setCompletionOpen(true);
+      if (remaining === 0 && saved.deadline && !savedIsSelfPaced && saved.activeStep + 1 >= steps.length) setCompletionOpen(true);
       toast({ title: 'Workout resumed', description: 'Continuing from your last saved step.' });
     } else {
       const duration = steps[0].duration || 0;
@@ -233,14 +232,15 @@ const WorkoutPresentation = () => {
   }, [restored]);
 
   const startStep = useCallback((index: number) => {
-    const duration = steps[index]?.duration || 0;
+    // stepClockSeconds is 0 for a self-paced (reps-based) exercise — no
+    // deadline, no ticking, no auto-advance; the user presses Next.
+    const duration = stepClockSeconds(steps[index]);
     setActiveStep(index); setTimeLeft(duration); setPaused(false);
     setDeadline(duration ? Date.now() + duration * 1000 : null);
   }, [steps]);
 
   useEffect(() => {
     advancing.current = false;
-    lastSpokenRepRef.current = null;
     lastSpokenCountdownRef.current = null;
   }, [activeStep]);
 
@@ -252,18 +252,12 @@ const WorkoutPresentation = () => {
   useEffect(() => {
     if (!restored) return;
     const step = steps[activeStep];
-    if (step?.type === 'exercise') {
-      const ex = exercises.find(item => item.id === step.exerciseId);
-      // Deliberately terse — not the exercise name too. The name is
-      // already the on-screen heading, and every extra word here is time
-      // the engine spends "speaking" during which real rep-count
-      // announcements would otherwise get interrupted. For a unilateral
-      // set the side is called out as part of the start cue so it's
-      // unambiguous which limb to work first.
-      if (ex) speak(step.side ? `Begin ${step.side} side` : 'Begin');
-    } else if (step?.type === 'rest') {
-      speak(step.kind === 'prep' ? 'Get ready' : step.kind === 'switch' ? 'Switch sides' : 'Rest');
-    }
+    // Deliberately terse (see stepStartAnnouncement) — not the exercise
+    // name too; that's already the on-screen heading. An exercise step is
+    // only announced once its exercise has actually loaded.
+    if (!step) return;
+    if (step.type === 'exercise' && !exercises.some(item => item.id === step.exerciseId)) return;
+    speak(stepStartAnnouncement(step));
   }, [activeStep, restored, steps, exercises, speak]);
 
   // A distinct buzz per step type, independent of voice readiness — this
@@ -305,38 +299,19 @@ const WorkoutPresentation = () => {
       setTimeLeft(remaining);
 
       const step = steps[activeStep];
-      const isRepsBased = step?.type === 'exercise' && !!step.secondsPerRep && !!step.reps;
-      // remaining >= 1 excludes the terminal tick: at exactly 0 the step is
-      // already over, so there's nothing left to announce. Applies to any
-      // step with a real duration to count down — a timed exercise, a rest,
-      // or the leading prep pause — reps-based exercises are the only
-      // exception (handled separately below).
-      if (step?.duration && remaining >= 1) {
-        if (isRepsBased) {
-          // Reps are always counted up (1, 2, 3…) — never switched to a
-          // numeric countdown near the end. A countdown voice implies a
-          // fixed time to beat; reps don't have that, so it stays a count.
-          const elapsed = step.duration - remaining;
-          const repIndex = Math.min(step.reps! - 1, Math.floor(elapsed / step.secondsPerRep!));
-          if (lastSpokenRepRef.current !== repIndex) {
-            lastSpokenRepRef.current = repIndex;
-            speak(String(repIndex + 1));
-          }
-        } else if (remaining <= 5) {
-          // Genuine time-based exercise, rest, or the prep pause — count
-          // down the last 5 seconds.
-          if (lastSpokenCountdownRef.current !== remaining) {
-            lastSpokenCountdownRef.current = remaining;
-            speak(String(remaining));
-          }
+      // This effect only runs for steps that have a deadline — rests, the
+      // prep/switch pauses, and genuinely timed exercises. Reps-based
+      // exercises are self-paced and never get here (no deadline set).
+      // Count down the last 5 seconds by voice; `remaining >= 1` skips the
+      // terminal tick (at 0 the step is already over).
+      if (step?.duration && remaining >= 1 && remaining <= 5) {
+        if (lastSpokenCountdownRef.current !== remaining) {
+          lastSpokenCountdownRef.current = remaining;
+          speak(String(remaining));
         }
       }
 
-      // Reps-based sets don't auto-advance to rest: the countdown is pacing
-      // only, since "reps" isn't naturally a fixed time to beat, and the
-      // user should decide when they've actually finished the set. Rest
-      // steps and genuine time-based exercises still auto-advance.
-      if (remaining === 0 && !isRepsBased) nextStep();
+      if (remaining === 0) nextStep();
     };
     update();
     const timer = window.setInterval(update, 250);
@@ -439,7 +414,11 @@ const WorkoutPresentation = () => {
   const upcoming = steps[activeStep + 1];
   const exercise = current?.exerciseId ? exercises.find(item => item.id === current.exerciseId) : undefined;
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
-  const remainingWorkoutSeconds = timeLeft + steps.slice(activeStep + 1)
+  // Self-paced steps have no live clock (timeLeft stays 0), so fall back to
+  // their nominal duration for the "About X remaining" estimate. Rests and
+  // timed exercises count down for real.
+  const currentStepSeconds = isSelfPacedStep(current) ? (current?.duration || 0) : timeLeft;
+  const remainingWorkoutSeconds = currentStepSeconds + steps.slice(activeStep + 1)
     .reduce((total, step) => total + (step.duration || 0), 0);
   // Warm-ups don't count toward "Set N of M" — number the working sets.
   const workoutSets = workout?.sets ?? [];
@@ -454,9 +433,6 @@ const WorkoutPresentation = () => {
     : upcoming?.exerciseId
       ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.side ? ` · ${sideLabel(upcoming.side)}` : ''}`
       : 'Finish workout';
-  const currentRepNumber = current?.secondsPerRep && current.reps && current.duration
-    ? Math.min(current.reps, Math.floor((current.duration - timeLeft) / current.secondsPerRep) + 1)
-    : undefined;
   const activeStepDuration = current?.duration || 0;
   const countdownPercent = activeStepDuration > 0
     ? Math.min(100, Math.max(0, ((activeStepDuration - timeLeft) / activeStepDuration) * 100))
@@ -541,8 +517,6 @@ const WorkoutPresentation = () => {
           <p className="text-xl text-gray-400">Exercise set {(current.setIndex || 0) + 1}</p>
           {current.amrap && current.reps ? (
             <p className="my-4 text-4xl font-bold">As many reps as possible — beat {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
-          ) : currentRepNumber !== undefined ? (
-            <p className="my-4 text-4xl font-bold">Rep {currentRepNumber} of {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : current.reps ? (
             <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} kg` : ''}</p>
           ) : null}
@@ -552,7 +526,10 @@ const WorkoutPresentation = () => {
                 triggerClassName="border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white" />
             </div>
           ) : null}
-          {current.duration && <>
+          {/* Timed exercises get the full countdown + progress bar and
+              auto-advance. Reps-based exercises show only the rep target
+              above — no clock, no bar, self-paced (press Next when done). */}
+          {current.duration && !isSelfPacedStep(current) && <>
             <p className="my-4 text-5xl font-bold flex items-center justify-center gap-2" role="timer" aria-label={`${timeLeft} seconds remaining`}><Timer className="h-8 w-8" aria-hidden="true" />{formatTime(timeLeft)}</p>
             <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
           </>}
