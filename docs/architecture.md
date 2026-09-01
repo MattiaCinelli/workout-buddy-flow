@@ -103,10 +103,11 @@ while history, courses or calendar records reference it. This prevents dangling 
   session after the final step; history, streaks, goals and progress charts consume
   this collection. `clearAllSessions` clears history without deleting templates.
 - **`useScheduledWorkouts`** — stores *rules*, not occurrences. A record has a
-  `startDate`, `recurrence` (`none` / `daily` / `weekly`), optional `recurrenceDay` and
-  optional `endRecurrenceDate`. `getScheduledWorkoutsForRange` / `...ForDate` expand
-  those rules into `ExpandedScheduledWorkout` instances (each carrying a concrete
-  `displayDate`) for the calendar to render. Nothing recurring is ever written per-day.
+  `startDate`, `recurrence` (`none` / `daily` / `weekly`), optional `recurrenceDays`
+  (an array of weekdays, for `weekly`) and optional `endRecurrenceDate`.
+  `getScheduledWorkoutsForRange` / `...ForDate` expand those rules into
+  `ExpandedScheduledWorkout` instances (each carrying a concrete `displayDate` and a
+  `skipped` flag) for the calendar to render. Nothing recurring is ever written per-day.
 - **`useCourses`** — a course holds ordered workout/recovery items with unique IDs and
   week/day placement. `startCourse` stamps `startedAt`; guided completion marks the
   exact workout item, while recovery days are completed explicitly. The hook stamps
@@ -124,14 +125,16 @@ while history, courses or calendar records reference it. This prevents dangling 
 | --- | --- |
 | `/` | Dashboard (calendar preview, today's focus, streak, weekly goal, stats) |
 | `/exercises` | Exercise library management |
+| `/exercises/:id/progress` | Per-exercise progress (history, records, progression) |
 | `/workouts` | All saved workouts |
-| `/workout/:id` | Workout detail (edit / delete / start) |
-| `/workout/:id/start` | Full-screen guided workout presentation |
+| `/workouts/:id` | Workout detail (edit / delete / start) |
+| `/workouts/:id/session` | Full-screen guided workout presentation |
 | `/calendar` | Weekly & monthly scheduling views |
 | `/courses`, `/courses/:id`, `/courses/:id/edit` | Course list, detail, editor |
 | `/history` | Filterable past sessions |
 | `/progress` | Charts, streaks, clear-history action |
 | `/settings` | Sync, account, reminders, appearance, backup/restore and app information |
+| `/workout/:id`, `/workout/:id/start` | Legacy aliases of the two `/workouts/:id…` routes, kept for old bookmarks and schedules |
 | `*` | Not found |
 
 Custom routes must be added **above** the catch-all `*` route.

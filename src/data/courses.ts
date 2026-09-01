@@ -24,7 +24,7 @@ export interface Course {
   startedAt?: string; // When user started the course
   completedAt?: string; // When entire course was completed
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
-  deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
+  deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead
 }
 
 // One template week, repeated for the length of the starter course. `day`

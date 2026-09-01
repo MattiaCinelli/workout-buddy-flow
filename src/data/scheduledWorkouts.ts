@@ -16,7 +16,7 @@ export interface ScheduledWorkout {
   skippedDates?: string[];
   createdAt: string;
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
-  deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
+  deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead
 }
 
 export const weekDays: WeekDay[] = [

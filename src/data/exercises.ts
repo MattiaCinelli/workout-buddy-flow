@@ -44,7 +44,7 @@ export interface Exercise {
   instructions?: string; // How to perform it — shown to the user browsing the library and during a workout
   imageUrl?: string; // URL to the local image
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
-  deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
+  deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead
 }
 
 // Exercises created before logType existed have no explicit value — fall

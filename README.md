@@ -70,6 +70,7 @@ The first browser-test run may require `npx playwright install chromium`.
 
 | Document | Contents |
 | --- | --- |
+| [docs/tutorial.md](docs/tutorial.md) | Beginner-to-advanced teaching guide: every tool explained, how the app works layer by layer, recipes for changing it, and how it was built with an LLM |
 | [docs/overview.md](docs/overview.md) | What the project is, the aims and ideas behind it, core concepts, user journeys |
 | [docs/architecture.md](docs/architecture.md) | Stack, layering, state management, routing, styling rules |
 | [docs/data-model.md](docs/data-model.md) | Every entity, field by field, and why it is shaped that way |

@@ -43,7 +43,7 @@ export interface WorkoutEntry {
   restBetweenExercises?: number; // in seconds, default rest when moving to a DIFFERENT exercise
   notes?: string; // optional notes about the workout (mood, energy, achievements)
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
-  deletedAt?: string; // reserved for self-hosted sync; local deletes don't set this yet
+  deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead
 }
 
 const strengthSet = (exerciseId: string, reps: number, weight?: number): WorkoutSet =>

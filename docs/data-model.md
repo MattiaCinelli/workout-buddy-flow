@@ -7,25 +7,42 @@ IndexedDB round-trips unchanged.
 ## Exercise — `src/data/exercises.ts`
 
 ```ts
+type ExerciseLogType = 'reps' | 'time';
+
 interface Exercise {
   id: string;
   name: string;
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
-  muscleGroups: string[];      // optional in the form; may be empty
+  muscleGroups: string[];      // MuscleGroup ids; optional in the form, may be empty
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  imageUrl?: string;           // remote path or a base64 data URL from a phone photo
-  unilateral?: boolean;        // runtime splits each set into left / right
+  logType?: ExerciseLogType;   // is a set measured in reps or a duration? independent
+                               // of category (a 'strength' plank is still time-based).
+                               // Absent on old records — see getLogType().
+  defaultSets?: number;        // how many sets to pre-fill when adding to a workout
+  defaultReps?: number;        // used when logType === 'reps'
+  defaultDuration?: number;    // seconds, used when logType === 'time'
+  secondsPerRep?: number;      // used to synthesise a follow-along countdown for reps
+                               // sets; defaults to 5 (DEFAULT_SECONDS_PER_REP)
+  defaultWeight?: number;      // optional usual working weight
+  defaultDistance?: number;    // optional usual distance, meters
+  unilateral?: boolean;        // runtime splits each set into left / switch / right
   progression?: {              // opt-in; suggests the next target, never edits templates
     mode: 'linear' | 'double';
-    incrementKg?: number;      // default 2.5
+    incrementKg?: number;      // weight step; defaults to DEFAULT_PROGRESSION_INCREMENT_KG
     repRangeMin?: number;      // 'double' only
-    repRangeMax?: number;
+    repRangeMax?: number;      // 'double' only
   };
+  instructions?: string;       // how to perform it — shown in the library and mid-workout
+  imageUrl?: string;           // remote path or a base64 data URL from a phone photo
+  updatedAt?: string;          // stamped by useIndexedDBCollection; the sync watermark
+  deletedAt?: string;          // sync tombstone (set on delete only while sync is connected)
 }
 ```
 
 Notes:
 - Names are validated as unique (case-insensitive) when creating.
+- `logType` is optional so records created before it existed keep working; `getLogType()`
+  falls back to a category guess (`cardio`/`flexibility` → `time`, else `reps`).
 - Uploaded images are read in the browser and stored inline, capped at ~5 MB, so they
   keep working offline.
 - `exerciseList` is the starter library seeded on first run.
@@ -56,12 +73,20 @@ interface WorkoutEntry {
   title: string;
   duration: number;     // minutes
   category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'mixed' | 'warm-up';
+  description?: string;  // what this workout is / who it's for — shown in the workout list
+  favorite?: boolean;    // guards against accidental deletion — see checkWorkoutDeletion
   sets: WorkoutSet[];
   restBetweenSets?: number;      // seconds, default gap between sets of the same exercise
   restBetweenExercises?: number; // seconds, default gap between different exercises
   notes?: string;
+  updatedAt?: string;   // stamped by useIndexedDBCollection; the sync watermark
+  deletedAt?: string;   // sync tombstone (set on delete only while sync is connected)
 }
 ```
+
+`WORKOUT_CATEGORIES` / `WORKOUT_CATEGORY_LABELS` in the same file are the single source
+of truth for every category `<Select>`, the History/Progress filters and the card
+colours.
 
 Key idea: **a workout is a flat, ordered list of sets.** "3 sets of 12 bench press"
 is three `WorkoutSet` entries with the same `exerciseId`. The UI groups consecutive
@@ -136,16 +161,20 @@ interface ScheduledWorkout {
   startTime: string;           // HH:MM, 24h
   endTime?: string;
   recurrence: RecurrenceType;
-  recurrenceDay?: WeekDay;     // for weekly recurrence
+  recurrenceDays?: WeekDay[];   // for weekly recurrence — one or more weekdays
+                               // (e.g. just Monday, or Mon–Fri)
   endRecurrenceDate?: string;  // when the series stops
   notes?: string;
   skippedDates?: string[];      // concrete recurring occurrences intentionally skipped
   createdAt: string;
+  updatedAt?: string;          // stamped by useIndexedDBCollection; the sync watermark
+  deletedAt?: string;          // sync tombstone (set on delete only while sync is connected)
 }
 ```
 
 Stored as a **rule**. `useScheduledWorkouts` expands rules into
-`ExpandedScheduledWorkout` (`+ displayDate`) for any requested date range, so editing
+`ExpandedScheduledWorkout` (`+ displayDate`, `+ skipped`) for any requested date range,
+so editing
 or deleting one record changes the whole series. A skipped occurrence stays visible
 with a skipped state so it can be restored. Moving one recurring occurrence adds that
 date to `skippedDates` and creates a new one-time schedule on the chosen date, leaving
@@ -202,12 +231,17 @@ over cascading deletion of a user's schedule, program, or history.
 
 ## Schema evolution
 
-The current IndexedDB version is **4**:
+The current IndexedDB version is **6** (`DB_VERSION` in `src/lib/db.ts`):
 
-- Version 1: exercises and workouts
-- Version 2: scheduled workouts
-- Version 3: courses
-- Version 4: workout sessions
+- Version 1: `exercises`, `workouts`
+- Version 2: `scheduledWorkouts`
+- Version 3: `courses`
+- Version 4: `workoutSessions`
+- Version 5: `muscleGroups`
+- Version 6: `bodyMetrics`
 
-Upgrades create missing stores without clearing existing ones. New optional fields do
-not require an IndexedDB version bump; new stores do.
+Each `upgrade` block is guarded with `if (!db.objectStoreNames.contains(...))`, so a
+version bump only *adds* missing stores and never clears existing ones. New optional
+fields do not require an IndexedDB version bump; new stores do. (SQL migrations for the
+optional sync server are numbered separately — `server/src/db/migrations/` currently
+runs to `015` — and do not track this number.)
