@@ -42,6 +42,10 @@ export interface Exercise {
   // changes the workout template, only advises.
   progression?: ExerciseProgression;
   instructions?: string; // How to perform it — shown to the user browsing the library and during a workout
+  // An https:// link to a video demonstrating the movement. Opened in a new
+  // tab from the library and reachable from a small icon during a guided
+  // workout. Constrained to https: on input and when importing a shared file.
+  videoUrl?: string;
   imageUrl?: string; // URL to the local image
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
   deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead

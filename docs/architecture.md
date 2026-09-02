@@ -165,8 +165,9 @@ script (`cdn.gpteng.co`); a Vite plugin (`stripLovableEditorScript` in
 `vite.config.ts`, `apply: 'build'`) removes it from every `vite build`, so it exists
 only during `vite` dev. Imported backup / share files run each record through a Zod
 schema (`src/lib/importSchemas.ts`) — malformed records and duplicate ids are dropped
-with a warning shown before the restore, and every `imageUrl` is constrained to
-`https:` or an `image/*` data URI. CSV export escapes leading `= + - @` to prevent
+with a warning shown before the restore, every `imageUrl` is constrained to `https:` or
+an `image/*` data URI, and every exercise `videoUrl` is constrained to a plain `https:`
+link (no `data:` / `javascript:`). CSV export escapes leading `= + - @` to prevent
 spreadsheet formula injection.
 
 ## Styling conventions

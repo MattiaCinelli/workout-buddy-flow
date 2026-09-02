@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { ArrowLeft, ArrowLeftRight, ArrowRight, ChevronLeft, Info, Minus, Music, Pause, Play, Plus, SkipForward, Timer, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, ArrowRight, ChevronLeft, Info, Minus, Music, Pause, Play, Plus, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -498,6 +498,17 @@ const WorkoutPresentation = () => {
             </div>
           )}
           <div className="flex items-center justify-center gap-2">
+            {exercise.videoUrl && (
+              <a
+                href={exercise.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+                aria-label={`Watch a video of ${exercise.name} (opens in a new tab)`}
+              >
+                <Video className="h-5 w-5" />
+              </a>
+            )}
             <h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}{current.side ? ` — ${sideLabel(current.side)}` : ''}</h2>
             {exercise.instructions && (
               <Popover>

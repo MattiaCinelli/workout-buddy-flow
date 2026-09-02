@@ -9,7 +9,19 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Exercise video link** — an exercise can carry an optional `https://` link to a
+  demonstration video. It opens in a new tab from the exercise detail view, and a small
+  link icon during a guided workout (opposite the instructions "i") opens it mid-session.
+  The link is constrained to `https:` on entry and re-checked when importing a shared
+  file or backup.
+
+### Changed
+
+- **Exercise library cards** now carry a faint wash of their category colour
+  (strength → blue, cardio → red, flexibility → purple, balance → yellow) so the type
+  is readable at a glance without hunting for the badge.
 
 ## [1.0.0] - 2026-08-27
 

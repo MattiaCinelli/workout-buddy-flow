@@ -33,6 +33,9 @@ interface Exercise {
     repRangeMax?: number;      // 'double' only
   };
   instructions?: string;       // how to perform it — shown in the library and mid-workout
+  videoUrl?: string;           // https:// link to a demo video — opened from the library
+                               // and from a link icon during a guided workout; https-only,
+                               // re-checked on import
   imageUrl?: string;           // remote path or a base64 data URL from a phone photo
   updatedAt?: string;          // stamped by useIndexedDBCollection; the sync watermark
   deletedAt?: string;          // sync tombstone (set on delete only while sync is connected)

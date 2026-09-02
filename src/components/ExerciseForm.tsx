@@ -19,6 +19,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
+import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 
@@ -27,6 +28,12 @@ const optionalNumber = (label: string, min: number, max: number) => z.string().o
   const number = Number(value);
   return Number.isFinite(number) && number >= min && number <= max;
 }, `${label} must be between ${min} and ${max}.`);
+
+// Empty is fine; anything else must normalize to a usable https:// link.
+const optionalHttpsUrl = z.string().optional().refine(
+  value => !value?.trim() || normalizeHttpsUrl(value) !== undefined,
+  'Enter a valid video link (https:// only).',
+);
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -48,6 +55,7 @@ const formSchema = z.object({
   progressionRepMin: optionalNumber('Rep range min', 1, 100),
   progressionRepMax: optionalNumber('Rep range max', 1, 100),
   instructions: z.string().optional(),
+  videoUrl: optionalHttpsUrl,
   imageUrl: z.string().optional(),
 });
 
@@ -93,6 +101,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       progressionRepMin: exercise?.progression?.repRangeMin?.toString() ?? '',
       progressionRepMax: exercise?.progression?.repRangeMax?.toString() ?? '',
       instructions: exercise?.instructions || "",
+      videoUrl: exercise?.videoUrl || "",
       imageUrl: exercise?.imageUrl || "",
     },
   });
@@ -120,6 +129,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           }
         : undefined,
       instructions: values.instructions || undefined,
+      videoUrl: normalizeHttpsUrl(values.videoUrl),
       imageUrl: values.imageUrl,
     });
   };
@@ -441,6 +451,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             {...form.register("instructions")}
             disabled={isSubmitting}
           />
+        </div>
+
+        <div className="grid gap-2">
+          <label htmlFor="videoUrl" className="text-right inline-block w-32 pr-2">
+            Video link (optional)
+          </label>
+          <Input
+            id="videoUrl"
+            type="url"
+            inputMode="url"
+            placeholder="e.g. youtube.com/watch?v=…  — a video demonstrating this exercise"
+            {...form.register("videoUrl")}
+            disabled={isSubmitting}
+          />
+          <p className="text-xs text-muted-foreground">
+            Opens in a new tab from the library, and from a link icon during a guided
+            workout. Saved as an <code>https://</code> link.
+          </p>
         </div>
 
         <div className="grid gap-2">

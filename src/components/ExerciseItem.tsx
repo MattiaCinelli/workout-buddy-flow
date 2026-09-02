@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Exercise, getLogType } from '@/data/exercises';
 import { Image, Edit, Repeat, Timer } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { cn } from '@/lib/utils';
+import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 
 interface ExerciseItemProps {
   exercise: Exercise;
@@ -49,8 +51,12 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
   };
 
   return (
-    <div 
-      className={`exercise-item p-4 border rounded-lg hover:shadow-md transition-shadow ${onSelect ? 'cursor-pointer' : ''}`}
+    <div
+      className={cn(
+        'exercise-item p-4 border rounded-lg hover:shadow-md transition-shadow',
+        exerciseCategoryTint(exercise.category),
+        onSelect && 'cursor-pointer',
+      )}
       onClick={() => onSelect && onSelect(exercise)}
     >
       <div className="flex justify-between items-start">

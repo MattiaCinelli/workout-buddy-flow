@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer, TrendingUp } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer, TrendingUp, Video } from 'lucide-react';
 import { Exercise, getLogType } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
@@ -106,6 +106,17 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
           {exercise.defaultWeight ? <span className="text-muted-foreground font-normal">· {exercise.defaultWeight}kg</span> : null}
           {exercise.defaultDistance ? <span className="text-muted-foreground font-normal">· {exercise.defaultDistance}m</span> : null}
         </div>
+
+        {exercise.videoUrl && (
+          <a
+            href={exercise.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            <Video className="h-4 w-4" /> Watch demonstration video
+          </a>
+        )}
 
         {exercise.instructions && (
           <div className="pt-1 border-t">

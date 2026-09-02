@@ -145,11 +145,26 @@ const sanitizeImageUrl = (value: unknown): string | undefined => {
     ? value : undefined;
 };
 
-const scrubImportedImages = (parsed: Record<string, unknown>): void => {
+// An imported `videoUrl` is untrusted too, and it's only ever put in an
+// href / opened in a new tab — so it must be a plain https link, never a
+// data: or javascript: URI. Drop anything else.
+const MAX_VIDEO_URL_LENGTH = 2048;
+const sanitizeVideoUrl = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || value.length > MAX_VIDEO_URL_LENGTH) return undefined;
+  try {
+    return new URL(value).protocol === 'https:' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const scrubImportedExerciseUrls = (parsed: Record<string, unknown>): void => {
   const data = parsed.data;
   if (!isRecord(data) || !Array.isArray(data.exercises)) return;
   for (const item of data.exercises) {
-    if (isRecord(item) && 'imageUrl' in item) item.imageUrl = sanitizeImageUrl(item.imageUrl);
+    if (!isRecord(item)) continue;
+    if ('imageUrl' in item) item.imageUrl = sanitizeImageUrl(item.imageUrl);
+    if ('videoUrl' in item) item.videoUrl = sanitizeVideoUrl(item.videoUrl);
   }
 };
 
@@ -178,7 +193,7 @@ export const parseBackup = (text: string): ParsedBackup => {
       throw new Error(`Backup is missing ${store}.`);
     }
   }
-  scrubImportedImages(parsed);
+  scrubImportedExerciseUrls(parsed);
 
   const warnings: string[] = [];
   const data = parsed.data as Record<string, unknown[]>;
@@ -369,7 +384,7 @@ export const parseShare = (text: string): ParsedShare => {
       throw new Error(`Shared file has invalid ${key}.`);
     }
   }
-  scrubImportedImages(parsed);
+  scrubImportedExerciseUrls(parsed);
 
   const warnings: string[] = [];
   const data = parsed.data as Record<string, unknown[]>;

@@ -111,6 +111,19 @@ describe('parseShare', () => {
     expect(img('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
   });
 
+  it('keeps only a plain https videoUrl on an imported exercise', () => {
+    const build = (url: string) => JSON.stringify({
+      format: 'workout-buddy-share', version: 1, exportedAt: '', kind: 'exercise',
+      data: { exercises: [{ ...exercise(), videoUrl: url }], workouts: [], muscleGroups: [] },
+    });
+    const video = (file: string) => parseShare(build(file)).data.data.exercises[0].videoUrl;
+    expect(video('javascript:alert(1)')).toBeUndefined();
+    expect(video('data:text/html,<script>')).toBeUndefined();
+    expect(video('http://insecure/watch')).toBeUndefined();
+    expect(video('not a url')).toBeUndefined();
+    expect(video('https://videos.example/watch?v=abc')).toBe('https://videos.example/watch?v=abc');
+  });
+
   it('drops a malformed record with a warning instead of failing', () => {
     const file = JSON.stringify({
       format: 'workout-buddy-share', version: 1, exportedAt: '', kind: 'exercise',
@@ -233,6 +246,21 @@ describe('parseBackup', () => {
     const [a, b] = (data.data.exercises as { imageUrl?: string }[]);
     expect(a.imageUrl).toBeUndefined();
     expect(b.imageUrl).toBe('https://example.com/x.png');
+  });
+
+  it('strips a dangerous exercise videoUrl but keeps a valid https one', () => {
+    const { data } = parseBackup(v3({
+      data: {
+        exercises: [
+          { id: 'a', name: 'A', category: 'strength', muscleGroups: [], difficulty: 'beginner', videoUrl: 'javascript:alert(1)' },
+          { id: 'b', name: 'B', category: 'strength', muscleGroups: [], difficulty: 'beginner', videoUrl: 'https://example.com/watch' },
+        ],
+        workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+      },
+    }));
+    const [a, b] = (data.data.exercises as { videoUrl?: string }[]);
+    expect(a.videoUrl).toBeUndefined();
+    expect(b.videoUrl).toBe('https://example.com/watch');
   });
 
   it('keeps only whitelisted v3 preferences and drops an oversized one', () => {
