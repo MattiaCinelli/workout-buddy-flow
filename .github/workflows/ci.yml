@@ -37,6 +37,10 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Install sync server dependencies
+        working-directory: server
+        run: npm ci
+
       - run: npm run test:e2e
 
       - name: Upload Playwright report
