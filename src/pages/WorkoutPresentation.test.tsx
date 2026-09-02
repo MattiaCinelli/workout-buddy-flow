@@ -117,4 +117,19 @@ describe('WorkoutPresentation — guided run', () => {
     await advance(9_000);
     expect(spoke('Rest')).toBe(true); // auto-advanced into the between-sets rest
   });
+
+  it('the rest before a different exercise is announced as "changing exercise" and names it', async () => {
+    setExercises([
+      ex({ id: 'plank', name: 'Plank', logType: 'time' }),
+      ex({ id: 'wall-sit', name: 'Wall Sit', logType: 'time' }),
+    ]);
+    setWorkout([{ exerciseId: 'plank', duration: 8 }, { exerciseId: 'wall-sit', duration: 8 }]);
+
+    await startAndSkipPrep();
+    speak.mockClear();
+    await advance(9_000);
+
+    expect(spoke('Rest, changing exercise. Next up: Wall Sit')).toBe(true);
+    expect(spoke('Rest')).toBe(false); // not the plain between-sets cue
+  });
 });

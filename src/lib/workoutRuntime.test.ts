@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildWorkoutSteps, isSelfPacedStep, remainingSeconds, stepClockSeconds, stepStartAnnouncement,
-  type WorkoutStep,
+  buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds,
+  stepStartAnnouncement, type WorkoutStep,
 } from './workoutRuntime';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { Exercise } from '@/data/exercises';
@@ -62,7 +62,21 @@ describe('buildWorkoutSteps', () => {
       sets: [{ exerciseId: 'e-reps', reps: 5 }, { exerciseId: 'e-time', duration: 30 }],
     };
     const steps = buildWorkoutSteps(workout, [repsExercise, timeExercise]);
-    expect(steps[2]).toMatchObject({ type: 'rest', kind: 'rest', duration: 30 });
+    expect(steps[2]).toMatchObject({ type: 'rest', kind: 'rest', duration: 30, changesExercise: true });
+  });
+
+  it('tags a rest as changesExercise only when the next set is a different exercise', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout,
+      sets: [
+        { exerciseId: 'e-reps', reps: 5 },
+        { exerciseId: 'e-reps', reps: 5 },   // same exercise -> between-sets rest
+        { exerciseId: 'e-time', duration: 30 }, // different -> between-exercises rest
+      ],
+    };
+    const steps = buildWorkoutSteps(workout, [repsExercise, timeExercise]);
+    expect(steps[2]).toMatchObject({ kind: 'rest', changesExercise: false });
+    expect(steps[4]).toMatchObject({ kind: 'rest', changesExercise: true });
   });
 
   it('defaults rest between two sets of the SAME exercise to 10 seconds — shorter than between exercises', () => {
@@ -130,8 +144,23 @@ describe('stepStartAnnouncement', () => {
 
   it('announces the right cue for each kind of rest', () => {
     expect(stepStartAnnouncement(step({ type: 'rest', kind: 'prep' }))).toBe('Get ready');
-    expect(stepStartAnnouncement(step({ type: 'rest', kind: 'switch' }))).toBe('Switch sides');
+    expect(stepStartAnnouncement(step({ type: 'rest', kind: 'switch' }))).toBe('Change side');
     expect(stepStartAnnouncement(step({ type: 'rest', kind: 'rest' }))).toBe('Rest');
+  });
+
+  it('distinguishes a between-exercises rest, and names the next exercise when given', () => {
+    const between = step({ type: 'rest', kind: 'rest', changesExercise: true });
+    expect(stepStartAnnouncement(between)).toBe('Rest, changing exercise');
+    expect(stepStartAnnouncement(between, 'Plank')).toBe('Rest, changing exercise. Next up: Plank');
+  });
+});
+
+describe('restKindLabel', () => {
+  it('gives a short screen-free label per rest kind', () => {
+    expect(restKindLabel(step({ type: 'rest', kind: 'prep' }))).toBe('Get ready');
+    expect(restKindLabel(step({ type: 'rest', kind: 'switch' }))).toBe('Change side');
+    expect(restKindLabel(step({ type: 'rest', kind: 'rest' }))).toBe('Rest');
+    expect(restKindLabel(step({ type: 'rest', kind: 'rest', changesExercise: true }))).toBe('Rest — next exercise');
   });
 });
 

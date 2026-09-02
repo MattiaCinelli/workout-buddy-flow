@@ -83,7 +83,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
               {logType === 'time' ? <Timer className="h-3 w-3" /> : <Repeat className="h-3 w-3" />}
               {setSummary}
-              {exercise.unilateral && <span className="font-medium text-workout-green">· one side at a time</span>}
+              {exercise.unilateral && <span className="font-medium text-workout-green">· left &amp; right per set</span>}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
               {muscleGroupNames}

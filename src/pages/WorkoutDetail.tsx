@@ -19,6 +19,7 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import ExerciseItem from '@/components/ExerciseItem';
+import { UnilateralSetNote } from '@/components/UnilateralSetNote';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 
 interface SelectedExercise {
@@ -411,6 +412,7 @@ const WorkoutDetail = () => {
                               </div>
                               <div>
                                 <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
+                                {selectedEx.exercise.unilateral && <UnilateralSetNote />}
                                 {selectedEx.exercise.instructions && (
                                   <p className="text-xs text-muted-foreground max-w-md">{selectedEx.exercise.instructions}</p>
                                 )}
@@ -428,7 +430,12 @@ const WorkoutDetail = () => {
                           <div className="space-y-3 mt-3">
                             {selectedEx.sets.map((set, setIndex) => (
                               <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
-                                <div className="font-medium min-w-[80px]">Set {setIndex + 1}</div>
+                                <div className="font-medium min-w-[80px]">
+                                  Set {setIndex + 1}
+                                  {selectedEx.exercise.unilateral && (
+                                    <span className="ml-1 text-xs font-normal text-muted-foreground">L + R</span>
+                                  )}
+                                </div>
 
                                 <Button
                                   type="button" size="sm" className="h-7 px-2 text-xs"
@@ -516,7 +523,7 @@ const WorkoutDetail = () => {
                               className="w-full flex items-center justify-center gap-1 mt-2"
                               onClick={() => handleAddSet(exIndex)} disabled={isSubmitting}
                             >
-                              <Plus className="h-4 w-4" /> Add Set
+                              <Plus className="h-4 w-4" /> Add Set{selectedEx.exercise.unilateral ? ' (both sides)' : ''}
                             </Button>
                           </div>
                         </div>

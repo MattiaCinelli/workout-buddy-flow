@@ -18,7 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
+import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
+import { playCompletionChime } from '@/lib/completionSound';
 import { logDiagnostic } from '@/lib/diagnosticLog';
 import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
 import { describeSetResult, exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
@@ -89,6 +90,13 @@ const WorkoutPresentation = () => {
   const [musicEnabled, setMusicEnabled] = useState(() => getAccessibilitySettings().backgroundMusic);
   const musicVolume = useRef(getAccessibilitySettings().musicVolume).current;
   const lastSpokenCountdownRef = useRef<number | null>(null);
+  // Guard against the per-step voice cue / vibration firing more than once
+  // for the same step: `steps`/`exercises` get fresh array identities on an
+  // unrelated background sync, which re-runs those effects even though
+  // activeStep never moved. Reset only when activeStep genuinely changes.
+  const announcedStepRef = useRef(false);
+  const buzzedStepRef = useRef(false);
+  const celebratedRef = useRef(false);
 
   // "Last time" reference and personal best for the exercise on screen —
   // shown so the target is visible before the set starts, and pre-computed
@@ -242,32 +250,51 @@ const WorkoutPresentation = () => {
   useEffect(() => {
     advancing.current = false;
     lastSpokenCountdownRef.current = null;
+    announcedStepRef.current = false;
+    buzzedStepRef.current = false;
   }, [activeStep]);
 
   // Announces whenever a new step starts (including the very first, once
   // initial restore/setup has picked the right starting step) — "Get
-  // ready" for the leading prep pause, "Rest" for an ordinary rest,
-  // "Begin" for an exercise. This is the only place any of these fire, so
-  // there's exactly one announcement per step, never a duplicate.
+  // ready" for the leading prep pause, "Rest" / "Rest, changing exercise"
+  // for a rest, "Change side" for the unilateral switch, "Begin" for an
+  // exercise. `announcedStepRef` keeps it to exactly one cue per step even
+  // when this effect re-runs because `steps`/`exercises` changed identity.
   useEffect(() => {
-    if (!restored) return;
+    if (!restored || announcedStepRef.current) return;
     const step = steps[activeStep];
     // Deliberately terse (see stepStartAnnouncement) — not the exercise
     // name too; that's already the on-screen heading. An exercise step is
     // only announced once its exercise has actually loaded.
     if (!step) return;
     if (step.type === 'exercise' && !exercises.some(item => item.id === step.exerciseId)) return;
-    speak(stepStartAnnouncement(step));
+    announcedStepRef.current = true;
+    const nextName = step.type === 'rest' && step.changesExercise
+      ? exercises.find(item => item.id === steps[activeStep + 1]?.exerciseId)?.name
+      : undefined;
+    speak(stepStartAnnouncement(step, nextName));
   }, [activeStep, restored, steps, exercises, speak]);
 
   // A distinct buzz per step type, independent of voice readiness — this
   // is the fallback, so it shouldn't wait on anything voice-related.
+  // `buzzedStepRef` keeps it to one buzz per step (see announcedStepRef).
   useEffect(() => {
-    if (!restored) return;
+    if (!restored || buzzedStepRef.current) return;
     const step = steps[activeStep];
-    if (step?.type === 'exercise') vibrate(ImpactStyle.Heavy);
-    else if (step?.type === 'rest') vibrate(step.kind === 'prep' ? ImpactStyle.Light : ImpactStyle.Medium);
+    if (!step) return;
+    buzzedStepRef.current = true;
+    if (step.type === 'exercise') vibrate(ImpactStyle.Heavy);
+    else if (step.type === 'rest') vibrate(step.kind === 'prep' ? ImpactStyle.Light : ImpactStyle.Medium);
   }, [activeStep, restored, steps, vibrate]);
+
+  // A short celebratory chime the first time the completion dialog opens
+  // (workout finished). Gated on the same voice toggle as spoken cues.
+  useEffect(() => {
+    if (!completionOpen) { celebratedRef.current = false; return; }
+    if (celebratedRef.current) return;
+    celebratedRef.current = true;
+    if (voiceEnabled) playCompletionChime();
+  }, [completionOpen, voiceEnabled]);
 
   useEffect(() => () => { void TextToSpeech.stop().catch(() => undefined); }, []);
   // Reaching the end opens the completion dialog without changing
@@ -429,7 +456,7 @@ const WorkoutPresentation = () => {
     : workoutSets.slice(0, currentSourceIndex + 1).filter(item => !item.warmup).length;
   const sideLabel = (side?: 'left' | 'right') => side === 'left' ? 'Left side' : side === 'right' ? 'Right side' : '';
   const upcomingLabel = upcoming?.type === 'rest'
-    ? (upcoming.kind === 'switch' ? 'Switch sides' : `Rest · ${formatTime(upcoming.duration || 0)}`)
+    ? (upcoming.kind === 'switch' ? 'Change side' : `Rest · ${formatTime(upcoming.duration || 0)}`)
     : upcoming?.exerciseId
       ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.side ? ` · ${sideLabel(upcoming.side)}` : ''}`
       : 'Finish workout';
@@ -468,10 +495,10 @@ const WorkoutPresentation = () => {
     </header>
     <section className="px-4 space-y-2" aria-label="Workout progress">
       <p className="sr-only" aria-live="polite" aria-atomic="true">
-        Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : current.kind === 'prep' ? 'Get ready' : current.kind === 'switch' ? 'Switch sides' : 'Rest'}.
+        Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : restKindLabel(current)}.
       </p>
       <div className="flex justify-between text-xs sm:text-sm text-gray-300">
-        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Switch sides' : currentIsWarmup ? 'Warm-up set' : `Set ${workingSetNumber} of ${workingSetCount}`}</span>
+        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Change side' : currentIsWarmup ? 'Warm-up set' : `Set ${workingSetNumber} of ${workingSetCount}`}</span>
         <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
       </div>
       <Progress value={((activeStep + 1) / steps.length) * 100} className="h-2" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
@@ -577,7 +604,7 @@ const WorkoutPresentation = () => {
       </> : <>
         <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
           {current.kind === 'switch' ? <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /> : <Timer className="h-4 w-4" aria-hidden="true" />}
-          <span className="text-sm font-semibold uppercase tracking-wide">{current.kind === 'prep' ? 'Get ready' : current.kind === 'switch' ? 'Switch sides' : 'Rest'}</span>
+          <span className="text-sm font-semibold uppercase tracking-wide">{restKindLabel(current)}</span>
         </div>
         <div className="text-7xl font-bold" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : current.kind === 'switch' ? 'until the other side' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
         <div className="mt-4 w-full"><CountdownBar percent={countdownPercent} tone="bg-workout-purple" /></div>

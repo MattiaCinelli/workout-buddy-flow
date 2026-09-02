@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Exercise, getLogType } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
+import { UnilateralSetNote } from './UnilateralSetNote';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
@@ -432,7 +433,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                   <ChevronDown className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
-                              <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
+                              <div>
+                                <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
+                                {selectedEx.exercise.unilateral && <UnilateralSetNote />}
+                              </div>
                             </div>
                             <Button
                               variant="outline"
@@ -449,7 +453,12 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                           <div className="space-y-3 mt-3">
                             {selectedEx.sets.map((set, setIndex) => (
                               <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
-                                <div className="font-medium min-w-[80px]">Set {setIndex + 1}</div>
+                                <div className="font-medium min-w-[80px]">
+                                  Set {setIndex + 1}
+                                  {selectedEx.exercise.unilateral && (
+                                    <span className="ml-1 text-xs font-normal text-muted-foreground">L + R</span>
+                                  )}
+                                </div>
 
                                 <Button
                                   type="button" size="sm" className="h-7 px-2 text-xs"
@@ -603,7 +612,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                               onClick={() => handleAddSet(exIndex)}
                               disabled={isSubmitting}
                             >
-                              <Plus className="h-4 w-4" /> Add Set
+                              <Plus className="h-4 w-4" /> Add Set{selectedEx.exercise.unilateral ? ' (both sides)' : ''}
                             </Button>
                           </div>
                         </div>

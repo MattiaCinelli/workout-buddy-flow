@@ -32,7 +32,12 @@ export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sour
   // changeover between the two sides of a unilateral set; 'rest' is an
   // ordinary between-sets rest. Same countdown mechanics, different heading
   // and announcement in the presentation layer.
-  kind?: 'prep' | 'rest' | 'switch' };
+  kind?: 'prep' | 'rest' | 'switch';
+  // On a 'rest' step: true when the NEXT exercise differs from the one just
+  // finished (a between-exercises transition), false when it's another set
+  // of the same exercise. Drives the longer default rest, a distinct spoken
+  // cue ("Rest, changing exercise") and the on-screen label.
+  changesExercise?: boolean };
 
 // A rep-based set has no natural duration of its own — it's built here so
 // reps and timed exercises can share one countdown mechanism ("follow
@@ -60,10 +65,13 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
       steps.push(exerciseStep);
     }
     const next = workout.sets[sourceSetIndex + 1];
-    if (next) steps.push({ type: 'rest', kind: 'rest', duration: set.restAfter ??
-      (next.exerciseId === set.exerciseId
-        ? (workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS)
-        : (workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES)) });
+    if (next) {
+      const changesExercise = next.exerciseId !== set.exerciseId;
+      steps.push({ type: 'rest', kind: 'rest', changesExercise, duration: set.restAfter ??
+        (changesExercise
+          ? (workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES)
+          : (workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS)) });
+    }
   });
   return steps;
 };
@@ -81,15 +89,30 @@ export const remainingSeconds = (deadline: number, now = Date.now()) =>
 export const isSelfPacedStep = (step: WorkoutStep | undefined): boolean =>
   step?.type === 'exercise' && !!step.secondsPerRep;
 
+// A short, screen-free label for what kind of rest this is — so someone
+// not looking at the phone knows whether to just breathe, switch limbs, or
+// move to a new station. Mirrors the spoken cue.
+export const restKindLabel = (step: WorkoutStep | undefined): string => {
+  if (step?.kind === 'prep') return 'Get ready';
+  if (step?.kind === 'switch') return 'Change side';
+  if (step?.changesExercise) return 'Rest — next exercise';
+  return 'Rest';
+};
+
 // Seconds to run a countdown for when this step starts. 0 means "no clock"
 // — the step just sits until the user advances it.
 export const stepClockSeconds = (step: WorkoutStep | undefined): number =>
   step && !isSelfPacedStep(step) ? (step.duration ?? 0) : 0;
 
-// The single phrase spoken (once) when the step becomes active.
-export const stepStartAnnouncement = (step: WorkoutStep | undefined): string => {
+// The single phrase spoken (once) when the step becomes active. For a
+// between-exercises rest the caller can pass the next exercise's name so
+// the cue also says what's coming up.
+export const stepStartAnnouncement = (step: WorkoutStep | undefined, nextExerciseName?: string): string => {
   if (step?.type === 'exercise') return step.side ? `Begin ${step.side} side` : 'Begin';
   if (step?.kind === 'prep') return 'Get ready';
-  if (step?.kind === 'switch') return 'Switch sides';
+  if (step?.kind === 'switch') return 'Change side';
+  if (step?.changesExercise) {
+    return nextExerciseName ? `Rest, changing exercise. Next up: ${nextExerciseName}` : 'Rest, changing exercise';
+  }
   return 'Rest';
 };
