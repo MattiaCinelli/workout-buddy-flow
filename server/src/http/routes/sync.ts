@@ -37,6 +37,7 @@ const exerciseSchema = {
     defaultWeight: { type: 'number' },
     defaultDistance: { type: 'number' },
     secondsPerRep: { type: 'number' },
+    unilateral: { type: 'boolean' },
     instructions: { type: 'string' },
     imageUrl: { type: 'string' },
     updatedAt: { type: 'string' },

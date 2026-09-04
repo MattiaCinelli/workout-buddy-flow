@@ -45,6 +45,16 @@ test('exercises: upsert inserts a new row', () => {
   assert.deepEqual(listChangedSince(db, user.id).map(e => e.id), ['ex-1']);
 });
 
+test('exercises: unilateral survives a database round trip', () => {
+  const db = freshDb();
+  const user = createUser(db, 'you@example.com', 'hash');
+
+  const stored = upsertExercise(db, user.id, exercise({ unilateral: true }));
+
+  assert.equal(stored.unilateral, true);
+  assert.equal(listChangedSince(db, user.id)[0].unilateral, true);
+});
+
 test('exercises: an older write loses to a newer one already stored (last-write-wins)', () => {
   const db = freshDb();
   const user = createUser(db, 'you@example.com', 'hash');

@@ -54,6 +54,21 @@ test('a pushed exercise is returned by POST and shows up in a subsequent GET', a
   assert.equal(pull.json().exercises[0].id, 'ex-1');
 });
 
+test('an exercise keeps its unilateral setting through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  const push = await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ unilateral: true })] },
+  });
+  assert.equal(push.statusCode, 200);
+  assert.equal(push.json().exercises[0].unilateral, true);
+
+  const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
+  assert.equal(pull.json().exercises[0].unilateral, true);
+});
+
 test('instructions round-trips through push and pull', async () => {
   const { app, aliceToken } = await setup();
   const headers = { authorization: `Bearer ${aliceToken}` };
