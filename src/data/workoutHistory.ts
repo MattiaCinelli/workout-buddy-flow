@@ -1,5 +1,12 @@
+import type { ExecutionDirection } from './exercises';
+
+export type WorkoutSetDirection = ExecutionDirection | 'none';
+
 export interface WorkoutSet {
   exerciseId: string;
+  // Explicit per-workout direction. Missing means a legacy workout; `none`
+  // records an intentional override of an exercise's directional default.
+  direction?: WorkoutSetDirection;
   reps?: number;
   weight?: number;
   duration?: number; // in seconds

@@ -25,7 +25,9 @@ interface Exercise {
                                // sets; defaults to 5 (DEFAULT_SECONDS_PER_REP)
   defaultWeight?: number;      // optional usual working weight
   defaultDistance?: number;    // optional usual distance, meters
-  unilateral?: boolean;        // runtime splits each set into left / switch / right
+  executionDirections?: Array<'left' | 'right' | 'forward' | 'backward'>;
+                               // defaults used to create separate directional workout sets
+  unilateral?: boolean;        // legacy fallback for pre-direction left/right records
   progression?: {              // opt-in; suggests the next target, never edits templates
     mode: 'linear' | 'double';
     incrementKg?: number;      // weight step; defaults to DEFAULT_PROGRESSION_INCREMENT_KG
@@ -46,6 +48,8 @@ Notes:
 - Names are validated as unique (case-insensitive) when creating.
 - `logType` is optional so records created before it existed keep working; `getLogType()`
   falls back to a category guess (`cardio`/`flexibility` → `time`, else `reps`).
+- Each directional workout set stores its own `direction`; `none` records an explicit
+  per-workout override while a missing value identifies a legacy workout set.
 - Uploaded images are read in the browser and stored inline, capped at ~5 MB, so they
   keep working offline.
 - `exerciseList` is the starter library seeded on first run.

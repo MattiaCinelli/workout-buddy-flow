@@ -9,7 +9,19 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Directional exercise sets** — exercises can define left, right, forward and
+  backward defaults. Adding one to a workout creates a separate, visible set for
+  every selected direction, and each set's direction can be changed independently
+  in the workout builder or editor. The guided workout displays and announces the
+  active direction. Existing unilateral exercises and workouts remain compatible.
+
+### Fixed
+
+- **One-limb exercise sync** — the sync server now persists the unilateral setting
+  instead of dropping it and clearing the toggle on the next pull. Additive SQLite
+  migrations preserve all existing exercises, workouts and history.
 
 ## [1.0.0] - 2026-09-02
 

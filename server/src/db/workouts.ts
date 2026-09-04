@@ -2,6 +2,7 @@ import { Db } from './index';
 
 export interface SyncedWorkoutSet {
   exerciseId: string;
+  direction?: 'none' | 'left' | 'right' | 'forward' | 'backward';
   reps?: number;
   weight?: number;
   duration?: number;

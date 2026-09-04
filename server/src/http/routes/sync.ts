@@ -13,6 +13,7 @@ const workoutSetSchema = {
   required: ['exerciseId'],
   properties: {
     exerciseId: { type: 'string' },
+    direction: { type: 'string', enum: ['none', 'left', 'right', 'forward', 'backward'] },
     reps: { type: 'number' },
     weight: { type: 'number' },
     duration: { type: 'number' },
@@ -38,6 +39,11 @@ const exerciseSchema = {
     defaultDistance: { type: 'number' },
     secondsPerRep: { type: 'number' },
     unilateral: { type: 'boolean' },
+    executionDirections: {
+      type: 'array',
+      items: { type: 'string', enum: ['left', 'right', 'forward', 'backward'] },
+      uniqueItems: true,
+    },
     instructions: { type: 'string' },
     imageUrl: { type: 'string' },
     updatedAt: { type: 'string' },
@@ -129,6 +135,7 @@ const workoutSetResultSchema = {
     exerciseId: { type: 'string' },
     setIndex: { type: 'number' },
     completed: { type: 'boolean' },
+    direction: { type: 'string', enum: ['none', 'left', 'right', 'forward', 'backward'] },
     reps: { type: 'number' },
     weight: { type: 'number' },
     duration: { type: 'number' },

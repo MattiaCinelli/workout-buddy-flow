@@ -754,10 +754,10 @@ BodyMetric  (standalone: dated body-weight readings)
 
 | Entity | File | One-line role | Lifecycle |
 | --- | --- | --- | --- |
-| **Exercise** | `data/exercises.ts` | A single movement: name, category, muscle groups, difficulty, optional image, `logType` (reps vs time), optional `unilateral`, optional `progression` policy. | User-owned, editable. Seeded on first run. |
+| **Exercise** | `data/exercises.ts` | A single movement: name, category, muscle groups, difficulty, optional image, `logType` (reps vs time), optional directional-set defaults, optional `progression` policy. | User-owned, editable. Seeded on first run. |
 | **MuscleGroup** | `data/muscleGroups.ts` | An editable tag (`Chest`, `Quads`). IDs stay stable when renamed. | Seeded; editable. |
 | **WorkoutEntry** | `data/workoutHistory.ts` | A reusable **template**: a title, a category, and a **flat ordered `WorkoutSet[]`**. "3×12 bench" = three sets with the same `exerciseId`. | Editable plan. Editing it never touches history. |
-| **WorkoutSet** | same file | One block of work: `reps`+`weight` **or** `duration`/`distance`, `restAfter`, flags `warmup` / `amrap`. | Part of a template or a session. |
+| **WorkoutSet** | same file | One visible block of work: `reps`+`weight` **or** `duration`/`distance`, optional `direction`, `restAfter`, flags `warmup` / `amrap`. | Part of a template or a session. |
 | **WorkoutSession** | `data/workoutSessions.ts` | An **immutable snapshot** written when guided mode finishes: it `extends WorkoutEntry` and adds `workoutId`, `completedAt`, `plannedDuration`, optional `courseId`/`courseItemId`/`scheduledWorkoutId`, `actualSets` (per-set results + RPE), `perceivedExertion`, `completionNotes`. | Append-only (the History correction dialog is the one exception). History, streaks, charts read **only** this. |
 | **ScheduledWorkout** | `data/scheduledWorkouts.ts` | A calendar **rule**, not a list of dates: `workoutId`, `startDate`, `startTime`, `recurrence` (`none`/`daily`/`weekly`), `recurrenceDays[]`, `endRecurrenceDate`, `skippedDates[]`. | Editing/deleting the rule changes the whole series. |
 | **Course** | `data/courses.ts` | A multi-week program: metadata (goal, difficulty, prerequisites, `durationWeeks`) + `CourseWorkout[]`. | `startCourse` stamps `startedAt`; completion is per-item. |
@@ -971,14 +971,15 @@ step to have a duration so one countdown mechanism handles all of them.
      sets get a synthesized one**: `secondsPerRep × reps` (default 5 s/rep, overridable
      per exercise) so the runner can show a follow-along countdown instead of an
      open-ended "do 10 reps whenever".
-   - If the exercise is **`unilateral`**, the one set expands into three steps:
-     `left` → a short `switch` pause (`SWITCH_SIDES_DURATION_SECONDS = 5`) → `right`.
-     Both sides keep the same `sourceSetIndex`/`setIndex` so results still map back to
-     the single authored set.
+   - Carry the set's optional `direction` (`left`, `right`, `forward`, `backward`) to
+     the guided step so it is labelled and announced. New workouts store directional
+     work as separate visible sets. For backward compatibility only, an old workout
+     set with no direction still expands left → switch → right when its exercise has
+     the legacy `unilateral` flag.
    - Append a **rest** step before the next set, using (in priority order): the set's
      own `restAfter`; else, if the next set is the *same* exercise,
      `restBetweenSets` (default 10); else `restBetweenExercises` (default 30).
-3. `secondsPerRep`, `warmup`, `amrap`, `side`, and `kind` (`prep`/`rest`/`switch`) ride
+3. `secondsPerRep`, `warmup`, `amrap`, `direction`, and `kind` (`prep`/`rest`/`switch`) ride
    along on each step for the UI to label and announce correctly.
 
 ### Timing that survives a locked phone

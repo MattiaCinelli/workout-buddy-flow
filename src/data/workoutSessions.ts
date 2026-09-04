@@ -1,9 +1,10 @@
-import { WorkoutEntry, WorkoutSet } from './workoutHistory';
+import { WorkoutEntry, WorkoutSet, WorkoutSetDirection } from './workoutHistory';
 
 export interface WorkoutSetResult {
   exerciseId: string;
   setIndex: number;
   completed: boolean;
+  direction?: WorkoutSetDirection;
   reps?: number;
   weight?: number;
   duration?: number;

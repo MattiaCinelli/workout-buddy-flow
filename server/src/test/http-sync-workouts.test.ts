@@ -9,8 +9,8 @@ const workout = (overrides: Record<string, unknown> = {}) => ({
   duration: 45,
   category: 'strength',
   sets: [
-    { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90 },
-    { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90 },
+    { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90, direction: 'left' },
+    { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90, direction: 'right' },
     { exerciseId: 'lunge', reps: 12 },
   ],
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -39,6 +39,7 @@ test('a workout with multiple sets round-trips through push and pull with set or
   // preserves array order, but this proves it end to end through SQLite.
   assert.deepEqual(stored.sets.map((s: { exerciseId: string }) => s.exerciseId), ['squat', 'squat', 'lunge']);
   assert.equal(stored.sets[0].weight, 100);
+  assert.deepEqual(stored.sets.slice(0, 2).map((s: { direction: string }) => s.direction), ['left', 'right']);
 });
 
 test('description round-trips through push and pull', async () => {

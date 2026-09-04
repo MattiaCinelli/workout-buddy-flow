@@ -12,7 +12,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Exercise, getLogType } from '@/data/exercises';
+import { Exercise, getLogType, getExecutionDirections } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import { UnilateralSetNote } from './UnilateralSetNote';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown } from 'lucide-rea
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { useData } from '@/contexts/DataContext';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
+import { expandSetForExercise, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel } from '@/lib/workoutDirections';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -144,7 +145,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       // whether the next set is this same exercise or a different one.
       // Pinning a value at creation time would freeze in whichever case
       // applied then, and stop tracking it if sets get reordered later.
-    }));
+    })).flatMap(set => expandSetForExercise(set, exercise));
 
     // Add exercise with default sets
     setSelectedExercises([
@@ -193,6 +194,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       weight: lastSet.weight,
       duration: lastSet.duration,
       distance: lastSet.distance,
+      direction: lastSet.direction ?? 'none',
       // Same reasoning as handleSelectExercise — left undefined so the
       // runtime's dynamic same/different-exercise default applies.
     };
@@ -435,7 +437,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                               </div>
                               <div>
                                 <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
-                                {selectedEx.exercise.unilateral && <UnilateralSetNote />}
+                                {getExecutionDirections(selectedEx.exercise).length > 0 && <UnilateralSetNote exercise={selectedEx.exercise} />}
                               </div>
                             </div>
                             <Button
@@ -455,10 +457,22 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                               <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
                                 <div className="font-medium min-w-[80px]">
                                   Set {setIndex + 1}
-                                  {selectedEx.exercise.unilateral && (
-                                    <span className="ml-1 text-xs font-normal text-muted-foreground">L + R</span>
-                                  )}
                                 </div>
+
+                                <Select
+                                  value={set.direction ?? 'none'}
+                                  onValueChange={value => patchSet(exIndex, setIndex, { direction: value as WorkoutSet['direction'] })}
+                                  disabled={isSubmitting}
+                                >
+                                  <SelectTrigger className="h-8 w-[125px]" aria-label={`Direction for set ${setIndex + 1}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {WORKOUT_SET_DIRECTIONS.map(direction => (
+                                      <SelectItem key={direction} value={direction}>{workoutDirectionLabel(direction)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
                                 <Button
                                   type="button" size="sm" className="h-7 px-2 text-xs"
@@ -612,7 +626,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                               onClick={() => handleAddSet(exIndex)}
                               disabled={isSubmitting}
                             >
-                              <Plus className="h-4 w-4" /> Add Set{selectedEx.exercise.unilateral ? ' (both sides)' : ''}
+                              <Plus className="h-4 w-4" /> Add Set
                             </Button>
                           </div>
                         </div>

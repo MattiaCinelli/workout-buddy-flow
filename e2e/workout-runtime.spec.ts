@@ -19,8 +19,20 @@ test('a unilateral exercise expands each set into left, switch pause, right', ()
     [{ id: 'row', name: 'Single-arm Row', category: 'strength', muscleGroups: [], difficulty: 'beginner',
       logType: 'reps', unilateral: true }],
   );
-  expect(steps.map(step => step.type === 'exercise' ? `${step.exerciseId}:${step.side}` : `${step.kind}:${step.duration}`))
+  expect(steps.map(step => step.type === 'exercise' ? `${step.exerciseId}:${step.direction}` : `${step.kind}:${step.duration}`))
     .toEqual(['prep:10', 'row:left', 'switch:5', 'row:right', 'rest:10', 'row:left', 'switch:5', 'row:right']);
+});
+
+test('explicit directional workout sets remain separate runtime sets', () => {
+  const steps = buildWorkoutSteps(
+    { id: 'w', date: new Date().toISOString(), title: 'Directions', duration: 10, category: 'strength',
+      sets: [
+        { exerciseId: 'row', reps: 10, direction: 'left' },
+        { exerciseId: 'row', reps: 10, direction: 'right' },
+      ] },
+  );
+  expect(steps.map(step => step.type === 'exercise' ? step.direction : step.kind))
+    .toEqual(['prep', 'left', 'rest', 'right']);
 });
 
 test('deadline calculation catches up after background suspension', () => {
