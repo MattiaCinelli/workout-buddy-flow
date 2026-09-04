@@ -76,7 +76,7 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
   };
 
   const remove = (id: string) =>
-    onChange(items.filter(item => item.id !== id).map((item, order) => ({ ...item, order: order + 1 })));
+    onChange(normalizeCourseItemOrder(items.filter(item => item.id !== id)));
 
   const incompleteSessions = items.some(item => item.type === 'workout' && !item.workoutId);
 
@@ -168,7 +168,7 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
               <span className="flex-1 font-medium">{index + 1}. {title}</span>
               <Button type="button" variant="ghost" size="icon" aria-label="Move earlier that day" onClick={() => move(index, -1)} disabled={sameDayPosition <= 0}><ArrowUp className="h-4 w-4" /></Button>
               <Button type="button" variant="ghost" size="icon" aria-label="Move later that day" onClick={() => move(index, 1)} disabled={sameDayPosition < 0 || sameDayPosition === sameDayItems.length - 1}><ArrowDown className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon" onClick={() => remove(item.id)}><Trash2 className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${title}`} onClick={() => remove(item.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>Week</Label><Input type="number" min={1} value={item.week} onChange={e => update(item.id, { week: Math.max(1, Number(e.target.value) || 1) })} /></div>
@@ -188,6 +188,7 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
         </Card>;
       })}
     </div>
+
   </div>;
 };
 

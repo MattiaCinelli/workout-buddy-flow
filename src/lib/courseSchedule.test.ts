@@ -30,4 +30,5 @@ describe('course scheduling', () => {
     expect(addMinutesToTime('18:00', 15)).toBe('18:15');
     expect(addMinutesToTime('18:00', 75)).toBe('19:15');
   });
+
 });
