@@ -218,10 +218,12 @@ interface Course {
 }
 ```
 
-Progression is sequential across workout sessions and recovery days. A workout may
-appear multiple times because completion is keyed by the program item's own `id`, not
-by `workoutId`. Older saved courses are normalized with IDs and schedule defaults when
-loaded. Guided completion advances its linked workout item automatically; recovery
+Progression is chronological by week and day, then by the explicit order of sessions
+sharing that day. A workout may appear multiple times because completion is keyed by
+the program item's own `id`, not by `workoutId`. Missing days remain unscheduled; the
+system does not create recovery entries to fill gaps. Older saved courses are normalized
+with IDs and schedule defaults when loaded. Guided completion advances its linked item
+and opens the next workout on the same day automatically; explicitly added recovery
 days are completed manually. `restartCourse` resets all flags.
 
 ## Relationships and deletion safety

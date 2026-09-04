@@ -120,7 +120,10 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
 
   const handleStartWorkout = () => {
     onClose();
-    navigate(`/workouts/${schedule.workoutId}/session?scheduledWorkoutId=${schedule.id}`);
+    const params = new URLSearchParams({ scheduledWorkoutId: schedule.id });
+    if (schedule.courseId) params.set('courseId', schedule.courseId);
+    if (schedule.courseItemId) params.set('courseItemId', schedule.courseItemId);
+    navigate(`/workouts/${schedule.workoutId}/session?${params.toString()}`);
   };
 
   const handleViewWorkout = () => {
@@ -152,7 +155,8 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
       } else {
         const skippedDates = [...new Set([...(schedule.skippedDates ?? []), schedule.displayDate])];
         const created = await createScheduledWorkout({ workoutId: schedule.workoutId, startDate: moveDate,
-          startTime: schedule.startTime, endTime: schedule.endTime, recurrence: 'none', notes: schedule.notes });
+          startTime: schedule.startTime, endTime: schedule.endTime, recurrence: 'none', notes: schedule.notes,
+          courseId: schedule.courseId, courseItemId: schedule.courseItemId });
         createdScheduleId = created.id;
         await updateScheduledWorkout(schedule.id, { skippedDates });
       }

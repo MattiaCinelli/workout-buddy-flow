@@ -28,6 +28,7 @@ import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
+import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -68,7 +69,7 @@ const WorkoutPresentation = () => {
   const { toast } = useToast();
   const {
     workouts, exercises, sessions, workoutsLoading, createSession, deleteSession,
-    completeWorkoutInCourse, uncompleteWorkoutInCourse,
+    completeWorkoutInCourse, uncompleteWorkoutInCourse, courses, scheduledWorkouts,
   } = useData();
   const workout = workouts.find(item => item.id === id);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
@@ -391,6 +392,10 @@ const WorkoutPresentation = () => {
       const completedAt = new Date().toISOString();
       const courseId = searchParams.get('courseId') || undefined;
       const courseItemId = searchParams.get('courseItemId') || undefined;
+      const course = courseId ? courses.find(item => item.id === courseId) : undefined;
+      const nextSameDay = course && courseItemId
+        ? getNextSameDayWorkout(course.workouts, courseItemId)
+        : undefined;
       const createdSession = await createSession({ workoutId: workout.id, completedAt, date: completedAt, title: workout.title,
         duration: Math.max(1, Math.round((Date.now() - startedAt.current) / 60000)), plannedDuration: workout.duration,
         category: workout.category, sets: workout.sets, notes: workout.notes, courseId, courseItemId,
@@ -429,7 +434,14 @@ const WorkoutPresentation = () => {
           toast({ title: 'Completion undone', description: 'The history record was removed.' });
         })()}>Undo</ToastAction>,
       });
-      navigate(courseId ? `/courses/${courseId}` : '/history');
+      if (courseId && nextSameDay?.workoutId) {
+        const nextSchedule = scheduledWorkouts.find(item => item.courseId === courseId && item.courseItemId === nextSameDay.id);
+        const params = new URLSearchParams({ courseId, courseItemId: nextSameDay.id });
+        if (nextSchedule) params.set('scheduledWorkoutId', nextSchedule.id);
+        navigate(`/workouts/${nextSameDay.workoutId}/session?${params.toString()}`);
+      } else {
+        navigate(courseId ? `/courses/${courseId}` : '/history');
+      }
     } catch (error) {
       console.error('Failed to save workout:', error);
       logDiagnostic('error', `Save workout failed: ${error instanceof Error ? error.message : String(error)}`);

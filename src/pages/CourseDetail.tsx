@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import CourseScheduleModal from '@/components/CourseScheduleModal';
+import { sortCourseItems } from '@/lib/courseSchedule';
 
 const CourseDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -92,7 +93,7 @@ const CourseDetail = () => {
     navigate('/courses');
   };
 
-  const sortedWorkouts = [...course.workouts].sort((a, b) => a.order - b.order);
+  const sortedWorkouts = sortCourseItems(course.workouts);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -140,7 +141,7 @@ const CourseDetail = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium">Course Progress</span>
               <span className="text-sm text-muted-foreground">
-                {sortedWorkouts.filter(w => w.completed).length}/{sortedWorkouts.length} program days
+                {sortedWorkouts.filter(w => w.completed).length}/{sortedWorkouts.length} sessions
               </span>
             </div>
             <Progress value={progress} className="h-3" />

@@ -85,6 +85,8 @@ const scheduledWorkoutSchema = {
     skippedDates: { type: 'array', items: { type: 'string' } },
     endRecurrenceDate: { type: 'string' },
     notes: { type: 'string' },
+    courseId: { type: 'string' },
+    courseItemId: { type: 'string' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
     deletedAt: { type: 'string' },

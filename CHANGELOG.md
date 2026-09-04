@@ -11,6 +11,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Added
 
+- **Explicit course-day sequencing** — selecting days 1–5 creates a workout on
+  each selected day without inventing rest-day entries. Multiple workouts can
+  share one course day in a clear order, are placed consecutively on the
+  calendar, and completing one opens the next same-day workout automatically.
 - **Directional exercise sets** — exercises can define left, right, forward and
   backward defaults. Adding one to a workout creates a separate, visible set for
   every selected direction, and each set's direction can be changed independently
