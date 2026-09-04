@@ -23,6 +23,9 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Fixed
 
+- **Workout exercise selection flow** — adding an exercise while creating a
+  workout now keeps the Exercise Library open so several exercises can be added
+  without repeatedly switching tabs.
 - **One-limb exercise sync** — the sync server now persists the unilateral setting
   instead of dropping it and clearing the toggle on the next pull. Additive SQLite
   migrations preserve all existing exercises, workouts and history.

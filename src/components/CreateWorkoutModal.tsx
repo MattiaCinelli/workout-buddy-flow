@@ -156,9 +156,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       }
     ]);
     
-    // Switch to selected tab
-    setActiveTab('selected');
-    
     toast({
       title: "Exercise added",
       description: `${exercise.name} added to workout.`,
