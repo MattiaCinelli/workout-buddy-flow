@@ -9,7 +9,30 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Explicit course-day sequencing** — selecting days 1–5 creates a workout on
+  each selected day without inventing rest-day entries. Multiple workouts can
+  share one course day in a clear order, are placed consecutively on the
+  calendar, and completing one opens the next same-day workout automatically.
+- **Course calendar cleanup** — deleting a course workout from the calendar can
+  remove only that calendar entry or every entry for the same workout from the
+  selected date onward. Past entries, the course plan, workout template and
+  completed history remain unchanged.
+- **Directional exercise sets** — exercises can define left, right, forward and
+  backward defaults. Adding one to a workout creates a separate, visible set for
+  every selected direction, and each set's direction can be changed independently
+  in the workout builder or editor. The guided workout displays and announces the
+  active direction. Existing unilateral exercises and workouts remain compatible.
+
+### Fixed
+
+- **Workout exercise selection flow** — adding an exercise while creating a
+  workout now keeps the Exercise Library open so several exercises can be added
+  without repeatedly switching tabs.
+- **One-limb exercise sync** — the sync server now persists the unilateral setting
+  instead of dropping it and clearing the toggle on the next pull. Additive SQLite
+  migrations preserve all existing exercises, workouts and history.
 
 ## [1.0.0] - 2026-09-02
 

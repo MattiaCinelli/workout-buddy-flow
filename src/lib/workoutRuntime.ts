@@ -1,5 +1,6 @@
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { Exercise, getSecondsPerRep } from '@/data/exercises';
+import { isDirectional } from './workoutDirections';
 
 // Seconds given at the very start of a workout before the first exercise
 // begins, so the person has time to get into position after tapping Start.
@@ -22,9 +23,9 @@ export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sour
   // announce which rep it's on as the (synthesized) countdown ticks past
   // each secondsPerRep-sized interval.
   secondsPerRep?: number;
-  // Set on the two exercise steps a unilateral set expands into, so the
-  // presentation layer can make clear which limb to work now.
-  side?: 'left' | 'right';
+  // Explicit direction authored on a new workout set, or synthesized for
+  // an old unilateral workout that predates separate directional sets.
+  direction?: 'left' | 'right' | 'forward' | 'backward';
   // Carried from the authored set for the presentation layer.
   warmup?: boolean;
   amrap?: boolean;
@@ -54,13 +55,15 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
     const exerciseStep: WorkoutStep = { type: 'exercise', exerciseId: set.exerciseId, sourceSetIndex,
       setIndex, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep,
       warmup: set.warmup, amrap: set.amrap };
-    if (exercise?.unilateral) {
+    if (isDirectional(set.direction)) {
+      steps.push({ ...exerciseStep, direction: set.direction });
+    } else if (set.direction === undefined && exercise?.unilateral) {
       // One authored set becomes: left side → switch pause → right side.
       // Both sides keep the same sourceSetIndex/setIndex so progress
       // counting and results logging still map back to the one authored set.
-      steps.push({ ...exerciseStep, side: 'left' });
+      steps.push({ ...exerciseStep, direction: 'left' });
       steps.push({ type: 'rest', kind: 'switch', duration: SWITCH_SIDES_DURATION_SECONDS });
-      steps.push({ ...exerciseStep, side: 'right' });
+      steps.push({ ...exerciseStep, direction: 'right' });
     } else {
       steps.push(exerciseStep);
     }
@@ -108,7 +111,13 @@ export const stepClockSeconds = (step: WorkoutStep | undefined): number =>
 // between-exercises rest the caller can pass the next exercise's name so
 // the cue also says what's coming up.
 export const stepStartAnnouncement = (step: WorkoutStep | undefined, nextExerciseName?: string): string => {
-  if (step?.type === 'exercise') return step.side ? `Begin ${step.side} side` : 'Begin';
+  if (step?.type === 'exercise') {
+    if (!step.direction) return 'Begin';
+    const spokenDirection = step.direction === 'left' || step.direction === 'right'
+      ? `${step.direction} side`
+      : step.direction;
+    return `Begin ${spokenDirection}`;
+  }
   if (step?.kind === 'prep') return 'Get ready';
   if (step?.kind === 'switch') return 'Change side';
   if (step?.changesExercise) {

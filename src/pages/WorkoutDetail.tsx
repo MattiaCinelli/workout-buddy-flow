@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star } from 'lucide-react';
-import { Exercise, getLogType } from '@/data/exercises';
+import { Exercise, getLogType, getExecutionDirections } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
@@ -21,6 +21,9 @@ import Navbar from '@/components/Navbar';
 import ExerciseItem from '@/components/ExerciseItem';
 import { UnilateralSetNote } from '@/components/UnilateralSetNote';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
+import {
+  expandSetForExercise, materializeLegacyDirections, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel,
+} from '@/lib/workoutDirections';
 
 interface SelectedExercise {
   exercise: Exercise;
@@ -73,7 +76,7 @@ const WorkoutDetail = () => {
     const selected: SelectedExercise[] = [];
     exerciseMap.forEach((sets, exerciseId) => {
       const exercise = exercises.find(ex => ex.id === exerciseId);
-      if (exercise) selected.push({ exercise, sets });
+      if (exercise) selected.push({ exercise, sets: materializeLegacyDirections(sets, exercise) });
     });
     setSelectedExercises(selected);
     setLoadedWorkoutId(workout.id);
@@ -149,7 +152,7 @@ const WorkoutDetail = () => {
       distance: exercise.defaultDistance,
       // Left undefined — the runtime picks between restBetweenSets/
       // restBetweenExercises dynamically based on same/different exercise.
-    }));
+    })).flatMap(set => expandSetForExercise(set, exercise));
     setSelectedExercises([...selectedExercises, { exercise, sets: defaultSets }]);
     setActiveTab('selected');
     toast({ title: 'Exercise added', description: `${exercise.name} added to workout.` });
@@ -175,6 +178,7 @@ const WorkoutDetail = () => {
     updated[exerciseIndex].sets.push({
       exerciseId: current.exercise.id,
       reps: lastSet.reps, weight: lastSet.weight, duration: lastSet.duration, distance: lastSet.distance,
+      direction: lastSet.direction ?? 'none',
     });
     setSelectedExercises(updated);
   };
@@ -412,7 +416,7 @@ const WorkoutDetail = () => {
                               </div>
                               <div>
                                 <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
-                                {selectedEx.exercise.unilateral && <UnilateralSetNote />}
+                                {getExecutionDirections(selectedEx.exercise).length > 0 && <UnilateralSetNote exercise={selectedEx.exercise} />}
                                 {selectedEx.exercise.instructions && (
                                   <p className="text-xs text-muted-foreground max-w-md">{selectedEx.exercise.instructions}</p>
                                 )}
@@ -432,10 +436,22 @@ const WorkoutDetail = () => {
                               <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
                                 <div className="font-medium min-w-[80px]">
                                   Set {setIndex + 1}
-                                  {selectedEx.exercise.unilateral && (
-                                    <span className="ml-1 text-xs font-normal text-muted-foreground">L + R</span>
-                                  )}
                                 </div>
+
+                                <Select
+                                  value={set.direction ?? 'none'}
+                                  onValueChange={value => patchSet(exIndex, setIndex, { direction: value as WorkoutSet['direction'] })}
+                                  disabled={isSubmitting}
+                                >
+                                  <SelectTrigger className="h-8 w-[125px]" aria-label={`Direction for set ${setIndex + 1}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {WORKOUT_SET_DIRECTIONS.map(direction => (
+                                      <SelectItem key={direction} value={direction}>{workoutDirectionLabel(direction)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
                                 <Button
                                   type="button" size="sm" className="h-7 px-2 text-xs"
@@ -523,7 +539,7 @@ const WorkoutDetail = () => {
                               className="w-full flex items-center justify-center gap-1 mt-2"
                               onClick={() => handleAddSet(exIndex)} disabled={isSubmitting}
                             >
-                              <Plus className="h-4 w-4" /> Add Set{selectedEx.exercise.unilateral ? ' (both sides)' : ''}
+                              <Plus className="h-4 w-4" /> Add Set
                             </Button>
                           </div>
                         </div>

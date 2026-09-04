@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CourseWorkout } from '@/data/courses';
 import CourseProgramBuilder from '@/components/CourseProgramBuilder';
 import { toast } from 'sonner';
+import { sortCourseItems } from '@/lib/courseSchedule';
 
 const EditCourse = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ const EditCourse = () => {
       setDifficulty(course.difficulty || 'beginner');
       setPrerequisites(course.prerequisites || '');
       // Keep the order from the course
-      const sorted = [...course.workouts].sort((a, b) => a.order - b.order);
+      const sorted = sortCourseItems(course.workouts);
       setProgramItems(sorted);
     }
   }, [course]);
