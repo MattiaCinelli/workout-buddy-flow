@@ -139,7 +139,7 @@ const EditCourse = () => {
               rows={3}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2"><Label>Goal</Label><Input value={goal} onChange={e => setGoal(e.target.value)} /></div>
             <div className="space-y-2"><Label>Difficulty</Label><select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={difficulty} onChange={e => setDifficulty(e.target.value as typeof difficulty)}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
           </div>

@@ -27,6 +27,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Fixed
 
+- **Responsive dialogs and notifications** — dialogs and confirmations now keep
+  safe margins, scroll within short phone screens and stack rigid form layouts
+  on narrow displays. Save/change notifications consistently appear at the
+  bottom on phones and computers.
 - **Workout exercise selection flow** — adding an exercise while creating a
   workout now keeps the Exercise Library open so several exercises can be added
   without repeatedly switching tabs.
