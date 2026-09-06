@@ -2,6 +2,10 @@
 
 ## Running locally
 
+For a step-by-step setup that keeps the browser frontend separate from the sync
+server and connects both a Mac and phone through Tailscale, see
+[`local-browser-and-tailscale-sync.md`](local-browser-and-tailscale-sync.md).
+
 Install **Node.js 22 LTS** before running the project. `npm` is included with Node.
 
 ```sh
