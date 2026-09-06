@@ -1,7 +1,7 @@
 {
     "name": "workout-buddy-server",
     "private": true,
-    "version": "1.0.0",
+    "version": "1.0.2",
     "license": "GPL-3.0-or-later",
     "description": "Self-hosted sync backend for Workout Buddy",
     "main": "dist/index.js",

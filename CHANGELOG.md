@@ -9,6 +9,8 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-06
+
 ### Added
 
 - **Explicit course-day sequencing** — selecting days 1–5 creates a workout on
@@ -126,5 +128,6 @@ a real Android device, and cut from a repeatable signed build.
   must be enabled at build time (`WB_ALLOW_INSECURE_SYNC=1`); the token and data travel
   unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/MattiaCinelli/workout-buddy-flow/releases/tag/v1.0.0
