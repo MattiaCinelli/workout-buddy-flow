@@ -50,7 +50,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   const [moveDate, setMoveDate] = useState('');
   const [recovering, setRecovering] = useState(false);
   const { toast } = useToast();
-  const { workouts, sessions, createScheduledWorkout, updateScheduledWorkout, deleteScheduledWorkout } = useData();
+  const { workouts, sessions, scheduledWorkouts, createScheduledWorkout, updateScheduledWorkout, deleteScheduledWorkout } = useData();
   const navigate = useNavigate();
 
   if (!schedule) return null;
@@ -59,6 +59,10 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   const completed = sessions.some(session => session.scheduledWorkoutId === schedule.id
     && session.completedAt.slice(0, 10) === schedule.displayDate);
   const missed = !schedule.skipped && !completed && schedule.displayDate < format(new Date(), 'yyyy-MM-dd');
+  const matchingCourseOccurrences = schedule.courseId
+    ? scheduledWorkouts.filter(item => item.courseId === schedule.courseId && item.workoutId === schedule.workoutId)
+    : [];
+  const futureCourseOccurrences = matchingCourseOccurrences.filter(item => item.startDate >= schedule.displayDate);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -95,13 +99,18 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
     return 'Recurring';
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (scope: 'one' | 'future') => {
     setIsDeleting(true);
     try {
-      await deleteScheduledWorkout(schedule.id);
+      const targets = scope === 'future' && schedule.courseId
+        ? futureCourseOccurrences
+        : [schedule];
+      await Promise.all(targets.map(item => deleteScheduledWorkout(item.id)));
       toast({
-        title: "Schedule deleted",
-        description: "The scheduled workout has been removed.",
+        title: scope === 'future' ? "Future calendar entries deleted" : "Calendar occurrence deleted",
+        description: scope === 'future'
+          ? `Removed ${targets.length} entries from this date onward. Past entries and the course plan were not changed.`
+          : "The calendar entry was removed. The course plan was not changed.",
       });
       onDeleted();
       onClose();
@@ -120,7 +129,10 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
 
   const handleStartWorkout = () => {
     onClose();
-    navigate(`/workouts/${schedule.workoutId}/session?scheduledWorkoutId=${schedule.id}`);
+    const params = new URLSearchParams({ scheduledWorkoutId: schedule.id });
+    if (schedule.courseId) params.set('courseId', schedule.courseId);
+    if (schedule.courseItemId) params.set('courseItemId', schedule.courseItemId);
+    navigate(`/workouts/${schedule.workoutId}/session?${params.toString()}`);
   };
 
   const handleViewWorkout = () => {
@@ -152,7 +164,8 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
       } else {
         const skippedDates = [...new Set([...(schedule.skippedDates ?? []), schedule.displayDate])];
         const created = await createScheduledWorkout({ workoutId: schedule.workoutId, startDate: moveDate,
-          startTime: schedule.startTime, endTime: schedule.endTime, recurrence: 'none', notes: schedule.notes });
+          startTime: schedule.startTime, endTime: schedule.endTime, recurrence: 'none', notes: schedule.notes,
+          courseId: schedule.courseId, courseItemId: schedule.courseItemId });
         createdScheduleId = created.id;
         await updateScheduledWorkout(schedule.id, { skippedDates });
       }
@@ -283,15 +296,17 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Scheduled Workout</AlertDialogTitle>
             <AlertDialogDescription>
-              {schedule.recurrence !== 'none'
+              {schedule.courseId && futureCourseOccurrences.length > 1
+                ? `This workout has ${futureCourseOccurrences.length} calendar entries from this date onward. Past entries and the course plan will not be changed.`
+                : schedule.recurrence !== 'none'
                 ? "This will delete all occurrences of this recurring workout. Are you sure?"
-                : "Are you sure you want to remove this scheduled workout?"}
+                : "Remove this workout from the calendar? The course plan will not be changed."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => void handleDelete('one')}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -301,9 +316,18 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                   Deleting...
                 </>
               ) : (
-                'Delete'
+                schedule.courseId ? 'Remove this calendar entry' : 'Delete'
               )}
             </AlertDialogAction>
+            {schedule.courseId && futureCourseOccurrences.length > 1 && (
+              <AlertDialogAction
+                onClick={() => void handleDelete('future')}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove all {futureCourseOccurrences.length} future entries
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

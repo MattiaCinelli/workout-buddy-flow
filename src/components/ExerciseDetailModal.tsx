@@ -7,7 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer, TrendingUp, Video } from 'lucide-react';
-import { Exercise, getLogType } from '@/data/exercises';
+import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
 
@@ -81,8 +81,10 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
             {exercise.name}
             <Badge className={getCategoryColor(exercise.category)}>{exercise.category}</Badge>
             <Badge variant="outline" className={getDifficultyColor(exercise.difficulty)}>{exercise.difficulty}</Badge>
-            {exercise.unilateral && (
-              <Badge variant="outline" className="border-workout-green/50 text-workout-green">One limb at a time</Badge>
+            {getExecutionDirections(exercise).length > 0 && (
+              <Badge variant="outline" className="border-workout-green/50 text-workout-green">
+                {getExecutionDirections(exercise).map(direction => EXECUTION_DIRECTION_LABELS[direction]).join(' / ')} sets
+              </Badge>
             )}
           </DialogTitle>
           <DialogDescription>{muscleGroupNames || 'No muscle groups tagged'}</DialogDescription>

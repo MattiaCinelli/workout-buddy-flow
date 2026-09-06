@@ -9,7 +9,36 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
-_Nothing yet._
+## [1.0.2] - 2026-09-06
+
+### Added
+
+- **Explicit course-day sequencing** — selecting days 1–5 creates a workout on
+  each selected day without inventing rest-day entries. Multiple workouts can
+  share one course day in a clear order, are placed consecutively on the
+  calendar, and completing one opens the next same-day workout automatically.
+- **Course calendar cleanup** — deleting a course workout from the calendar can
+  remove only that calendar entry or every entry for the same workout from the
+  selected date onward. Past entries, the course plan, workout template and
+  completed history remain unchanged.
+- **Directional exercise sets** — exercises can define left, right, forward and
+  backward defaults. Adding one to a workout creates a separate, visible set for
+  every selected direction, and each set's direction can be changed independently
+  in the workout builder or editor. The guided workout displays and announces the
+  active direction. Existing unilateral exercises and workouts remain compatible.
+
+### Fixed
+
+- **Responsive dialogs and notifications** — dialogs and confirmations now keep
+  safe margins, scroll within short phone screens and stack rigid form layouts
+  on narrow displays. Save/change notifications consistently appear at the
+  bottom on phones and computers.
+- **Workout exercise selection flow** — adding an exercise while creating a
+  workout now keeps the Exercise Library open so several exercises can be added
+  without repeatedly switching tabs.
+- **One-limb exercise sync** — the sync server now persists the unilateral setting
+  instead of dropping it and clearing the toggle on the next pull. Additive SQLite
+  migrations preserve all existing exercises, workouts and history.
 
 ## [1.0.0] - 2026-09-02
 
@@ -99,5 +128,6 @@ a real Android device, and cut from a repeatable signed build.
   must be enabled at build time (`WB_ALLOW_INSECURE_SYNC=1`); the token and data travel
   unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/MattiaCinelli/workout-buddy-flow/releases/tag/v1.0.0

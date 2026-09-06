@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Exercise, getLogType, DEFAULT_SECONDS_PER_REP } from '@/data/exercises';
+import {
+  Exercise, getLogType, DEFAULT_SECONDS_PER_REP, EXECUTION_DIRECTIONS,
+  EXECUTION_DIRECTION_LABELS, getExecutionDirections,
+} from '@/data/exercises';
 import { Trash, FileImage, Loader2, Settings2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Switch } from "@/components/ui/switch";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
 import { normalizeHttpsUrl } from '@/lib/url';
@@ -43,7 +45,7 @@ const formSchema = z.object({
   muscleGroups: z.array(z.string()).default([]),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   logType: z.enum(['reps', 'time']),
-  unilateral: z.boolean().default(false),
+  executionDirections: z.array(z.enum(EXECUTION_DIRECTIONS)).default([]),
   defaultSets: optionalNumber('Sets', 1, 100),
   defaultReps: optionalNumber('Reps', 0, 1000),
   defaultDuration: optionalNumber('Duration', 0, 86400),
@@ -89,7 +91,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       muscleGroups: exercise?.muscleGroups || [],
       difficulty: exercise?.difficulty || 'beginner',
       logType: exercise ? getLogType(exercise) : 'reps',
-      unilateral: exercise?.unilateral ?? false,
+      executionDirections: exercise ? getExecutionDirections(exercise) : [],
       defaultSets: exercise?.defaultSets?.toString() ?? '3',
       defaultReps: exercise?.defaultReps?.toString() ?? '',
       defaultDuration: exercise?.defaultDuration?.toString() ?? '',
@@ -113,7 +115,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       muscleGroups: values.muscleGroups,
       difficulty: values.difficulty,
       logType: values.logType,
-      unilateral: values.unilateral || undefined,
+      executionDirections: values.executionDirections.length ? values.executionDirections : undefined,
+      // Keep writing the legacy flag while older clients/servers may still
+      // encounter this exercise. New code uses executionDirections first.
+      unilateral: values.executionDirections.includes('left') && values.executionDirections.includes('right') || undefined,
       defaultSets: toNumber(values.defaultSets),
       defaultReps: values.logType === 'reps' ? toNumber(values.defaultReps) : undefined,
       defaultDuration: values.logType === 'time' ? toNumber(values.defaultDuration) : undefined,
@@ -322,17 +327,29 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
         <FormField
           control={form.control}
-          name="unilateral"
+          name="executionDirections"
           render={({ field }) => (
-            <FormItem className="flex items-center justify-between gap-3 rounded-md border p-3">
+            <FormItem className="space-y-2 rounded-md border p-3">
               <div className="space-y-0.5">
-                <FormLabel>One limb at a time</FormLabel>
+                <FormLabel>Separate directional sets</FormLabel>
                 <p className="text-xs text-muted-foreground">
-                  Splits every set into a left side, then a right side, with a short switch pause between.
+                  Each selected direction becomes its own visible set when this exercise is added to a workout.
                 </p>
               </div>
               <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                <ToggleGroup
+                  type="multiple"
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  className="justify-start flex-wrap"
+                  disabled={isSubmitting}
+                >
+                  {EXECUTION_DIRECTIONS.map(direction => (
+                    <ToggleGroupItem key={direction} value={direction} className="px-3">
+                      {EXECUTION_DIRECTION_LABELS[direction]}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </FormControl>
             </FormItem>
           )}

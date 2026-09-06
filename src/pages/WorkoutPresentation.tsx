@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { ArrowLeft, ArrowLeftRight, ArrowRight, ChevronLeft, Info, Minus, Music, Pause, Play, Plus, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ChevronLeft, Info, Minus, Music, Pause, Play, Plus, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -27,6 +27,8 @@ import { suggestNextSet } from '@/lib/progression';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
+import { workoutDirectionLabel } from '@/lib/workoutDirections';
+import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -67,7 +69,7 @@ const WorkoutPresentation = () => {
   const { toast } = useToast();
   const {
     workouts, exercises, sessions, workoutsLoading, createSession, deleteSession,
-    completeWorkoutInCourse, uncompleteWorkoutInCourse,
+    completeWorkoutInCourse, uncompleteWorkoutInCourse, courses, scheduledWorkouts,
   } = useData();
   const workout = workouts.find(item => item.id === id);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
@@ -222,7 +224,7 @@ const WorkoutPresentation = () => {
     }
     setActualSets(workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
       completed: true, reps: set.reps, weight: set.weight, duration: set.duration, distance: set.distance,
-      warmup: set.warmup, amrap: set.amrap })));
+      direction: set.direction, warmup: set.warmup, amrap: set.amrap })));
     setRestored(true);
   }, [workout, steps, restored, toast]);
 
@@ -390,6 +392,10 @@ const WorkoutPresentation = () => {
       const completedAt = new Date().toISOString();
       const courseId = searchParams.get('courseId') || undefined;
       const courseItemId = searchParams.get('courseItemId') || undefined;
+      const course = courseId ? courses.find(item => item.id === courseId) : undefined;
+      const nextSameDay = course && courseItemId
+        ? getNextSameDayWorkout(course.workouts, courseItemId)
+        : undefined;
       const createdSession = await createSession({ workoutId: workout.id, completedAt, date: completedAt, title: workout.title,
         duration: Math.max(1, Math.round((Date.now() - startedAt.current) / 60000)), plannedDuration: workout.duration,
         category: workout.category, sets: workout.sets, notes: workout.notes, courseId, courseItemId,
@@ -428,7 +434,14 @@ const WorkoutPresentation = () => {
           toast({ title: 'Completion undone', description: 'The history record was removed.' });
         })()}>Undo</ToastAction>,
       });
-      navigate(courseId ? `/courses/${courseId}` : '/history');
+      if (courseId && nextSameDay?.workoutId) {
+        const nextSchedule = scheduledWorkouts.find(item => item.courseId === courseId && item.courseItemId === nextSameDay.id);
+        const params = new URLSearchParams({ courseId, courseItemId: nextSameDay.id });
+        if (nextSchedule) params.set('scheduledWorkoutId', nextSchedule.id);
+        navigate(`/workouts/${nextSameDay.workoutId}/session?${params.toString()}`);
+      } else {
+        navigate(courseId ? `/courses/${courseId}` : '/history');
+      }
     } catch (error) {
       console.error('Failed to save workout:', error);
       logDiagnostic('error', `Save workout failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -454,11 +467,10 @@ const WorkoutPresentation = () => {
   const workingSetCount = workoutSets.filter(item => !item.warmup).length;
   const workingSetNumber = currentSourceIndex === undefined ? 0
     : workoutSets.slice(0, currentSourceIndex + 1).filter(item => !item.warmup).length;
-  const sideLabel = (side?: 'left' | 'right') => side === 'left' ? 'Left side' : side === 'right' ? 'Right side' : '';
   const upcomingLabel = upcoming?.type === 'rest'
     ? (upcoming.kind === 'switch' ? 'Change side' : `Rest · ${formatTime(upcoming.duration || 0)}`)
     : upcoming?.exerciseId
-      ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.side ? ` · ${sideLabel(upcoming.side)}` : ''}`
+      ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.direction ? ` · ${workoutDirectionLabel(upcoming.direction)}` : ''}`
       : 'Finish workout';
   const activeStepDuration = current?.duration || 0;
   const countdownPercent = activeStepDuration > 0
@@ -508,7 +520,7 @@ const WorkoutPresentation = () => {
       {current.type === 'exercise' && exercise ? <>
         {exercise.imageUrl && <img src={exercise.imageUrl} alt="" className="mb-6 h-48 w-full max-w-xs rounded-lg object-contain landscape:h-28" />}
         <div className="text-center mb-8">
-          {(current.side || current.warmup || current.amrap) && (
+          {(current.direction || current.warmup || current.amrap) && (
             <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
               {current.warmup && (
                 <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-300">Warm-up</span>
@@ -516,10 +528,13 @@ const WorkoutPresentation = () => {
               {current.amrap && (
                 <span className="rounded-full bg-workout-green/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-workout-green">AMRAP</span>
               )}
-              {current.side && (
+              {current.direction && (
                 <span className="inline-flex items-center gap-2 rounded-full bg-workout-green/20 px-4 py-1 text-workout-green">
-                  {current.side === 'left' ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
-                  <span className="text-sm font-bold uppercase tracking-wide">{sideLabel(current.side)}</span>
+                  {current.direction === 'left' && <ArrowLeft className="h-4 w-4" aria-hidden="true" />}
+                  {current.direction === 'right' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                  {current.direction === 'forward' && <ArrowUp className="h-4 w-4" aria-hidden="true" />}
+                  {current.direction === 'backward' && <ArrowDown className="h-4 w-4" aria-hidden="true" />}
+                  <span className="text-sm font-bold uppercase tracking-wide">{workoutDirectionLabel(current.direction)}</span>
                 </span>
               )}
             </div>
@@ -536,7 +551,7 @@ const WorkoutPresentation = () => {
                 <Video className="h-5 w-5" />
               </a>
             )}
-            <h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}{current.side ? ` — ${sideLabel(current.side)}` : ''}</h2>
+            <h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}{current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}</h2>
             {exercise.instructions && (
               <Popover>
                 <PopoverTrigger asChild>
@@ -648,7 +663,7 @@ const WorkoutPresentation = () => {
       <div className="space-y-3">{actualSets.map((result, index) => {
         const planned = workout.sets[index];
         const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise';
-        const tag = result.warmup ? ' · Warm-up' : result.amrap ? ' · AMRAP' : '';
+        const tag = `${result.direction && result.direction !== 'none' ? ` · ${workoutDirectionLabel(result.direction)}` : ''}${result.warmup ? ' · Warm-up' : result.amrap ? ' · AMRAP' : ''}`;
         return <div key={index} className={`border rounded-md p-3 ${result.warmup ? 'border-amber-400/40' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
             <Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} />

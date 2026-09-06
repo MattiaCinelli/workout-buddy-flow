@@ -13,8 +13,8 @@ const session = (overrides: Record<string, unknown> = {}) => ({
   completedAt: '2026-01-05T10:30:00.000Z',
   plannedDuration: 45,
   actualSets: [
-    { exerciseId: 'squat', setIndex: 0, completed: true, reps: 8, weight: 100 },
-    { exerciseId: 'squat', setIndex: 1, completed: false },
+    { exerciseId: 'squat', setIndex: 0, completed: true, direction: 'left', reps: 8, weight: 100 },
+    { exerciseId: 'squat', setIndex: 1, completed: false, direction: 'right' },
   ],
   perceivedExertion: 7,
   updatedAt: '2026-01-05T10:30:00.000Z',
@@ -37,6 +37,8 @@ test('a session round-trips including skipped sets in actualSets', async () => {
   const stored = pull.json().workoutSessions[0];
   assert.equal(stored.actualSets.length, 2);
   assert.equal(stored.actualSets[1].completed, false);
+  assert.equal(stored.actualSets[0].direction, 'left');
+  assert.equal(stored.actualSets[1].direction, 'right');
   assert.equal(stored.perceivedExertion, 7);
 });
 

@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CourseWorkout } from '@/data/courses';
 import CourseProgramBuilder from '@/components/CourseProgramBuilder';
 import { toast } from 'sonner';
+import { sortCourseItems } from '@/lib/courseSchedule';
 
 const EditCourse = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ const EditCourse = () => {
       setDifficulty(course.difficulty || 'beginner');
       setPrerequisites(course.prerequisites || '');
       // Keep the order from the course
-      const sorted = [...course.workouts].sort((a, b) => a.order - b.order);
+      const sorted = sortCourseItems(course.workouts);
       setProgramItems(sorted);
     }
   }, [course]);
@@ -138,7 +139,7 @@ const EditCourse = () => {
               rows={3}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2"><Label>Goal</Label><Input value={goal} onChange={e => setGoal(e.target.value)} /></div>
             <div className="space-y-2"><Label>Difficulty</Label><select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={difficulty} onChange={e => setDifficulty(e.target.value as typeof difficulty)}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
           </div>

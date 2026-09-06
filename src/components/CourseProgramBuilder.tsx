@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CourseWorkout } from '@/data/courses';
 import { WorkoutEntry } from '@/data/workoutHistory';
+import { normalizeCourseItemOrder } from '@/lib/courseSchedule';
 
 interface Props {
   items: CourseWorkout[];
@@ -29,7 +30,7 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
   const [days, setDays] = useState<string[]>(['1', '2', '3', '4', '5']);
 
   const update = (id: string, patch: Partial<CourseWorkout>) =>
-    onChange(items.map(item => item.id === id ? { ...item, ...patch } : item));
+    onChange(normalizeCourseItemOrder(items.map(item => item.id === id ? { ...item, ...patch } : item)));
 
   const maxOrder = () => (items.length ? Math.max(...items.map(item => item.order)) : 0);
 
@@ -51,27 +52,31 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
         additions.push({ id: crypto.randomUUID(), type: 'workout', workoutId: bulkWorkoutId, order, week, day, completed: false });
       }
     }
-    onChange([...items, ...additions]);
+    onChange(normalizeCourseItemOrder([...items, ...additions]));
   };
 
-  const addSingle = () => onChange([...items, {
+  const addSingle = () => onChange(normalizeCourseItemOrder([...items, {
     id: crypto.randomUUID(), type: 'workout', order: maxOrder() + 1, week: 1, day: 1, completed: false,
-  }]);
+  }]));
 
-  const addRest = () => onChange([...items, {
+  const addRest = () => onChange(normalizeCourseItemOrder([...items, {
     id: crypto.randomUUID(), type: 'rest', order: maxOrder() + 1, week: 1, day: 1, title: 'Recovery day', completed: false,
-  }]);
+  }]));
 
   const move = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= items.length) return;
+    const item = items[index];
+    const sameDayIndices = items.flatMap((candidate, candidateIndex) =>
+      candidate.week === item.week && candidate.day === item.day ? [candidateIndex] : []);
+    const position = sameDayIndices.indexOf(index);
+    const target = sameDayIndices[position + direction];
+    if (target === undefined) return;
     const next = [...items];
     [next[index], next[target]] = [next[target], next[index]];
     onChange(next.map((item, order) => ({ ...item, order: order + 1 })));
   };
 
   const remove = (id: string) =>
-    onChange(items.filter(item => item.id !== id).map((item, order) => ({ ...item, order: order + 1 })));
+    onChange(normalizeCourseItemOrder(items.filter(item => item.id !== id)));
 
   const incompleteSessions = items.some(item => item.type === 'workout' && !item.workoutId);
 
@@ -132,7 +137,7 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
       <div className="flex items-center justify-between gap-2">
         <div>
           <Label>Program schedule</Label>
-          <p className="text-xs text-muted-foreground">Fine-tune each session's week, day and notes, or reorder them.</p>
+          <p className="text-xs text-muted-foreground">Fine-tune each session's week and day. Sessions sharing a day run in the order shown; rest days are added only when you choose Rest.</p>
         </div>
         <div className="flex gap-2">
           <Button type="button" size="sm" variant="outline" onClick={addRest}><Bed className="mr-1 h-4 w-4" />Rest</Button>
@@ -150,6 +155,8 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
       )}
 
       {items.map((item, index) => {
+        const sameDayItems = items.filter(candidate => candidate.week === item.week && candidate.day === item.day);
+        const sameDayPosition = sameDayItems.findIndex(candidate => candidate.id === item.id);
         const needsWorkout = item.type === 'workout' && !item.workoutId;
         const title = item.type === 'workout'
           ? (workouts.find(workout => workout.id === item.workoutId)?.title ?? 'Session')
@@ -159,9 +166,9 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
             <div className="flex items-center gap-2">
               {item.type === 'workout' ? <Dumbbell className="h-4 w-4 text-primary" /> : <Bed className="h-4 w-4 text-primary" />}
               <span className="flex-1 font-medium">{index + 1}. {title}</span>
-              <Button type="button" variant="ghost" size="icon" onClick={() => move(index, -1)} disabled={index === 0}><ArrowUp className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon" onClick={() => move(index, 1)} disabled={index === items.length - 1}><ArrowDown className="h-4 w-4" /></Button>
-              <Button type="button" variant="ghost" size="icon" onClick={() => remove(item.id)}><Trash2 className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" aria-label="Move earlier that day" onClick={() => move(index, -1)} disabled={sameDayPosition <= 0}><ArrowUp className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" aria-label="Move later that day" onClick={() => move(index, 1)} disabled={sameDayPosition < 0 || sameDayPosition === sameDayItems.length - 1}><ArrowDown className="h-4 w-4" /></Button>
+              <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${title}`} onClick={() => remove(item.id)}><Trash2 className="h-4 w-4" /></Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>Week</Label><Input type="number" min={1} value={item.week} onChange={e => update(item.id, { week: Math.max(1, Number(e.target.value) || 1) })} /></div>
@@ -181,6 +188,7 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
         </Card>;
       })}
     </div>
+
   </div>;
 };
 

@@ -136,10 +136,12 @@ describe('stepClockSeconds', () => {
 });
 
 describe('stepStartAnnouncement', () => {
-  it('announces "Begin" for a bilateral exercise and the side for a unilateral one', () => {
+  it('announces "Begin" without a direction and names every supported direction', () => {
     expect(stepStartAnnouncement(step({ type: 'exercise' }))).toBe('Begin');
-    expect(stepStartAnnouncement(step({ type: 'exercise', side: 'left' }))).toBe('Begin left side');
-    expect(stepStartAnnouncement(step({ type: 'exercise', side: 'right' }))).toBe('Begin right side');
+    expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'left' }))).toBe('Begin left side');
+    expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'right' }))).toBe('Begin right side');
+    expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'forward' }))).toBe('Begin forward');
+    expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'backward' }))).toBe('Begin backward');
   });
 
   it('announces the right cue for each kind of rest', () => {

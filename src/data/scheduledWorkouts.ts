@@ -12,6 +12,9 @@ export interface ScheduledWorkout {
   recurrenceDays?: WeekDay[]; // For weekly recurrence, which day(s) — e.g. just Monday, or Mon-Fri
   endRecurrenceDate?: string; // Optional end date for recurring events
   notes?: string;
+  /** Links calendar entries created from a course back to their exact slot. */
+  courseId?: string;
+  courseItemId?: string;
   /** Concrete occurrence dates the user intentionally skipped. */
   skippedDates?: string[];
   createdAt: string;

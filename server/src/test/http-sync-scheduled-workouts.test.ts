@@ -48,6 +48,16 @@ test('a weekly schedule can span multiple chosen weekdays', async () => {
   assert.deepEqual(pull.json().scheduledWorkouts[0].recurrenceDays, ['monday', 'wednesday', 'friday']);
 });
 
+test('a course calendar entry retains its exact course item link', async () => {
+  const { app, aliceToken } = await setupTwoUsers();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+  await app.inject({ method: 'POST', url: '/sync/scheduledWorkouts', headers,
+    payload: { scheduledWorkouts: [scheduledWorkout({ courseId: 'course-1', courseItemId: 'item-2' })] } });
+  const pull = await app.inject({ method: 'GET', url: '/sync/scheduledWorkouts', headers });
+  assert.equal(pull.json().scheduledWorkouts[0].courseId, 'course-1');
+  assert.equal(pull.json().scheduledWorkouts[0].courseItemId, 'item-2');
+});
+
 test('created_at is not overwritten by a later edit', async () => {
   const { app, aliceToken } = await setupTwoUsers();
   const headers = { authorization: `Bearer ${aliceToken}` };

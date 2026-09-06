@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { DataProvider } from "@/contexts/DataContext";
 import AutoSync from "@/components/AutoSync";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -33,6 +33,13 @@ const RouteFallback = () => (
   </div>
 );
 
+// A same-day course may repeat the same workout template. Keying by both
+// route and query resets all timers/results for each distinct course slot.
+const WorkoutPresentationRoute = () => {
+  const location = useLocation();
+  return <WorkoutPresentation key={`${location.pathname}${location.search}`} />;
+};
+
 const App = () => (
   <ErrorBoundary>
     <TooltipProvider>
@@ -57,10 +64,10 @@ const App = () => (
               <Route path="/courses/:id" element={<CourseDetail />} />
               <Route path="/courses/:id/edit" element={<EditCourse />} />
               <Route path="/workouts/:id" element={<WorkoutDetail />} />
-              <Route path="/workouts/:id/session" element={<WorkoutPresentation />} />
+              <Route path="/workouts/:id/session" element={<WorkoutPresentationRoute />} />
               {/* Legacy URLs remain available for bookmarks and old schedules. */}
               <Route path="/workout/:id" element={<WorkoutDetail />} />
-              <Route path="/workout/:id/start" element={<WorkoutPresentation />} />
+              <Route path="/workout/:id/start" element={<WorkoutPresentationRoute />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

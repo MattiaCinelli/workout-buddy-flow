@@ -1,4 +1,9 @@
 export type ExerciseLogType = 'reps' | 'time';
+export const EXECUTION_DIRECTIONS = ['left', 'right', 'forward', 'backward'] as const;
+export type ExecutionDirection = (typeof EXECUTION_DIRECTIONS)[number];
+export const EXECUTION_DIRECTION_LABELS: Record<ExecutionDirection, string> = {
+  left: 'Left', right: 'Right', forward: 'Forward', backward: 'Backward',
+};
 
 export interface ExerciseProgression {
   // 'linear' — add weight every session all target reps are hit.
@@ -37,6 +42,10 @@ export interface Exercise {
   // Applies to reps- and time-based moves alike (single-arm row, single-leg
   // plank, Bulgarian split squat…).
   unilateral?: boolean;
+  // Directions to create as separate, visible sets when this exercise is
+  // added to a workout. `unilateral` remains as a legacy left/right fallback
+  // for exercises created before this field existed.
+  executionDirections?: ExecutionDirection[];
   // Opt-in load progression. When set, the app suggests the next target
   // from your logged history (see src/lib/progression.ts) — it never
   // changes the workout template, only advises.
@@ -50,6 +59,12 @@ export interface Exercise {
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
   deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead
 }
+
+export const getExecutionDirections = (
+  exercise: Pick<Exercise, 'executionDirections' | 'unilateral'>,
+): ExecutionDirection[] => exercise.executionDirections?.length
+  ? exercise.executionDirections
+  : exercise.unilateral ? ['left', 'right'] : [];
 
 // Exercises created before logType existed have no explicit value — fall
 // back to the old category-based guess so they keep behaving the same way

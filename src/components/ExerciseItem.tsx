@@ -2,7 +2,7 @@
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Exercise, getLogType } from '@/data/exercises';
+import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { Image, Edit, Repeat, Timer } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
@@ -83,7 +83,11 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
               {logType === 'time' ? <Timer className="h-3 w-3" /> : <Repeat className="h-3 w-3" />}
               {setSummary}
-              {exercise.unilateral && <span className="font-medium text-workout-green">· left &amp; right per set</span>}
+              {getExecutionDirections(exercise).length > 0 && (
+                <span className="font-medium text-workout-green">
+                  · {getExecutionDirections(exercise).map(direction => EXECUTION_DIRECTION_LABELS[direction]).join(' / ')} sets
+                </span>
+              )}
             </div>
             <div className="text-sm text-muted-foreground mt-1">
               {muscleGroupNames}
