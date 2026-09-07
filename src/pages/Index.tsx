@@ -29,18 +29,21 @@ const Index = () => {
   }
   
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="lcars-app min-h-screen flex flex-col bg-background">
       <Navbar />
       <OnboardingDialog />
 
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
+      <main className="lcars-main flex-1 container mx-auto py-6 px-4 md:px-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div className="lcars-page-heading flex flex-col md:flex-row justify-between items-start md:items-end mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Track your fitness progress</p>
+            <div className="lcars-eyebrow">WB-1701 • TRAINING SYSTEM ONLINE</div>
+            <h1 className="text-3xl font-bold">Fitness Command</h1>
+            <p className="text-muted-foreground">Personal performance telemetry</p>
           </div>
-          
+          <div className="lcars-status mt-4 md:mt-0" aria-label="System status: active">
+            <span className="lcars-status-dot" /> SYSTEM ACTIVE
+          </div>
         </div>
         
         {/* Main Dashboard Grid */}
@@ -64,6 +67,9 @@ const Index = () => {
         </div>
       </main>
       
+      <footer className="lcars-footer" aria-hidden="true">
+        <span>47-ALPHA</span><span /><span /><span>FITNESS CORE</span>
+      </footer>
       {/* Create Workout Modal */}    </div>
   );
 };

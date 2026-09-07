@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Accessibility, Bell, Cloud, Database, Download, ExternalLink, Info, Laptop, Moon, Settings as SettingsIcon,
-  Sun, Upload, UserRound,
+  Sun, Upload, UserRound, PanelsTopLeft, Rocket,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AccountProfileTab } from '@/components/AccountProfileTab';
@@ -18,7 +18,7 @@ import { clearDiagnostics, formatDiagnostics } from '@/lib/diagnosticLog';
 import { saveTextFile } from '@/lib/downloadFile';
 import { scheduleWorkoutReminders } from '@/lib/notifications';
 import { isConnected } from '@/lib/syncClient';
-import { useTheme, Theme } from '@/hooks/useTheme';
+import { useTheme, Theme, useInterfaceStyle, InterfaceStyle } from '@/hooks/useTheme';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -30,8 +30,14 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'system', label: 'System', icon: Laptop },
 ];
 
+const interfaceOptions: { value: InterfaceStyle; label: string; description: string; icon: typeof Sun }[] = [
+  { value: 'starship', label: 'Starship', description: 'Futuristic console', icon: Rocket },
+  { value: 'classic', label: 'Classic', description: 'Original interface', icon: PanelsTopLeft },
+];
+
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
+  const { interfaceStyle, setInterfaceStyle } = useInterfaceStyle();
   const data = useData();
   const [connected, setConnected] = useState(isConnected());
   const [remindersOpen, setRemindersOpen] = useState(false);
@@ -128,9 +134,27 @@ const SettingsPage = () => {
           <Card id="appearance">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sun className="h-5 w-5" />Appearance</CardTitle>
-              <CardDescription>Choose a theme or follow your phone's appearance setting.</CardDescription>
+              <CardDescription>Choose the interface design and its light or dark color mode.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-5">
+              <div>
+                <p className="mb-2 text-sm font-medium">Interface</p>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Interface style">
+                  {interfaceOptions.map(option => {
+                    const Icon = option.icon;
+                    return (
+                      <Button key={option.value} type="button" variant="outline" onClick={() => setInterfaceStyle(option.value)}
+                        aria-pressed={interfaceStyle === option.value}
+                        className={cn('h-auto flex-col gap-1 py-3', interfaceStyle === option.value && 'border-primary bg-primary/10 text-primary')}>
+                        <Icon className="mb-1 h-5 w-5" />{option.label}
+                        <span className="font-sans text-xs font-normal normal-case tracking-normal text-muted-foreground">{option.description}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-medium">Color mode</p>
               <div className="grid grid-cols-3 gap-2" role="group" aria-label="Color theme">
                 {themeOptions.map(option => {
                   const Icon = option.icon;
@@ -142,6 +166,7 @@ const SettingsPage = () => {
                     </Button>
                   );
                 })}
+              </div>
               </div>
             </CardContent>
           </Card>

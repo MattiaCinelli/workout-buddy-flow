@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 
 export type Theme = 'light' | 'dark' | 'system';
+export type InterfaceStyle = 'classic' | 'starship';
 const THEME_CHANGE_EVENT = 'workout-buddy-theme-change';
+const INTERFACE_CHANGE_EVENT = 'workout-buddy-interface-change';
 
 const getSystemTheme = (): 'light' | 'dark' =>
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -51,4 +53,30 @@ export function useTheme() {
   };
 
   return { theme, resolvedTheme: theme === 'system' ? systemTheme : theme, setTheme, toggleTheme };
+}
+
+export function useInterfaceStyle() {
+  const [interfaceStyle, setInterfaceStyleState] = useState<InterfaceStyle>(() =>
+    localStorage.getItem('interface-style') === 'starship' ? 'starship' : 'classic'
+  );
+
+  useEffect(() => {
+    const update = (event: Event) => setInterfaceStyleState((event as CustomEvent<InterfaceStyle>).detail);
+    window.addEventListener(INTERFACE_CHANGE_EVENT, update);
+    return () => window.removeEventListener(INTERFACE_CHANGE_EVENT, update);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('starship', interfaceStyle === 'starship');
+    localStorage.setItem('interface-style', interfaceStyle);
+  }, [interfaceStyle]);
+
+  const setInterfaceStyle = (next: InterfaceStyle) => {
+    setInterfaceStyleState(next);
+    window.dispatchEvent(new CustomEvent<InterfaceStyle>(INTERFACE_CHANGE_EVENT, { detail: next }));
+  };
+
+  const toggleInterfaceStyle = () => setInterfaceStyle(interfaceStyle === 'starship' ? 'classic' : 'starship');
+
+  return { interfaceStyle, setInterfaceStyle, toggleInterfaceStyle };
 }

@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dumbbell, Home, Menu, Library, Calendar, History, ListChecks, TrendingUp, BookOpen, Settings } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccountButton } from "@/components/AccountButton";
 import { RemindersDialog, RemindersTriggerButton } from "@/components/RemindersButton";
 
@@ -102,7 +101,10 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-card shadow-sm py-4 px-6 border-b">
+    <nav className="lcars-nav bg-card px-4 md:px-6">
+      <div className="lcars-top-rail" aria-hidden="true">
+        <span /><span /><span>WORKOUT BUDDY</span>
+      </div>
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-1">
           {/* Menu sits before the logo, mobile only — thumb-reachable on
@@ -121,7 +123,7 @@ const Navbar: React.FC = () => {
             onClick={() => navigate('/')}
           >
             <Dumbbell className="h-6 w-6 text-primary" />
-            <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WorkoutBuddy</span>
+            <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WORKOUT<span className="text-foreground">BUDDY</span></span>
           </div>
         </div>
 
@@ -141,15 +143,15 @@ const Navbar: React.FC = () => {
 
           <RemindersTriggerButton onClick={() => setRemindersOpen(true)} />
           <AccountButton />
-          <ThemeToggle />
         </div>
 
         {/* Mobile top bar — menu lives on the left, next to the logo */}
         <div className="md:hidden flex items-center gap-1">
           <AccountButton />
-          <ThemeToggle />
         </div>
       </div>
+
+      <div className="lcars-bottom-rail" aria-hidden="true"><span /><span>LCARS 47</span></div>
 
       {/* Mobile navigation drawer — opens via the button above or by
           swiping right from the screen's left edge; closes via the

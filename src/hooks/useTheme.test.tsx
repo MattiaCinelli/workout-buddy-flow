@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, cleanup } from '@testing-library/react';
-import { useTheme } from './useTheme';
+import { useInterfaceStyle, useTheme } from './useTheme';
 
 // jsdom has no real matchMedia; default it to "light".
 const setSystemDark = (dark: boolean) => {
@@ -15,7 +15,27 @@ const setSystemDark = (dark: boolean) => {
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.classList.remove('dark');
+  document.documentElement.classList.remove('starship');
   setSystemDark(false);
+});
+
+describe('useInterfaceStyle', () => {
+  it('defaults to classic and persists the selected interface', () => {
+    const { result } = renderHook(() => useInterfaceStyle());
+    expect(result.current.interfaceStyle).toBe('classic');
+    expect(document.documentElement.classList.contains('starship')).toBe(false);
+
+    act(() => result.current.setInterfaceStyle('starship'));
+    expect(localStorage.getItem('interface-style')).toBe('starship');
+    expect(document.documentElement.classList.contains('starship')).toBe(true);
+  });
+
+  it('keeps multiple controls synchronized', () => {
+    const a = renderHook(() => useInterfaceStyle());
+    const b = renderHook(() => useInterfaceStyle());
+    act(() => a.result.current.toggleInterfaceStyle());
+    expect(b.result.current.interfaceStyle).toBe('starship');
+  });
 });
 afterEach(() => cleanup());
 
