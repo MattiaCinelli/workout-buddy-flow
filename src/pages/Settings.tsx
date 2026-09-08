@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Accessibility, Bell, Cloud, Database, Download, ExternalLink, Info, Laptop, Moon, Settings as SettingsIcon,
-  Sun, Upload, UserRound, PanelsTopLeft, Rocket,
+  Sun, Upload, UserRound,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AccountProfileTab } from '@/components/AccountProfileTab';
@@ -30,9 +30,9 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'system', label: 'System', icon: Laptop },
 ];
 
-const interfaceOptions: { value: InterfaceStyle; label: string; description: string; icon: typeof Sun }[] = [
-  { value: 'starship', label: 'Starship', description: 'Futuristic console', icon: Rocket },
-  { value: 'classic', label: 'Classic', description: 'Original interface', icon: PanelsTopLeft },
+const interfaceOptions: { value: InterfaceStyle; label: string; description: string }[] = [
+  { value: 'starship', label: 'Starship', description: 'Futuristic console' },
+  { value: 'classic', label: 'Classic', description: 'Original interface' },
 ];
 
 const SettingsPage = () => {
@@ -141,12 +141,17 @@ const SettingsPage = () => {
                 <p className="mb-2 text-sm font-medium">Interface</p>
                 <div className="grid grid-cols-2 gap-2" role="group" aria-label="Interface style">
                   {interfaceOptions.map(option => {
-                    const Icon = option.icon;
                     return (
                       <Button key={option.value} type="button" variant="outline" onClick={() => setInterfaceStyle(option.value)}
                         aria-pressed={interfaceStyle === option.value}
-                        className={cn('h-auto flex-col gap-1 py-3', interfaceStyle === option.value && 'border-primary bg-primary/10 text-primary')}>
-                        <Icon className="mb-1 h-5 w-5" />{option.label}
+                        className={cn('h-auto min-w-0 flex-col gap-1 p-2', interfaceStyle === option.value && 'border-primary bg-primary/10 text-primary')}>
+                        <div className={cn('interface-preview', `interface-preview--${option.value}`)} aria-hidden="true">
+                          <span className="interface-preview__nav" />
+                          <span className="interface-preview__panel interface-preview__panel--wide" />
+                          <span className="interface-preview__panel" />
+                          <span className="interface-preview__panel" />
+                        </div>
+                        <span className="mt-1">{option.label}</span>
                         <span className="font-sans text-xs font-normal normal-case tracking-normal text-muted-foreground">{option.description}</span>
                       </Button>
                     );

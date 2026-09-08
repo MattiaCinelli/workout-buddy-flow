@@ -5,8 +5,38 @@ export type InterfaceStyle = 'classic' | 'starship';
 const THEME_CHANGE_EVENT = 'workout-buddy-theme-change';
 const INTERFACE_CHANGE_EVENT = 'workout-buddy-interface-change';
 
+const browserThemeColors = {
+  classic: { light: '#f8fafc', dark: '#020817' },
+  starship: { light: '#f7f0e3', dark: '#08080f' },
+} as const;
+
 const getSystemTheme = (): 'light' | 'dark' =>
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+export function updateBrowserThemeColor() {
+  const root = document.documentElement;
+  const style = root.classList.contains('starship') ? 'starship' : 'classic';
+  const mode = root.classList.contains('dark') ? 'dark' : 'light';
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    document.head.append(meta);
+  }
+  meta.content = browserThemeColors[style][mode];
+}
+
+/** Apply saved appearance before React renders to avoid a flash of the default UI. */
+export function applyStoredAppearance() {
+  const root = document.documentElement;
+  const storedTheme = localStorage.getItem('theme');
+  const resolvedTheme = storedTheme === 'dark' ||
+    (storedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    ? 'dark' : 'light';
+  root.classList.toggle('dark', resolvedTheme === 'dark');
+  root.classList.toggle('starship', localStorage.getItem('interface-style') === 'starship');
+  updateBrowserThemeColor();
+}
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
@@ -41,6 +71,7 @@ export function useTheme() {
     }
     
     localStorage.setItem('theme', theme);
+    updateBrowserThemeColor();
   }, [theme, systemTheme]);
 
   const toggleTheme = () => {
@@ -69,6 +100,7 @@ export function useInterfaceStyle() {
   useEffect(() => {
     document.documentElement.classList.toggle('starship', interfaceStyle === 'starship');
     localStorage.setItem('interface-style', interfaceStyle);
+    updateBrowserThemeColor();
   }, [interfaceStyle]);
 
   const setInterfaceStyle = (next: InterfaceStyle) => {
@@ -79,4 +111,11 @@ export function useInterfaceStyle() {
   const toggleInterfaceStyle = () => setInterfaceStyle(interfaceStyle === 'starship' ? 'classic' : 'starship');
 
   return { interfaceStyle, setInterfaceStyle, toggleInterfaceStyle };
+}
+
+/** Keeps stored appearance preferences active on every route without rendering controls. */
+export function AppearanceController() {
+  useTheme();
+  useInterfaceStyle();
+  return null;
 }

@@ -25,3 +25,17 @@ test('appearance preference is applied and retained', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Dark', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('html')).toHaveClass(/dark/);
 });
+
+test('interface preference survives a direct reload outside settings', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByRole('group', { name: 'Interface style' }).getByRole('button', { name: /Starship/ }).click();
+  await expect(page.locator('html')).toHaveClass(/starship/);
+
+  await page.goto('/workouts');
+  await page.reload();
+  await expect(page.locator('html')).toHaveClass(/starship/);
+
+  await page.goto('/settings');
+  await page.getByRole('group', { name: 'Interface style' }).getByRole('button', { name: /Classic/ }).click();
+  await expect(page.locator('html')).not.toHaveClass(/starship/);
+});

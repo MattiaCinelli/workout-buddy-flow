@@ -9,6 +9,33 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+### Added
+
+- **Optional Starship interface** — users can choose a futuristic console-style
+  interface or the original Classic design from Settings. Classic remains the
+  default, both interfaces support distinct light and dark palettes, and compact
+  previews make the choices easier to compare.
+- **Appearance regression coverage** — automated WCAG AA audits now check
+  contrast, accessible labels, keyboard navigation and visible focus states in
+  every interface/color combination. Portable screenshot baselines guard all
+  four appearances against unintended visual changes.
+
+### Changed
+
+- **Focused guided workouts** — active workouts no longer show when an exercise
+  was last performed or display set details from its previous session. Personal
+  records and progression suggestions remain available without exposing the
+  previous-session report.
+- **Matching browser chrome** — browser and installed-PWA theme colors now track
+  Classic Light, Classic Dark, Starship Light and Starship Dark dynamically.
+
+### Fixed
+
+- **Appearance startup and accessibility** — saved interface and color choices
+  are applied on every route before the first render, avoiding reload flicker.
+  Light-palette warning, muted and selected-control colors now meet WCAG AA
+  contrast requirements, and interface fonts no longer require a network request.
+
 ## [1.0.2] - 2026-09-06
 
 ### Added

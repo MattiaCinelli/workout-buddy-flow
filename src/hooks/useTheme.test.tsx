@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, cleanup } from '@testing-library/react';
-import { useInterfaceStyle, useTheme } from './useTheme';
+import { applyStoredAppearance, useInterfaceStyle, useTheme } from './useTheme';
 
 // jsdom has no real matchMedia; default it to "light".
 const setSystemDark = (dark: boolean) => {
@@ -35,6 +35,24 @@ describe('useInterfaceStyle', () => {
     const b = renderHook(() => useInterfaceStyle());
     act(() => a.result.current.toggleInterfaceStyle());
     expect(b.result.current.interfaceStyle).toBe('starship');
+  });
+});
+
+describe('applyStoredAppearance', () => {
+  it('applies saved choices before the app mounts', () => {
+    localStorage.setItem('theme', 'dark');
+    localStorage.setItem('interface-style', 'starship');
+    applyStoredAppearance();
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.classList.contains('starship')).toBe(true);
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute('content', '#08080f');
+  });
+
+  it('uses the classic interface when no choice is stored', () => {
+    document.documentElement.classList.add('starship');
+    applyStoredAppearance();
+    expect(document.documentElement.classList.contains('starship')).toBe(false);
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute('content', '#f8fafc');
   });
 });
 afterEach(() => cleanup());

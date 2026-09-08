@@ -17,12 +17,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
-import { formatDistanceToNow, parseISO } from 'date-fns';
 import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
 import { playCompletionChime } from '@/lib/completionSound';
 import { logDiagnostic } from '@/lib/diagnosticLog';
 import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
-import { describeSetResult, exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
+import { exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration } from '@/lib/exerciseHistory';
 import { suggestNextSet } from '@/lib/progression';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
@@ -100,21 +99,13 @@ const WorkoutPresentation = () => {
   const buzzedStepRef = useRef(false);
   const celebratedRef = useRef(false);
 
-  // "Last time" reference and personal best for the exercise on screen —
-  // shown so the target is visible before the set starts, and pre-computed
-  // for the upcoming exercise too so it can appear on the rest screen while
-  // there's time to set up.
+  // Personal bests and progression use workout history internally, without
+  // reporting the date or details of the previous session during a workout.
   const personalRecords = useMemo(() => computePersonalRecords(sessions), [sessions]);
   const currentExerciseId = steps[activeStep]?.type === 'exercise' ? steps[activeStep]?.exerciseId : undefined;
-  const upcomingExerciseId = steps[activeStep + 1]?.type === 'exercise' ? steps[activeStep + 1]?.exerciseId : undefined;
   const currentExerciseHistory = useMemo(
     () => currentExerciseId ? exerciseSessionHistory(currentExerciseId, sessions) : [],
     [currentExerciseId, sessions],
-  );
-  const currentExerciseLast = currentExerciseHistory[0] ?? null;
-  const upcomingExerciseLast = useMemo(
-    () => upcomingExerciseId ? lastExerciseSession(upcomingExerciseId, sessions) : null,
-    [upcomingExerciseId, sessions],
   );
 
   // A step transition is announced by voice AND felt as a vibration, so
@@ -587,27 +578,20 @@ const WorkoutPresentation = () => {
             <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
           </>}
         </div>
-        {(currentExerciseLast || currentBestLabel || progressionSuggestion) && (
+        {(currentBestLabel || progressionSuggestion) && (
           <div className="mx-auto w-full max-w-xs rounded-xl border border-white/15 bg-white/5 p-3 text-left text-sm landscape:hidden">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                {currentExerciseLast
-                  ? `Last time · ${formatDistanceToNow(parseISO(currentExerciseLast.date), { addSuffix: true })}`
-                  : 'Your best'}
-              </span>
-              {currentBestLabel && (
+            {currentBestLabel && (
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Your best
+                </span>
                 <span className="shrink-0 rounded-full bg-workout-green/20 px-2 py-0.5 text-xs font-semibold text-workout-green">
                   PR {currentBestLabel}
                 </span>
-              )}
-            </div>
-            {currentExerciseLast && (
-              <p className="text-gray-200">
-                {currentExerciseLast.sets.map(set => describeSetResult(set)).join('   ·   ')}
-              </p>
+              </div>
             )}
             {progressionSuggestion && (
-              <p className="mt-2 border-t border-white/10 pt-2 text-workout-green">
+              <p className={`${currentBestLabel ? 'mt-2 border-t border-white/10 pt-2' : ''} text-workout-green`}>
                 <span className="font-semibold">
                   Try: {progressionSuggestion.reps}{progressionSuggestion.weight ? ` × ${progressionSuggestion.weight} kg` : ''}
                 </span>
@@ -643,11 +627,6 @@ const WorkoutPresentation = () => {
               <p className="mt-1 text-sm text-gray-400">
                 {upcoming.reps ? `${upcoming.reps} reps` : formatTime(upcoming.duration || 0)}
                 {upcoming.weight ? ` · ${upcoming.weight} kg` : ''}
-              </p>
-            )}
-            {upcomingExerciseLast && (
-              <p className="mt-2 text-xs text-gray-500">
-                Last: {upcomingExerciseLast.sets.map(set => describeSetResult(set)).join(' · ')}
               </p>
             )}
           </div>
