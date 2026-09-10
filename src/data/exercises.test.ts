@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseList } from './exercises';
+import { exerciseList, getExerciseImageUrl } from './exercises';
 
 const mobilityIds = [
   '28',
@@ -48,5 +48,21 @@ describe('starter mobility exercises', () => {
       if (exercise?.logType === 'time') expect(exercise.defaultDuration).toBe(30);
       else expect(exercise?.defaultReps).toBe(13);
     }
+  });
+});
+
+describe('getExerciseImageUrl', () => {
+  const exercise = {
+    imageUrl: '/default.jpg',
+    directionImageUrls: { left: '/left.jpg', right: '/right.jpg' },
+  } as const;
+
+  it('uses a direction-specific image when one exists', () => {
+    expect(getExerciseImageUrl(exercise, 'left')).toBe('/left.jpg');
+  });
+
+  it('falls back to the default image for missing or unspecified directions', () => {
+    expect(getExerciseImageUrl(exercise, 'forward')).toBe('/default.jpg');
+    expect(getExerciseImageUrl(exercise)).toBe('/default.jpg');
   });
 });

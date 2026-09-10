@@ -165,6 +165,18 @@ const scrubImportedExerciseUrls = (parsed: Record<string, unknown>): void => {
   for (const item of data.exercises) {
     if (!isRecord(item)) continue;
     if ('imageUrl' in item) item.imageUrl = sanitizeImageUrl(item.imageUrl);
+    if ('directionImageUrls' in item) {
+      if (!isRecord(item.directionImageUrls)) {
+        item.directionImageUrls = undefined;
+      } else {
+        const directionImageUrls = item.directionImageUrls;
+        item.directionImageUrls = Object.fromEntries(
+          ['left', 'right', 'forward', 'backward']
+            .map(direction => [direction, sanitizeImageUrl(directionImageUrls[direction])] as const)
+            .filter((entry): entry is readonly [string, string] => !!entry[1]),
+        );
+      }
+    }
     if ('videoUrl' in item) item.videoUrl = sanitizeVideoUrl(item.videoUrl);
   }
 };

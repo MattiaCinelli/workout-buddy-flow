@@ -29,6 +29,7 @@ import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
+import { getExerciseImageUrl } from '@/data/exercises';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -561,8 +562,8 @@ const WorkoutPresentation = () => {
     <main className="flex flex-1 flex-col items-center overflow-y-auto px-3 pb-28 pt-2 sm:justify-center sm:p-6 sm:pb-28">
       {current.type === 'exercise' && exercise ? <div key={activeStep} className="workout-step-enter flex w-full flex-col items-center">
         <div className="relative w-full max-w-lg">
-          {exercise.imageUrl ? (
-            <ExerciseImage imageUrl={exercise.imageUrl} alt={exercise.name} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-slate-50 object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
+          {getExerciseImageUrl(exercise, current.direction) ? (
+            <ExerciseImage imageUrl={getExerciseImageUrl(exercise, current.direction)!} alt={`${exercise.name}${current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}`} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-slate-50 object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
           ) : (
             <div className="flex h-[min(38dvh,20rem)] w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[.04] text-white/25">
               <Dumbbell className="h-20 w-20" aria-hidden="true" />
@@ -664,8 +665,8 @@ const WorkoutPresentation = () => {
         {upcoming && (
           <div className="mt-8 w-full max-w-sm rounded-3xl border border-white/10 bg-white/[.04] p-3 text-center">
             <p className="mb-2 text-sm font-medium text-workout-green">Next up</p>
-            {upcomingExercise?.imageUrl && (
-              <ExerciseImage imageUrl={upcomingExercise.imageUrl} alt={upcomingExercise.name}
+            {upcomingExercise && getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined) && (
+              <ExerciseImage imageUrl={getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined)!} alt={upcomingExercise.name}
                 className="mx-auto mb-3 h-44 w-full rounded-2xl bg-slate-50 object-contain p-2" />
             )}
             <p className="text-2xl font-semibold">{upcomingLabel}</p>
