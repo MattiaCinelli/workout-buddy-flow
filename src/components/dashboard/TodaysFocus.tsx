@@ -1,27 +1,35 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Clock, Dumbbell, Zap, Calendar } from 'lucide-react';
+import { Play, Clock, Dumbbell, Zap, Calendar, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import { startOfToday } from 'date-fns';
+import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
+import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
 
 const TodaysFocus: React.FC = () => {
   const navigate = useNavigate();
-  const { getScheduledWorkoutsForDate, getWorkoutById } = useData();
+  const { getScheduledWorkoutsForDate, getWorkoutById, sessions } = useData();
   
   const today = startOfToday();
-  const todaysWorkouts = getScheduledWorkoutsForDate(today);
+  const todaysWorkouts = getScheduledWorkoutsForDate(today).filter(schedule => !schedule.skipped);
   
   if (todaysWorkouts.length === 0) {
     return (
-      <Card className="border-dashed border-2 border-muted">
-        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="rounded-full bg-muted p-3 mb-3">
-            <Calendar className="h-6 w-6 text-muted-foreground" />
+      <Card className="h-full border-dashed border-primary/20 bg-gradient-to-br from-card to-primary/[0.035]">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Zap className="h-5 w-5 text-primary" />
+            Today's Focus
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex min-h-40 flex-col items-center justify-center pb-6 text-center">
+          <div className="mb-3 rounded-xl bg-muted p-2.5">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-lg mb-1">Rest Day</h3>
-          <p className="text-sm text-muted-foreground mb-4">
+          <h3 className="mb-1 font-semibold">Rest day</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
             No workouts scheduled for today
           </p>
           <Button 
@@ -37,7 +45,7 @@ const TodaysFocus: React.FC = () => {
   }
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+    <Card className="h-full border-primary/20 bg-gradient-to-br from-card to-primary/[0.05]">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Zap className="h-5 w-5 text-primary" />
@@ -45,18 +53,23 @@ const TodaysFocus: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {todaysWorkouts.map((scheduled, idx) => {
+        {todaysWorkouts.map((scheduled) => {
           const workout = getWorkoutById(scheduled.workoutId);
           if (!workout) return null;
+          const completed = isScheduledOccurrenceCompleted(scheduled, sessions);
           
           return (
             <div 
-              key={idx}
-              className="flex items-center justify-between p-3 rounded-lg bg-card border shadow-sm"
+              key={`${scheduled.id}-${scheduled.displayDate}`}
+              className={`flex items-center justify-between gap-3 p-3 rounded-lg border shadow-sm ${
+                completed ? 'border-workout-green/40 bg-workout-green/5' : 'bg-card'
+              }`}
             >
               <div className="flex items-center gap-3">
-                <div className="rounded-full bg-primary/10 p-2">
-                  <Dumbbell className="h-4 w-4 text-primary" />
+                <div className={`rounded-full p-2 ${completed ? 'bg-workout-green/15' : 'bg-primary/10'}`}>
+                  {completed
+                    ? <CheckCircle2 className="completion-check h-4 w-4 text-workout-green" />
+                    : <Dumbbell className="h-4 w-4 text-primary" />}
                 </div>
                 <div>
                   <h4 className="font-semibold">{workout.title}</h4>
@@ -70,11 +83,14 @@ const TodaysFocus: React.FC = () => {
               </div>
               <Button 
                 size="sm" 
+                variant={completed ? 'outline' : 'default'}
                 className="gap-1"
-                onClick={() => navigate(`/workouts/${workout.id}/session`)}
+                disabled={completed}
+                aria-label={completed ? `${workout.title} completed` : `Start ${workout.title}`}
+                onClick={() => navigate(scheduledWorkoutSessionUrl(scheduled))}
               >
-                <Play className="h-4 w-4" />
-                Start
+                {completed ? <CheckCircle2 className="completion-check h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {completed ? 'Done' : 'Start'}
               </Button>
             </div>
           );

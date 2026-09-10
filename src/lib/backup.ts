@@ -141,7 +141,7 @@ const MAX_AUDIO_DATA_URL_LENGTH = 40 * 1024 * 1024; // ~30 MB decoded
 // also keep a plain https URL or an inline image data URI of a sane size.
 const sanitizeImageUrl = (value: unknown): string | undefined => {
   if (typeof value !== 'string' || value.length > MAX_IMAGE_URL_LENGTH) return undefined;
-  return /^private-exercise:[a-z0-9][a-z0-9-]*\.jpg$/.test(value)
+  return /^private-exercise:[a-z0-9][a-z0-9-]*\.(?:jpg|gif)$/.test(value)
     || /^https:\/\//i.test(value) || /^data:image\/(png|jpe?g|gif|webp|avif);/i.test(value)
     ? value : undefined;
 };
@@ -165,6 +165,18 @@ const scrubImportedExerciseUrls = (parsed: Record<string, unknown>): void => {
   for (const item of data.exercises) {
     if (!isRecord(item)) continue;
     if ('imageUrl' in item) item.imageUrl = sanitizeImageUrl(item.imageUrl);
+    if ('directionImageUrls' in item) {
+      if (!isRecord(item.directionImageUrls)) {
+        item.directionImageUrls = undefined;
+      } else {
+        const directionImageUrls = item.directionImageUrls;
+        item.directionImageUrls = Object.fromEntries(
+          ['left', 'right', 'forward', 'backward']
+            .map(direction => [direction, sanitizeImageUrl(directionImageUrls[direction])] as const)
+            .filter((entry): entry is readonly [string, string] => !!entry[1]),
+        );
+      }
+    }
     if ('videoUrl' in item) item.videoUrl = sanitizeVideoUrl(item.videoUrl);
   }
 };

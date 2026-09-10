@@ -37,6 +37,8 @@ const CourseDetail = () => {
     completeWorkoutInCourse,
     restartCourse,
     deleteCourse,
+    scheduledWorkouts,
+    deleteScheduledWorkout,
     startCourse
   } = useData();
 
@@ -88,6 +90,10 @@ const CourseDetail = () => {
   };
 
   const handleDeleteCourse = async () => {
+    // Remove future launch points before their course metadata disappears.
+    // Retrying is safe if one of these operations fails part-way through.
+    const linkedSchedules = scheduledWorkouts.filter(item => item.courseId === course.id);
+    await Promise.all(linkedSchedules.map(item => deleteScheduledWorkout(item.id)));
     await deleteCourse(course.id);
     toast.success('Course deleted');
     navigate('/courses');
@@ -110,7 +116,7 @@ const CourseDetail = () => {
               <h1 className="text-2xl font-bold">{course.title}</h1>
               {isCompleted && (
                 <Badge variant="default" className="bg-green-500">
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  <CheckCircle2 className="completion-check h-3 w-3 mr-1" />
                   Completed
                 </Badge>
               )}
@@ -205,7 +211,7 @@ const CourseDetail = () => {
                           : 'bg-muted text-muted-foreground'
                     }`}>
                       {courseWorkout.completed ? (
-                        <CheckCircle2 className="h-5 w-5" />
+                        <CheckCircle2 className="completion-check h-5 w-5" />
                       ) : (
                         <span className="font-bold">{index + 1}</span>
                       )}
@@ -242,7 +248,7 @@ const CourseDetail = () => {
                               }
                             }}
                           >
-                            {isRest ? <CheckCircle2 className="h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+                            {isRest ? <CheckCircle2 className="completion-check h-4 w-4 mr-1" /> : <Play className="h-4 w-4 mr-1" />}
                             {isRest ? 'Finish Rest Day' : 'Start'}
                           </Button>
                         </>

@@ -1,6 +1,6 @@
 const SERVER_URL_KEY = 'workout-buddy-sync:serverUrl';
 const TOKEN_KEY = 'workout-buddy-sync:token';
-const SAFE_PRIVATE_IMAGE_NAME = /^[a-z0-9][a-z0-9-]*\.jpg$/;
+const SAFE_PRIVATE_IMAGE_NAME = /^[a-z0-9][a-z0-9-]*\.(?:jpg|gif)$/;
 const PRIVATE_EXERCISE_IMAGE_PREFIX = 'private-exercise:';
 const LEGACY_PRIVATE_EXERCISE_IMAGE = /^\/exercises\/(mobility-[a-z0-9-]+\.jpg)$/;
 

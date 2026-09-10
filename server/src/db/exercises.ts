@@ -3,6 +3,7 @@ import { Db } from './index';
 export interface SyncedExercise {
   id: string;
   name: string;
+  aliases?: string[];
   category: string;
   muscleGroups: string[];
   difficulty: string;
@@ -15,6 +16,12 @@ export interface SyncedExercise {
   secondsPerRep?: number;
   unilateral?: boolean;
   executionDirections?: string[];
+  progression?: {
+    mode: 'linear' | 'double';
+    incrementKg?: number;
+    repRangeMin?: number;
+    repRangeMax?: number;
+  };
   instructions?: string;
   videoUrl?: string;
   imageUrl?: string;
@@ -25,6 +32,7 @@ export interface SyncedExercise {
 interface ExerciseRow {
   id: string;
   name: string;
+  aliases: string | null;
   category: string;
   muscle_groups: string;
   difficulty: string;
@@ -37,6 +45,7 @@ interface ExerciseRow {
   seconds_per_rep: number | null;
   unilateral: number;
   execution_directions: string | null;
+  progression: string | null;
   instructions: string | null;
   video_url: string | null;
   image_url: string | null;
@@ -47,6 +56,7 @@ interface ExerciseRow {
 const fromRow = (row: ExerciseRow): SyncedExercise => ({
   id: row.id,
   name: row.name,
+  aliases: row.aliases ? JSON.parse(row.aliases) : undefined,
   category: row.category,
   muscleGroups: JSON.parse(row.muscle_groups),
   difficulty: row.difficulty,
@@ -59,6 +69,7 @@ const fromRow = (row: ExerciseRow): SyncedExercise => ({
   secondsPerRep: row.seconds_per_rep ?? undefined,
   unilateral: row.unilateral === 1,
   executionDirections: row.execution_directions ? JSON.parse(row.execution_directions) : undefined,
+  progression: row.progression ? JSON.parse(row.progression) : undefined,
   instructions: row.instructions ?? undefined,
   videoUrl: row.video_url ?? undefined,
   imageUrl: row.image_url ?? undefined,
@@ -93,17 +104,18 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
   const syncedAt = new Date().toISOString();
   db.prepare(`
     INSERT INTO exercises (
-      id, user_id, name, category, muscle_groups, difficulty,
-      log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, execution_directions,
+      id, user_id, name, aliases, category, muscle_groups, difficulty,
+      log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, execution_directions, progression,
       instructions, video_url, image_url, updated_at, deleted_at, synced_at
     )
     VALUES (
-      @id, @userId, @name, @category, @muscleGroups, @difficulty,
-      @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @executionDirections,
+      @id, @userId, @name, @aliases, @category, @muscleGroups, @difficulty,
+      @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @executionDirections, @progression,
       @instructions, @videoUrl, @imageUrl, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
       name = excluded.name,
+      aliases = excluded.aliases,
       category = excluded.category,
       muscle_groups = excluded.muscle_groups,
       difficulty = excluded.difficulty,
@@ -116,6 +128,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
       seconds_per_rep = excluded.seconds_per_rep,
       unilateral = excluded.unilateral,
       execution_directions = excluded.execution_directions,
+      progression = excluded.progression,
       instructions = excluded.instructions,
       video_url = excluded.video_url,
       image_url = excluded.image_url,
@@ -127,6 +140,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     id: exercise.id,
     userId,
     name: exercise.name,
+    aliases: exercise.aliases?.length ? JSON.stringify(exercise.aliases) : null,
     category: exercise.category,
     muscleGroups: JSON.stringify(exercise.muscleGroups),
     difficulty: exercise.difficulty,
@@ -139,6 +153,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     secondsPerRep: exercise.secondsPerRep ?? null,
     unilateral: exercise.unilateral ? 1 : 0,
     executionDirections: exercise.executionDirections?.length ? JSON.stringify(exercise.executionDirections) : null,
+    progression: exercise.progression ? JSON.stringify(exercise.progression) : null,
     instructions: exercise.instructions ?? null,
     videoUrl: exercise.videoUrl ?? null,
     imageUrl: exercise.imageUrl ?? null,

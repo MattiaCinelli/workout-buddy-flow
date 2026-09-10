@@ -27,6 +27,8 @@ export interface WorkoutSession extends WorkoutEntry {
   courseId?: string;
   courseItemId?: string;
   scheduledWorkoutId?: string;
+  /** Exact date of a recurring schedule occurrence (YYYY-MM-DD). */
+  scheduledDate?: string;
   actualSets?: WorkoutSetResult[];
   perceivedExertion?: number;
   completionNotes?: string;

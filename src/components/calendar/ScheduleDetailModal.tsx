@@ -21,13 +21,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { Ban, Calendar, CalendarClock, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
+import { Ban, Calendar, CalendarClock, CheckCircle2, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
+import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
 import { weekDays, weekDayLabels, weekdaysPreset, weekendPreset, WeekDay } from '@/data/scheduledWorkouts';
 import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
 
 interface ScheduleDetailModalProps {
   isOpen: boolean;
@@ -56,8 +58,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   if (!schedule) return null;
 
   const workout = workouts.find(w => w.id === schedule.workoutId);
-  const completed = sessions.some(session => session.scheduledWorkoutId === schedule.id
-    && session.completedAt.slice(0, 10) === schedule.displayDate);
+  const completed = isScheduledOccurrenceCompleted(schedule, sessions);
   const missed = !schedule.skipped && !completed && schedule.displayDate < format(new Date(), 'yyyy-MM-dd');
   const matchingCourseOccurrences = schedule.courseId
     ? scheduledWorkouts.filter(item => item.courseId === schedule.courseId && item.workoutId === schedule.workoutId)
@@ -129,10 +130,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
 
   const handleStartWorkout = () => {
     onClose();
-    const params = new URLSearchParams({ scheduledWorkoutId: schedule.id });
-    if (schedule.courseId) params.set('courseId', schedule.courseId);
-    if (schedule.courseItemId) params.set('courseItemId', schedule.courseItemId);
-    navigate(`/workouts/${schedule.workoutId}/session?${params.toString()}`);
+    navigate(scheduledWorkoutSessionUrl(schedule));
   };
 
   const handleViewWorkout = () => {
@@ -190,6 +188,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 </Badge>
               )}
               {schedule.skipped && <Badge variant="secondary">Skipped</Badge>}
+              {completed && <Badge className="bg-workout-green text-white">Done</Badge>}
               {missed && <Badge variant="destructive">Missed</Badge>}
             </DialogTitle>
             <DialogDescription>
@@ -267,11 +266,15 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 View Details
               </Button>
               <Button
-                className="bg-workout-green hover:bg-green-600"
+                className={completed ? undefined : 'bg-workout-green hover:bg-green-600'}
+                variant={completed ? 'outline' : 'default'}
+                disabled={completed}
                 onClick={handleStartWorkout}
               >
-                <Play className="h-4 w-4 mr-2" />
-                Start
+                {completed
+                  ? <CheckCircle2 className="completion-check h-4 w-4 mr-2" />
+                  : <Play className="h-4 w-4 mr-2" />}
+                {completed ? 'Done' : 'Start'}
               </Button>
             </div>
           </DialogFooter>

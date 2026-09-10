@@ -10,6 +10,7 @@ const id = z.string().min(1);
 export const exerciseImportSchema = z.object({
   id,
   name: z.string(),
+  aliases: z.array(z.string().min(1).max(100)).max(20).optional(),
   category: z.string(),
   muscleGroups: z.array(z.string()),
   difficulty: z.string(),

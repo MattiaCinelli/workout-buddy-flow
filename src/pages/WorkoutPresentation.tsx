@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, ChevronLeft, Info, Minus, Music, Pause, Play, Plus, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, CheckCircle2, ChevronLeft, Dumbbell, Info, Minus, Music, Pause, Play, Plus, RotateCcw, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,12 +17,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { useData } from '@/contexts/DataContext';
 import { WorkoutSetResult } from '@/data/workoutSessions';
-import { formatDistanceToNow, parseISO } from 'date-fns';
 import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
 import { playCompletionChime } from '@/lib/completionSound';
 import { logDiagnostic } from '@/lib/diagnosticLog';
 import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
-import { describeSetResult, exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration, lastExerciseSession } from '@/lib/exerciseHistory';
+import { exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration } from '@/lib/exerciseHistory';
 import { suggestNextSet } from '@/lib/progression';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
@@ -30,6 +29,7 @@ import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
+import { getExerciseImageUrl } from '@/data/exercises';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -46,9 +46,11 @@ const bestRecordLabel = (record?: PersonalRecord): string | null => {
 };
 
 type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; timeLeft: number;
-  deadline: number | null; paused: boolean };
+  deadline: number | null; paused: boolean; activeElapsedMs?: number; activeSince?: number | null;
+  actualSets?: WorkoutSetResult[]; rpe?: string; completionNotes?: string; completionOpen?: boolean };
 type WakeLockLike = { release: () => Promise<void>; released?: boolean };
-const runtimeKey = (id: string) => `workout-buddy-active:${id}`;
+const runtimeKey = (id: string, occurrenceIdentity: string) =>
+  `workout-buddy-active:${id}${occurrenceIdentity ? `:${encodeURIComponent(occurrenceIdentity)}` : ''}`;
 
 // A left-to-right fill that mirrors the numeric countdown, so time
 // remaining is readable at a glance without parsing digits. Colours are
@@ -73,8 +75,15 @@ const WorkoutPresentation = () => {
     completeWorkoutInCourse, uncompleteWorkoutInCourse, courses, scheduledWorkouts,
   } = useData();
   const workout = workouts.find(item => item.id === id);
+  const occurrenceIdentity = [
+    searchParams.get('scheduledWorkoutId'), searchParams.get('scheduledDate'),
+    searchParams.get('courseId'), searchParams.get('courseItemId'),
+  ].filter(Boolean).join(':');
+  const activeRuntimeKey = runtimeKey(id, occurrenceIdentity);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
   const startedAt = useRef(Date.now());
+  const activeElapsedMs = useRef(0);
+  const activeSince = useRef<number | null>(Date.now());
   const wakeLock = useRef<WakeLockLike | null>(null);
   const advancing = useRef(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -101,21 +110,13 @@ const WorkoutPresentation = () => {
   const buzzedStepRef = useRef(false);
   const celebratedRef = useRef(false);
 
-  // "Last time" reference and personal best for the exercise on screen —
-  // shown so the target is visible before the set starts, and pre-computed
-  // for the upcoming exercise too so it can appear on the rest screen while
-  // there's time to set up.
+  // Personal bests and progression use workout history internally, without
+  // reporting the date or details of the previous session during a workout.
   const personalRecords = useMemo(() => computePersonalRecords(sessions), [sessions]);
   const currentExerciseId = steps[activeStep]?.type === 'exercise' ? steps[activeStep]?.exerciseId : undefined;
-  const upcomingExerciseId = steps[activeStep + 1]?.type === 'exercise' ? steps[activeStep + 1]?.exerciseId : undefined;
   const currentExerciseHistory = useMemo(
     () => currentExerciseId ? exerciseSessionHistory(currentExerciseId, sessions) : [],
     [currentExerciseId, sessions],
-  );
-  const currentExerciseLast = currentExerciseHistory[0] ?? null;
-  const upcomingExerciseLast = useMemo(
-    () => upcomingExerciseId ? lastExerciseSession(upcomingExerciseId, sessions) : null,
-    [upcomingExerciseId, sessions],
   );
 
   // A step transition is announced by voice AND felt as a vibration, so
@@ -196,11 +197,13 @@ const WorkoutPresentation = () => {
 
   useEffect(() => {
     if (!workout || !steps.length || restored) return;
-    const raw = localStorage.getItem(runtimeKey(workout.id));
+    const raw = localStorage.getItem(activeRuntimeKey);
     let saved: SavedRuntime | null = null;
-    try { saved = raw ? JSON.parse(raw) as SavedRuntime : null; } catch { localStorage.removeItem(runtimeKey(workout.id)); }
+    try { saved = raw ? JSON.parse(raw) as SavedRuntime : null; } catch { localStorage.removeItem(activeRuntimeKey); }
     if (saved?.workoutId === workout.id && saved.activeStep < steps.length) {
       startedAt.current = saved.startedAt;
+      activeElapsedMs.current = saved.activeElapsedMs ?? 0;
+      activeSince.current = saved.paused ? null : (saved.activeSince ?? saved.startedAt);
       setActiveStep(saved.activeStep);
       setPaused(saved.paused);
       const remaining = saved.deadline && !saved.paused
@@ -217,23 +220,31 @@ const WorkoutPresentation = () => {
       setTimeLeft(restoredDuration);
       setDeadline(saved.paused || restoredDuration <= 0 ? null : Date.now() + restoredDuration * 1000);
       if (remaining === 0 && saved.deadline && !savedIsSelfPaced && saved.activeStep + 1 >= steps.length) setCompletionOpen(true);
+      if (saved.completionOpen) setCompletionOpen(true);
       toast({ title: 'Workout resumed', description: 'Continuing from your last saved step.' });
     } else {
       const duration = steps[0].duration || 0;
       setTimeLeft(duration);
       setDeadline(duration ? Date.now() + duration * 1000 : null);
     }
-    setActualSets(workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
+    const plannedResults = workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
       completed: true, reps: set.reps, weight: set.weight, duration: set.duration, distance: set.distance,
-      direction: set.direction, warmup: set.warmup, amrap: set.amrap })));
+      direction: set.direction, warmup: set.warmup, amrap: set.amrap }));
+    setActualSets(saved?.actualSets ?? plannedResults);
+    setRpe(saved?.rpe ?? '');
+    setCompletionNotes(saved?.completionNotes ?? '');
     setRestored(true);
-  }, [workout, steps, restored, toast]);
+  }, [workout, steps, restored, toast, activeRuntimeKey]);
 
   useEffect(() => {
-    if (!workout || !restored || completionOpen) return;
-    const value: SavedRuntime = { workoutId: workout.id, activeStep, startedAt: startedAt.current, timeLeft, deadline, paused };
-    localStorage.setItem(runtimeKey(workout.id), JSON.stringify(value));
-  }, [workout, restored, activeStep, timeLeft, deadline, paused, completionOpen]);
+    if (!workout || !restored) return;
+    const value: SavedRuntime = {
+      workoutId: workout.id, activeStep, startedAt: startedAt.current, timeLeft, deadline, paused,
+      activeElapsedMs: activeElapsedMs.current, activeSince: activeSince.current,
+      actualSets, rpe, completionNotes, completionOpen,
+    };
+    localStorage.setItem(activeRuntimeKey, JSON.stringify(value));
+  }, [workout, restored, activeStep, timeLeft, deadline, paused, completionOpen, actualSets, rpe, completionNotes, activeRuntimeKey]);
 
   useEffect(() => {
     if (!restored) return;
@@ -306,15 +317,22 @@ const WorkoutPresentation = () => {
   // otherwise do nothing forever. Releasing it here covers that path too.
   useEffect(() => { if (!completionOpen) advancing.current = false; }, [completionOpen]);
 
+  const stopActiveClock = useCallback(() => {
+    if (activeSince.current === null) return;
+    activeElapsedMs.current += Math.max(0, Date.now() - activeSince.current);
+    activeSince.current = null;
+  }, []);
+
   const nextStep = useCallback(() => {
     if (advancing.current) return;
     advancing.current = true;
     const next = activeStep + 1;
     if (next >= steps.length) {
+      stopActiveClock();
       setDeadline(null); setPaused(true); setCompletionOpen(true); return;
     }
     startStep(next);
-  }, [activeStep, steps.length, startStep]);
+  }, [activeStep, steps.length, startStep, stopActiveClock]);
 
   const previousStep = () => {
     if (activeStep === 0) return;
@@ -349,8 +367,12 @@ const WorkoutPresentation = () => {
   }, [paused, deadline, completionOpen, nextStep, steps, activeStep, speak]);
 
   const togglePause = () => {
-    if (paused) { setPaused(false); setDeadline(timeLeft > 0 ? Date.now() + timeLeft * 1000 : null); }
+    if (paused) {
+      activeSince.current = Date.now();
+      setPaused(false); setDeadline(timeLeft > 0 ? Date.now() + timeLeft * 1000 : null);
+    }
     else {
+      stopActiveClock();
       setTimeLeft(deadline ? remainingSeconds(deadline) : timeLeft);
       setDeadline(null); setPaused(true);
     }
@@ -371,8 +393,10 @@ const WorkoutPresentation = () => {
     setActualSets(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...updates } : item));
 
   const restartWorkout = () => {
-    localStorage.removeItem(runtimeKey(workout?.id || id));
+    localStorage.removeItem(activeRuntimeKey);
     startedAt.current = Date.now();
+    activeElapsedMs.current = 0;
+    activeSince.current = Date.now();
     startStep(0);
     setRestartConfirmOpen(false);
   };
@@ -381,7 +405,7 @@ const WorkoutPresentation = () => {
   // the completion dialog's "Don't save" button and closing that dialog via
   // its X (they're the same action, not "close the dialog but stay").
   const discardAndExit = () => {
-    localStorage.removeItem(runtimeKey(workout?.id || id));
+    localStorage.removeItem(activeRuntimeKey);
     void TextToSpeech.stop().catch(() => undefined);
     navigate(`/workouts/${id}`);
   };
@@ -397,13 +421,31 @@ const WorkoutPresentation = () => {
       const nextSameDay = course && courseItemId
         ? getNextSameDayWorkout(course.workouts, courseItemId)
         : undefined;
+      const activeDuration = activeElapsedMs.current
+        + (activeSince.current === null ? 0 : Math.max(0, Date.now() - activeSince.current));
       const createdSession = await createSession({ workoutId: workout.id, completedAt, date: completedAt, title: workout.title,
-        duration: Math.max(1, Math.round((Date.now() - startedAt.current) / 60000)), plannedDuration: workout.duration,
-        category: workout.category, sets: workout.sets, notes: workout.notes, courseId, courseItemId,
+        duration: Math.max(1, Math.round(activeDuration / 60000)), plannedDuration: workout.duration,
+        category: workout.category, sets: workout.sets, restBetweenSets: workout.restBetweenSets,
+        restBetweenExercises: workout.restBetweenExercises, notes: workout.notes, courseId, courseItemId,
         scheduledWorkoutId: searchParams.get('scheduledWorkoutId') || undefined, actualSets,
+        scheduledDate: searchParams.get('scheduledDate') || undefined,
         perceivedExertion: rpe ? Number(rpe) : undefined, completionNotes: completionNotes.trim() || undefined });
-      if (courseId && courseItemId) await completeWorkoutInCourse(courseId, courseItemId);
-      localStorage.removeItem(runtimeKey(workout.id));
+      if (courseId && courseItemId) {
+        try {
+          const updatedCourse = await completeWorkoutInCourse(courseId, courseItemId);
+          if (!updatedCourse) throw new Error('The linked course or workout slot no longer exists.');
+        } catch (courseError) {
+          // Do not leave a history row behind when the second half of the
+          // completion fails; keeping the resumable state lets the user retry.
+          try { await deleteSession(createdSession.id); }
+          catch (rollbackError) {
+            console.error('Could not roll back session after course update failed:', rollbackError);
+            logDiagnostic('error', `Session rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
+          }
+          throw courseError;
+        }
+      }
+      localStorage.removeItem(activeRuntimeKey);
 
       // Compare against sessions as they stood BEFORE this one was added —
       // `sessions` here is still the pre-save snapshot, since the context
@@ -441,7 +483,7 @@ const WorkoutPresentation = () => {
         if (nextSchedule) params.set('scheduledWorkoutId', nextSchedule.id);
         navigate(`/workouts/${nextSameDay.workoutId}/session?${params.toString()}`);
       } else {
-        navigate(courseId ? `/courses/${courseId}` : '/history');
+        navigate('/');
       }
     } catch (error) {
       console.error('Failed to save workout:', error);
@@ -492,137 +534,125 @@ const WorkoutPresentation = () => {
   );
   if (!workout || !current) return null;
 
-  return <div className="min-h-[100dvh] flex flex-col bg-gray-900 text-white">
-    <header className="flex items-center justify-between gap-2 p-3 pt-[max(.75rem,env(safe-area-inset-top))] sm:p-4">
-      <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-white" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-6 w-6" /></Button>
-      <h1 className="text-lg sm:text-xl font-bold truncate">{workout.title}</h1>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className={`h-11 w-11 text-white ${musicEnabled ? '' : 'opacity-40'}`} onClick={toggleMusic} aria-label={musicEnabled ? 'Turn off background music' : 'Turn on background music'} aria-pressed={musicEnabled}>
+  return <div className="flex min-h-[100dvh] flex-col bg-[#070d18] text-white">
+    <header className="flex items-center justify-between gap-2 px-2 py-2 pt-[max(.5rem,env(safe-area-inset-top))] sm:px-4 sm:py-3">
+      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-5 w-5" /></Button>
+      <h1 className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-white/85 sm:text-lg">{workout.title}</h1>
+      <div className="flex items-center gap-0.5">
+        <Button variant="ghost" size="icon" className={`hidden h-10 w-10 rounded-full text-white sm:inline-flex ${musicEnabled ? '' : 'opacity-40'}`} onClick={toggleMusic} aria-label={musicEnabled ? 'Turn off background music' : 'Turn on background music'} aria-pressed={musicEnabled}>
           <Music className="h-5 w-5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-11 w-11 text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
           {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </Button>
-        <Button variant="ghost" size="sm" className="text-white" onClick={() => setRestartConfirmOpen(true)}>Restart</Button>
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setRestartConfirmOpen(true)} aria-label="Restart"><RotateCcw className="h-4 w-4" /></Button>
       </div>
     </header>
-    <section className="px-4 space-y-2" aria-label="Workout progress">
+    <section className="space-y-2 px-4 pb-2" aria-label="Workout progress">
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : restKindLabel(current)}.
       </p>
-      <div className="flex justify-between text-xs sm:text-sm text-gray-300">
+      <div className="flex justify-between text-xs text-slate-400 sm:text-sm">
         <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Change side' : currentIsWarmup ? 'Warm-up set' : `Set ${workingSetNumber} of ${workingSetCount}`}</span>
         <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
       </div>
-      <Progress value={((activeStep + 1) / steps.length) * 100} className="h-2" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
-      {current.type === 'exercise' && <p className="text-center text-sm text-gray-300">Next: {upcomingLabel}</p>}
+      <Progress value={((activeStep + 1) / steps.length) * 100} className="h-1.5 bg-white/10 [&>div]:bg-workout-green" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
+      {current.type === 'exercise' && <p className="hidden text-center text-sm text-slate-400 sm:block">Next: {upcomingLabel}</p>}
     </section>
-    <main className="flex-1 flex flex-col items-center justify-center overflow-y-auto p-4 pb-28 landscape:justify-start landscape:pt-2">
-      {current.type === 'exercise' && exercise ? <>
-        {exercise.imageUrl && <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="mb-6 h-48 w-full max-w-xs rounded-lg object-contain landscape:h-28" />}
-        <div className="text-center mb-8">
+    <main className="flex flex-1 flex-col items-center overflow-y-auto px-3 pb-28 pt-2 sm:justify-center sm:p-6 sm:pb-28">
+      {current.type === 'exercise' && exercise ? <div key={activeStep} className="workout-step-enter flex w-full flex-col items-center">
+        <div className="relative w-full max-w-lg">
+          {getExerciseImageUrl(exercise, current.direction) ? (
+            <ExerciseImage imageUrl={getExerciseImageUrl(exercise, current.direction)!} alt={`${exercise.name}${current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}`} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-slate-50 object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
+          ) : (
+            <div className="flex h-[min(38dvh,20rem)] w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[.04] text-white/25">
+              <Dumbbell className="h-20 w-20" aria-hidden="true" />
+            </div>
+          )}
+          {(exercise.videoUrl || exercise.instructions) && (
+            <div className="absolute right-3 top-3 flex gap-2">
+              {exercise.videoUrl && (
+                <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-950/75 text-white shadow-lg backdrop-blur transition hover:bg-slate-900"
+                  aria-label={`Watch a video of ${exercise.name} (opens in a new tab)`}>
+                  <Video className="h-4 w-4" />
+                </a>
+              )}
+              {exercise.instructions && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-white/15 bg-slate-950/75 text-white shadow-lg backdrop-blur hover:bg-slate-900 hover:text-white"
+                      aria-label={`How to perform ${exercise.name}`}>
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="max-w-[calc(100vw-2rem)] text-left">
+                    <p className="mb-1 font-semibold">{exercise.name}</p>
+                    <p className="instruction-copy text-sm text-muted-foreground">{exercise.instructions}</p>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="mt-4 text-center sm:mt-6">
           {(current.direction || current.warmup || current.amrap) && (
-            <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
               {current.warmup && (
-                <span className="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-300">Warm-up</span>
+                <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-300">Warm-up</span>
               )}
               {current.amrap && (
-                <span className="rounded-full bg-workout-green/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-workout-green">AMRAP</span>
+                <span className="rounded-full bg-workout-green/15 px-3 py-1 text-xs font-semibold text-workout-green">AMRAP</span>
               )}
               {current.direction && (
-                <span className="inline-flex items-center gap-2 rounded-full bg-workout-green/20 px-4 py-1 text-workout-green">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-workout-green/15 px-3 py-1 text-workout-green">
                   {current.direction === 'left' && <ArrowLeft className="h-4 w-4" aria-hidden="true" />}
                   {current.direction === 'right' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
                   {current.direction === 'forward' && <ArrowUp className="h-4 w-4" aria-hidden="true" />}
                   {current.direction === 'backward' && <ArrowDown className="h-4 w-4" aria-hidden="true" />}
-                  <span className="text-sm font-bold uppercase tracking-wide">{workoutDirectionLabel(current.direction)}</span>
+                  <span className="text-sm font-semibold">{workoutDirectionLabel(current.direction)}</span>
                 </span>
               )}
             </div>
           )}
-          <div className="flex items-center justify-center gap-2">
-            {exercise.videoUrl && (
-              <a
-                href={exercise.videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
-                aria-label={`Watch a video of ${exercise.name} (opens in a new tab)`}
-              >
-                <Video className="h-5 w-5" />
-              </a>
-            )}
-            <h2 className="text-3xl font-bold" aria-live="polite">{exercise.name}{current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}</h2>
-            {exercise.instructions && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-white/70 hover:bg-white/10 hover:text-white"
-                    aria-label={`How to perform ${exercise.name}`}>
-                    <Info className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="center" className="text-left text-sm">
-                  <p className="mb-1 font-semibold">{exercise.name}</p>
-                  <p className="text-muted-foreground">{exercise.instructions}</p>
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
-          <p className="text-xl text-gray-400">Exercise set {(current.setIndex || 0) + 1}</p>
+          <h2 className="text-2xl font-semibold leading-tight sm:text-3xl" aria-live="polite">{exercise.name}</h2>
           {current.amrap && current.reps ? (
-            <p className="my-4 text-4xl font-bold">As many reps as possible — beat {current.reps} {current.weight ? `at ${current.weight} kg` : ''}</p>
+            <p className="metric-number mt-2 text-5xl font-black leading-none sm:text-6xl">{current.reps} reps</p>
           ) : current.reps ? (
-            <p className="my-4 text-4xl font-bold">{current.reps} reps {current.weight ? `at ${current.weight} kg` : ''}</p>
+            <p className="metric-number mt-2 text-5xl font-black leading-none sm:text-6xl">{current.reps} reps</p>
           ) : null}
+          {current.amrap && current.reps && <p className="mt-1 text-sm text-slate-400">Beat the target</p>}
+          {current.weight && <p className="metric-number mt-2 text-2xl font-bold text-workout-green sm:text-3xl">× {current.weight} kg</p>}
           {current.weight ? (
-            <div className="mb-2 flex justify-center">
+            <div className="mt-3 flex justify-center">
               <PlateCalculator initialWeight={current.weight}
-                triggerClassName="border-white/40 bg-transparent text-white hover:bg-white/10 hover:text-white" />
+                triggerClassName="h-9 rounded-full border-white/20 bg-white/[.04] text-white/80 hover:bg-white/10 hover:text-white" />
             </div>
           ) : null}
           {/* Timed exercises get the full countdown + progress bar and
               auto-advance. Reps-based exercises show only the rep target
               above — no clock, no bar, self-paced (press Next when done). */}
           {current.duration && !isSelfPacedStep(current) && <>
-            <p className="my-4 text-5xl font-bold flex items-center justify-center gap-2" role="timer" aria-label={`${timeLeft} seconds remaining`}><Timer className="h-8 w-8" aria-hidden="true" />{formatTime(timeLeft)}</p>
+            <p className="my-3 text-6xl font-black leading-none sm:text-7xl" role="timer" aria-label={`${timeLeft} seconds remaining`}>{formatTime(timeLeft)}</p>
             <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
           </>}
         </div>
-        {(currentExerciseLast || currentBestLabel || progressionSuggestion) && (
-          <div className="mx-auto w-full max-w-xs rounded-xl border border-white/15 bg-white/5 p-3 text-left text-sm landscape:hidden">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                {currentExerciseLast
-                  ? `Last time · ${formatDistanceToNow(parseISO(currentExerciseLast.date), { addSuffix: true })}`
-                  : 'Your best'}
-              </span>
-              {currentBestLabel && (
-                <span className="shrink-0 rounded-full bg-workout-green/20 px-2 py-0.5 text-xs font-semibold text-workout-green">
-                  PR {currentBestLabel}
-                </span>
-              )}
-            </div>
-            {currentExerciseLast && (
-              <p className="text-gray-200">
-                {currentExerciseLast.sets.map(set => describeSetResult(set)).join('   ·   ')}
-              </p>
+        {(currentBestLabel || progressionSuggestion) && (
+          <div className="mx-auto mt-4 flex w-full max-w-sm items-center justify-center gap-3 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-sm landscape:hidden">
+            {currentBestLabel && (
+              <span className="text-slate-400">Best <strong className="metric-number ml-1 text-base text-white">{currentBestLabel}</strong></span>
             )}
             {progressionSuggestion && (
-              <p className="mt-2 border-t border-white/10 pt-2 text-workout-green">
-                <span className="font-semibold">
-                  Try: {progressionSuggestion.reps}{progressionSuggestion.weight ? ` × ${progressionSuggestion.weight} kg` : ''}
-                </span>
-                <span className="mt-0.5 block text-xs text-gray-400">{progressionSuggestion.note}</span>
-              </p>
+              <span className={`${currentBestLabel ? 'border-l border-white/10 pl-3' : ''} text-workout-green`}>Try <strong className="metric-number">{progressionSuggestion.reps}{progressionSuggestion.weight ? ` × ${progressionSuggestion.weight} kg` : ''}</strong><span className="sr-only">. {progressionSuggestion.note}</span></span>
             )}
           </div>
         )}
-      </> : <>
+      </div> : <div key={activeStep} className="workout-step-enter flex w-full flex-1 flex-col items-center justify-center">
         <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
           {current.kind === 'switch' ? <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /> : <Timer className="h-4 w-4" aria-hidden="true" />}
-          <span className="text-sm font-semibold uppercase tracking-wide">{restKindLabel(current)}</span>
+          <span className="text-sm font-semibold">{restKindLabel(current)}</span>
         </div>
-        <div className="text-7xl font-bold" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : current.kind === 'switch' ? 'until the other side' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
+        <div className="text-8xl font-black leading-none sm:text-9xl" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : current.kind === 'switch' ? 'until the other side' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
         <div className="mt-4 w-full"><CountdownBar percent={countdownPercent} tone="bg-workout-purple" /></div>
         <div className="mt-6 flex gap-3">
           <Button variant="outline" className="border-white/40 bg-transparent text-white" onClick={() => adjustRestTime(-15)} aria-label="Subtract 15 seconds">
@@ -633,34 +663,29 @@ const WorkoutPresentation = () => {
           </Button>
         </div>
         {upcoming && (
-          <div className="mt-8 w-full max-w-xs rounded-2xl border border-white/15 bg-white/5 p-4 text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-workout-green">Next up</p>
-            {upcomingExercise?.imageUrl && (
-              <ExerciseImage imageUrl={upcomingExercise.imageUrl} alt={upcomingExercise.name}
-                className="mx-auto mb-3 h-36 w-full rounded-lg object-contain" />
+          <div className="mt-8 w-full max-w-sm rounded-3xl border border-white/10 bg-white/[.04] p-3 text-center">
+            <p className="mb-2 text-sm font-medium text-workout-green">Next up</p>
+            {upcomingExercise && getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined) && (
+              <ExerciseImage imageUrl={getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined)!} alt={upcomingExercise.name}
+                className="mx-auto mb-3 h-44 w-full rounded-2xl bg-slate-50 object-contain p-2" />
             )}
-            <p className="text-2xl font-bold">{upcomingLabel}</p>
+            <p className="text-2xl font-semibold">{upcomingLabel}</p>
             {upcoming.type === 'exercise' && (upcoming.reps || upcoming.duration) && (
               <p className="mt-1 text-sm text-gray-400">
                 {upcoming.reps ? `${upcoming.reps} reps` : formatTime(upcoming.duration || 0)}
                 {upcoming.weight ? ` · ${upcoming.weight} kg` : ''}
               </p>
             )}
-            {upcomingExerciseLast && (
-              <p className="mt-2 text-xs text-gray-500">
-                Last: {upcomingExerciseLast.sets.map(set => describeSetResult(set)).join(' · ')}
-              </p>
-            )}
           </div>
         )}
-      </>}
+      </div>}
     </main>
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 gap-2 border-t border-white/15 bg-gray-900/95 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur" aria-label="Workout controls">
-      <Button size="lg" variant="outline" className="h-14 min-w-0 px-2 text-xs border-white/40 bg-transparent text-white sm:text-sm" onClick={previousStep} disabled={activeStep === 0}><ChevronLeft className="mr-1 h-5 w-5" />Previous</Button>
-      <Button size="lg" className="h-14 min-w-0 px-2 text-xs bg-workout-purple text-white sm:text-sm" onClick={togglePause}>{paused ? <Play className="mr-1 h-5 w-5" /> : <Pause className="mr-1 h-5 w-5" />}{paused ? 'Resume' : 'Pause'}</Button>
-      <Button size="lg" className="h-14 min-w-0 px-2 text-xs bg-workout-green text-white hover:bg-green-600 sm:text-sm" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-1 h-5 w-5" /></Button>
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)] gap-2 border-t border-white/10 bg-[#070d18]/90 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] shadow-[0_-16px_40px_-28px_rgb(0_0_0/.9)] backdrop-blur-xl sm:grid-cols-3" aria-label="Workout controls">
+      <Button size="lg" variant="outline" className="h-14 min-w-0 rounded-2xl border-white/20 bg-white/[.03] px-0 text-white hover:bg-white/10 hover:text-white sm:px-2" onClick={previousStep} disabled={activeStep === 0} aria-label="Previous"><ChevronLeft className="h-5 w-5 sm:mr-1" /><span className="hidden sm:inline">Previous</span></Button>
+      <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-purple px-0 text-white hover:bg-workout-purple/90 sm:px-2" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'}>{paused ? <Play className="h-5 w-5 sm:mr-1" /> : <Pause className="h-5 w-5 sm:mr-1" />}<span className="hidden sm:inline">{paused ? 'Resume' : 'Pause'}</span></Button>
+      <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-green px-4 text-base font-bold text-white shadow-lg shadow-emerald-950/30 hover:bg-green-600 sm:px-2" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-2 h-5 w-5" /></Button>
     </nav>
-    <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle>Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
+    <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle className="flex items-center gap-2"><CheckCircle2 className="completion-check h-6 w-6 text-workout-green" aria-hidden="true" />Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
       <div className="space-y-3">{actualSets.map((result, index) => {
         const planned = workout.sets[index];
         const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise';

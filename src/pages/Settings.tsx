@@ -16,9 +16,9 @@ import {
 import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
 import { clearDiagnostics, formatDiagnostics } from '@/lib/diagnosticLog';
 import { saveTextFile } from '@/lib/downloadFile';
-import { scheduleWorkoutReminders } from '@/lib/notifications';
+import { replaceAllWorkoutReminders } from '@/lib/notifications';
 import { isConnected } from '@/lib/syncClient';
-import { useTheme, Theme } from '@/hooks/useTheme';
+import { useTheme, Theme, useInterfaceStyle, InterfaceStyle } from '@/hooks/useTheme';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -30,8 +30,14 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'system', label: 'System', icon: Laptop },
 ];
 
+const interfaceOptions: { value: InterfaceStyle; label: string; description: string }[] = [
+  { value: 'starship', label: 'Starship', description: 'Futuristic console' },
+  { value: 'classic', label: 'Classic', description: 'Original interface' },
+];
+
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
+  const { interfaceStyle, setInterfaceStyle } = useInterfaceStyle();
   const data = useData();
   const [connected, setConnected] = useState(isConnected());
   const [remindersOpen, setRemindersOpen] = useState(false);
@@ -67,12 +73,17 @@ const SettingsPage = () => {
     if (!pendingBackup) return;
     try {
       await restoreBackup(pendingBackup);
-      await Promise.all(pendingBackup.data.scheduledWorkouts.map(schedule =>
-        scheduleWorkoutReminders(
-          schedule,
-          pendingBackup.data.workouts.find(workout => workout.id === schedule.workoutId)?.title || 'Workout',
-        )
-      ));
+      // The data transaction is already committed at this point. Reminder
+      // reconciliation is best-effort and must not turn a successful restore
+      // into a misleading failure or prevent the UI from reloading its data.
+      try {
+        await replaceAllWorkoutReminders(
+          pendingBackup.data.scheduledWorkouts,
+          workoutId => pendingBackup.data.workouts.find(workout => workout.id === workoutId)?.title,
+        );
+      } catch (error) {
+        console.warn('Backup restored, but reminders could not be rebuilt:', error);
+      }
       window.location.reload();
     } catch {
       toast.error('Restore failed; current data was not reloaded');
@@ -82,12 +93,14 @@ const SettingsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2.5"><SettingsIcon className="h-6 w-6 text-primary" /></div>
+      <main className="app-page max-w-4xl">
+        <div className="page-heading">
+          <div className="page-heading__main">
+          <div className="page-heading__icon"><SettingsIcon className="h-5 w-5" /></div>
           <div>
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">Manage this device, your data, and optional sync.</p>
+            <h1 className="page-title">Settings</h1>
+            <p className="page-subtitle">Manage this device, your data, and optional sync</p>
+          </div>
           </div>
         </div>
 
@@ -128,9 +141,32 @@ const SettingsPage = () => {
           <Card id="appearance">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sun className="h-5 w-5" />Appearance</CardTitle>
-              <CardDescription>Choose a theme or follow your phone's appearance setting.</CardDescription>
+              <CardDescription>Choose the interface design and its light or dark color mode.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-5">
+              <div>
+                <p className="mb-2 text-sm font-medium">Interface</p>
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Interface style">
+                  {interfaceOptions.map(option => {
+                    return (
+                      <Button key={option.value} type="button" variant="outline" onClick={() => setInterfaceStyle(option.value)}
+                        aria-pressed={interfaceStyle === option.value}
+                        className={cn('h-auto min-w-0 flex-col gap-1 p-2', interfaceStyle === option.value && 'border-primary bg-primary/10 text-primary')}>
+                        <div className={cn('interface-preview', `interface-preview--${option.value}`)} aria-hidden="true">
+                          <span className="interface-preview__nav" />
+                          <span className="interface-preview__panel interface-preview__panel--wide" />
+                          <span className="interface-preview__panel" />
+                          <span className="interface-preview__panel" />
+                        </div>
+                        <span className="mt-1">{option.label}</span>
+                        <span className="font-sans text-xs font-normal normal-case tracking-normal text-muted-foreground">{option.description}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-medium">Color mode</p>
               <div className="grid grid-cols-3 gap-2" role="group" aria-label="Color theme">
                 {themeOptions.map(option => {
                   const Icon = option.icon;
@@ -142,6 +178,7 @@ const SettingsPage = () => {
                     </Button>
                   );
                 })}
+              </div>
               </div>
             </CardContent>
           </Card>

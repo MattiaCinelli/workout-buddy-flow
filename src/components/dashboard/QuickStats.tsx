@@ -52,14 +52,16 @@ const QuickStats: React.FC = () => {
       value: totalWorkouts.toString(),
       subtext: 'All time',
       icon: Dumbbell,
-      iconColor: 'text-primary'
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10'
     },
     {
       label: 'Total Time',
       value: totalMinutes >= 60 ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m` : `${totalMinutes}m`,
       subtext: 'Time invested',
       icon: Clock,
-      iconColor: 'text-blue-500'
+      iconColor: 'text-blue-500',
+      iconBg: 'bg-blue-500/10'
     },
     {
       label: 'Favorite',
@@ -67,6 +69,7 @@ const QuickStats: React.FC = () => {
       subtext: 'Most common',
       icon: Activity,
       iconColor: 'text-purple-500',
+      iconBg: 'bg-purple-500/10',
       capitalize: true
     },
     {
@@ -74,27 +77,35 @@ const QuickStats: React.FC = () => {
       value: weeklyChange >= 0 ? `+${weeklyChange}%` : `${weeklyChange}%`,
       subtext: 'vs last week',
       icon: TrendingUp,
-      iconColor: weeklyChange >= 0 ? 'text-accent' : 'text-destructive'
+      iconColor: weeklyChange >= 0 ? 'text-accent' : 'text-destructive',
+      iconBg: weeklyChange >= 0 ? 'bg-accent/10' : 'bg-destructive/10'
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {stats.map((stat, idx) => (
-        <Card key={idx} className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
-              <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+    <Card className="overflow-hidden">
+      <CardContent className="grid grid-cols-2 p-0 lg:grid-cols-4">
+        {stats.map((stat, idx) => (
+          <div
+            key={stat.label}
+            className={`group p-4 transition-colors hover:bg-muted/35 sm:p-5 ${
+              idx % 2 ? 'border-l' : ''
+            } ${idx >= 2 ? 'border-t lg:border-t-0' : ''} ${idx > 0 ? 'lg:border-l' : ''}`}
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-muted-foreground">{stat.label}</span>
+              <span className={`rounded-lg p-1.5 ${stat.iconBg}`}>
+                <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+              </span>
             </div>
-            <div className={`text-xl font-bold ${stat.capitalize ? 'capitalize' : ''}`}>
+            <div className={`metric-number text-2xl font-bold sm:text-3xl ${stat.capitalize ? 'capitalize' : ''}`}>
               {stat.value}
             </div>
             <p className="text-xs text-muted-foreground">{stat.subtext}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 

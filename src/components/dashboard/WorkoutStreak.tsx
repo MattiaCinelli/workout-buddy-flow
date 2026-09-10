@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Flame, Trophy, Calendar } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
-import { format, subDays, parseISO, startOfToday, differenceInDays } from 'date-fns';
+import { format, subDays, parseISO, startOfToday, differenceInDays, differenceInCalendarDays } from 'date-fns';
 
 const WorkoutStreak: React.FC = () => {
   const { sessions: workouts } = useData();
@@ -48,18 +48,17 @@ const WorkoutStreak: React.FC = () => {
       }
     }
     
-    // Calculate longest streak (simplified - check last 365 days)
-    let longestStreak = 0;
-    let tempStreak = 0;
-    
-    for (let i = 0; i < 365; i++) {
-      const dateStr = format(subDays(today, i), 'yyyy-MM-dd');
-      if (workoutDates.has(dateStr)) {
-        tempStreak++;
-        longestStreak = Math.max(longestStreak, tempStreak);
-      } else {
-        tempStreak = 0;
-      }
+    // All-time best, based on unique workout days. Multiple workouts on
+    // one day count once and old streaks never fall out of a 365-day window.
+    const chronologicalDates = [...workoutDates].sort();
+    let longestStreak = chronologicalDates.length ? 1 : 0;
+    let tempStreak = longestStreak;
+    for (let i = 1; i < chronologicalDates.length; i += 1) {
+      tempStreak = differenceInCalendarDays(
+        parseISO(chronologicalDates[i]),
+        parseISO(chronologicalDates[i - 1]),
+      ) === 1 ? tempStreak + 1 : 1;
+      longestStreak = Math.max(longestStreak, tempStreak);
     }
     
     // Days since last workout
@@ -98,7 +97,7 @@ const WorkoutStreak: React.FC = () => {
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Flame className={`h-5 w-5 ${getFlameColor()}`} />
@@ -109,7 +108,7 @@ const WorkoutStreak: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold">{streakData.currentStreak}</span>
+              <span className="metric-number text-5xl font-bold">{streakData.currentStreak}</span>
               <span className="text-muted-foreground">days</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
@@ -121,7 +120,7 @@ const WorkoutStreak: React.FC = () => {
             <div className="flex items-center gap-1 text-sm">
               <Trophy className="h-4 w-4 text-amber-500" />
               <span className="text-muted-foreground">Best:</span>
-              <span className="font-semibold">{streakData.longestStreak} days</span>
+              <span className="metric-number font-bold">{streakData.longestStreak} days</span>
             </div>
             {streakData.lastWorkoutDaysAgo !== null && streakData.lastWorkoutDaysAgo > 0 && (
               <div className="flex items-center gap-1 text-sm">

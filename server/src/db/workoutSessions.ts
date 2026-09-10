@@ -10,6 +10,9 @@ export interface SyncedWorkoutSetResult {
   weight?: number;
   duration?: number;
   distance?: number;
+  rpe?: number;
+  warmup?: boolean;
+  amrap?: boolean;
 }
 
 export interface SyncedWorkoutSession {
@@ -20,6 +23,7 @@ export interface SyncedWorkoutSession {
   duration: number;
   category: string;
   sets: SyncedWorkoutSet[];
+  restBetweenSets?: number;
   restBetweenExercises?: number;
   notes?: string;
   completedAt: string;
@@ -27,6 +31,7 @@ export interface SyncedWorkoutSession {
   courseId?: string;
   courseItemId?: string;
   scheduledWorkoutId?: string;
+  scheduledDate?: string;
   actualSets?: SyncedWorkoutSetResult[];
   perceivedExertion?: number;
   completionNotes?: string;
@@ -42,6 +47,7 @@ interface WorkoutSessionRow {
   duration: number;
   category: string;
   sets: string;
+  rest_between_sets: number | null;
   rest_between_exercises: number | null;
   notes: string | null;
   completed_at: string;
@@ -49,6 +55,7 @@ interface WorkoutSessionRow {
   course_id: string | null;
   course_item_id: string | null;
   scheduled_workout_id: string | null;
+  scheduled_date: string | null;
   actual_sets: string | null;
   perceived_exertion: number | null;
   completion_notes: string | null;
@@ -64,6 +71,7 @@ const fromRow = (row: WorkoutSessionRow): SyncedWorkoutSession => ({
   duration: row.duration,
   category: row.category,
   sets: JSON.parse(row.sets),
+  restBetweenSets: row.rest_between_sets ?? undefined,
   restBetweenExercises: row.rest_between_exercises ?? undefined,
   notes: row.notes ?? undefined,
   completedAt: row.completed_at,
@@ -71,6 +79,7 @@ const fromRow = (row: WorkoutSessionRow): SyncedWorkoutSession => ({
   courseId: row.course_id ?? undefined,
   courseItemId: row.course_item_id ?? undefined,
   scheduledWorkoutId: row.scheduled_workout_id ?? undefined,
+  scheduledDate: row.scheduled_date ?? undefined,
   actualSets: row.actual_sets ? JSON.parse(row.actual_sets) : undefined,
   perceivedExertion: row.perceived_exertion ?? undefined,
   completionNotes: row.completion_notes ?? undefined,
@@ -94,14 +103,14 @@ export const upsertWorkoutSession = (db: Db, userId: string, session: SyncedWork
   db.prepare(`
     INSERT INTO workout_sessions (
       id, user_id, workout_id, date, title, duration, category, sets,
-      rest_between_exercises, notes, completed_at, planned_duration,
-      course_id, course_item_id, scheduled_workout_id, actual_sets,
+      rest_between_sets, rest_between_exercises, notes, completed_at, planned_duration,
+      course_id, course_item_id, scheduled_workout_id, scheduled_date, actual_sets,
       perceived_exertion, completion_notes, updated_at, deleted_at, synced_at
     )
     VALUES (
       @id, @userId, @workoutId, @date, @title, @duration, @category, @sets,
-      @restBetweenExercises, @notes, @completedAt, @plannedDuration,
-      @courseId, @courseItemId, @scheduledWorkoutId, @actualSets,
+      @restBetweenSets, @restBetweenExercises, @notes, @completedAt, @plannedDuration,
+      @courseId, @courseItemId, @scheduledWorkoutId, @scheduledDate, @actualSets,
       @perceivedExertion, @completionNotes, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
@@ -111,6 +120,7 @@ export const upsertWorkoutSession = (db: Db, userId: string, session: SyncedWork
       duration = excluded.duration,
       category = excluded.category,
       sets = excluded.sets,
+      rest_between_sets = excluded.rest_between_sets,
       rest_between_exercises = excluded.rest_between_exercises,
       notes = excluded.notes,
       completed_at = excluded.completed_at,
@@ -118,6 +128,7 @@ export const upsertWorkoutSession = (db: Db, userId: string, session: SyncedWork
       course_id = excluded.course_id,
       course_item_id = excluded.course_item_id,
       scheduled_workout_id = excluded.scheduled_workout_id,
+      scheduled_date = excluded.scheduled_date,
       actual_sets = excluded.actual_sets,
       perceived_exertion = excluded.perceived_exertion,
       completion_notes = excluded.completion_notes,
@@ -134,6 +145,7 @@ export const upsertWorkoutSession = (db: Db, userId: string, session: SyncedWork
     duration: session.duration,
     category: session.category,
     sets: JSON.stringify(session.sets),
+    restBetweenSets: session.restBetweenSets ?? null,
     restBetweenExercises: session.restBetweenExercises ?? null,
     notes: session.notes ?? null,
     completedAt: session.completedAt,
@@ -141,6 +153,7 @@ export const upsertWorkoutSession = (db: Db, userId: string, session: SyncedWork
     courseId: session.courseId ?? null,
     courseItemId: session.courseItemId ?? null,
     scheduledWorkoutId: session.scheduledWorkoutId ?? null,
+    scheduledDate: session.scheduledDate ?? null,
     actualSets: session.actualSets ? JSON.stringify(session.actualSets) : null,
     perceivedExertion: session.perceivedExertion ?? null,
     completionNotes: session.completionNotes ?? null,

@@ -148,7 +148,11 @@ const ProgressPage = () => {
     const totalWorkouts = filteredWorkouts.length;
     const totalDuration = filteredWorkouts.reduce((sum, w) => sum + w.duration, 0);
     const avgDuration = totalWorkouts > 0 ? Math.round(totalDuration / totalWorkouts) : 0;
-    const totalSets = filteredWorkouts.reduce((sum, w) => sum + w.sets.length, 0);
+    const totalSets = filteredWorkouts.reduce((sum, workout) => sum + (
+      workout.actualSets
+        ? workout.actualSets.filter(set => set.completed && !set.warmup).length
+        : workout.sets.filter(set => !set.warmup).length
+    ), 0);
     
     return { totalWorkouts, totalDuration, avgDuration, totalSets };
   }, [filteredWorkouts]);
@@ -171,15 +175,18 @@ const ProgressPage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
+      <main className="app-page">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Progress</h1>
-            <p className="text-muted-foreground">Track your fitness journey over time</p>
+        <div className="page-heading">
+          <div className="page-heading__main">
+            <div className="page-heading__icon"><TrendingUp className="h-5 w-5" /></div>
+            <div>
+            <h1 className="page-title">Progress</h1>
+            <p className="page-subtitle">Understand your consistency, volume, and performance</p>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2 mt-4 md:mt-0">
+          <div className="page-actions">
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Time range" />
@@ -206,7 +213,7 @@ const ProgressPage = () => {
                 <Dumbbell className="h-4 w-4" />
                 <span className="text-sm">Workouts</span>
               </div>
-              <p className="text-2xl font-bold">{stats.totalWorkouts}</p>
+              <p className="metric-number text-3xl font-bold">{stats.totalWorkouts}</p>
             </CardContent>
           </Card>
           <Card>
@@ -215,7 +222,7 @@ const ProgressPage = () => {
                 <Timer className="h-4 w-4" />
                 <span className="text-sm">Total Time</span>
               </div>
-              <p className="text-2xl font-bold">{Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}m</p>
+              <p className="metric-number text-3xl font-bold">{Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}m</p>
             </CardContent>
           </Card>
           <Card>
@@ -224,7 +231,7 @@ const ProgressPage = () => {
                 <Calendar className="h-4 w-4" />
                 <span className="text-sm">Avg Duration</span>
               </div>
-              <p className="text-2xl font-bold">{stats.avgDuration}m</p>
+              <p className="metric-number text-3xl font-bold">{stats.avgDuration}m</p>
             </CardContent>
           </Card>
           <Card>
@@ -233,7 +240,7 @@ const ProgressPage = () => {
                 <TrendingUp className="h-4 w-4" />
                 <span className="text-sm">Total Sets</span>
               </div>
-              <p className="text-2xl font-bold">{stats.totalSets}</p>
+              <p className="metric-number text-3xl font-bold">{stats.totalSets}</p>
             </CardContent>
           </Card>
         </div>

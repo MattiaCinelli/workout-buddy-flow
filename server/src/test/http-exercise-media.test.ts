@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { setupTwoUsers } from './syncTestHelpers';
 
-test('private exercise media requires auth and only serves safe JPEG names', async t => {
+test('private exercise media requires auth and only serves safe image names', async t => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'workout-buddy-media-'));
   const previous = process.env.EXERCISE_MEDIA_DIR;
   process.env.EXERCISE_MEDIA_DIR = directory;
@@ -16,7 +16,9 @@ test('private exercise media requires auth and only serves safe JPEG names', asy
   });
 
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+  const gif = Buffer.from('GIF89a', 'ascii');
   await fs.writeFile(path.join(directory, 'mobility-test.jpg'), jpeg);
+  await fs.writeFile(path.join(directory, 'mobility-test.gif'), gif);
   const { app, aliceToken } = await setupTwoUsers();
   t.after(async () => {
     await app.close();
@@ -38,4 +40,9 @@ test('private exercise media requires auth and only serves safe JPEG names', asy
   assert.match(response.headers['content-type'] ?? '', /^image\/jpeg/);
   assert.deepEqual(response.rawPayload, jpeg);
   assert.match(response.headers['cache-control'] ?? '', /private/);
+
+  const animation = await app.inject({ method: 'GET', url: '/media/exercises/mobility-test.gif', headers });
+  assert.equal(animation.statusCode, 200);
+  assert.match(animation.headers['content-type'] ?? '', /^image\/gif/);
+  assert.deepEqual(animation.rawPayload, gif);
 });

@@ -41,17 +41,19 @@ const CoursesPage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
+      <main className="app-page">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Courses</h1>
-            <p className="text-muted-foreground">Structured workout programs to follow</p>
+        <div className="page-heading">
+          <div className="page-heading__main">
+            <div className="page-heading__icon"><BookOpen className="h-5 w-5" /></div>
+            <div>
+            <h1 className="page-title">Courses</h1>
+            <p className="page-subtitle">Structured training programs with clear progression</p>
+            </div>
           </div>
           
           <Button 
             onClick={() => setCreateCourseOpen(true)}
-            className="mt-4 md:mt-0"
           >
             <Plus className="h-4 w-4 mr-2" />
             Create Course
@@ -60,7 +62,7 @@ const CoursesPage = () => {
 
         {/* Courses Grid */}
         {courses.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {courses.map((course) => (
               <CourseCard 
                 key={course.id} 

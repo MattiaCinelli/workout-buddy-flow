@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Exercise } from '@/data/exercises';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ExerciseItem from './ExerciseItem';
+import ExerciseTile from './ExerciseTile';
 import ExerciseForm from './ExerciseForm';
 import ImportShareButton from './ImportShareButton';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Loader2, Settings2 } from 'lucide-react';
+import { Plus, Search, FileImage, Loader2, Settings2, LayoutGrid, List, Library } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { exerciseNamesOverlap } from '@/lib/exerciseAliases';
+import {
+  ExerciseCategoryFilter, ExerciseDifficultyFilter, filterExerciseLibrary,
+} from '@/lib/exerciseLibrary';
+
+type ExerciseViewMode = 'list' | 'tiles';
+const VIEW_MODE_KEY = 'workout-buddy-exercise-view';
+const initialViewMode = (): ExerciseViewMode => {
+  try { return localStorage.getItem(VIEW_MODE_KEY) === 'list' ? 'list' : 'tiles'; }
+  catch { return 'tiles'; }
+};
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
@@ -36,6 +49,9 @@ const ExerciseManager: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<ExerciseCategoryFilter>('all');
+  const [difficultyFilter, setDifficultyFilter] = useState<ExerciseDifficultyFilter>('all');
+  const [viewMode, setViewMode] = useState<ExerciseViewMode>(initialViewMode);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -43,29 +59,38 @@ const ExerciseManager: React.FC = () => {
   const [isManageMusclesOpen, setIsManageMusclesOpen] = useState(false);
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
 
-  const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
+  const filteredExercises = useMemo(() => filterExerciseLibrary(exercises, {
+    searchQuery,
+    muscleGroupIds: selectedMuscles,
+    category: categoryFilter,
+    difficulty: difficultyFilter,
+  }, id => muscleGroups.find(group => group.id === id)?.name ?? id),
+  [exercises, searchQuery, selectedMuscles, categoryFilter, difficultyFilter, muscleGroups]);
+  const hasActiveFilters = !!searchQuery.trim() || selectedMuscles.length > 0
+    || categoryFilter !== 'all' || difficultyFilter !== 'all';
 
-  const filteredExercises = exercises.filter(exercise => {
-    const matchesSearch = !searchQuery ||
-      exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exercise.muscleGroups.some(id =>
-        muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    const matchesMuscles = selectedMuscles.length === 0 ||
-      exercise.muscleGroups.some(id => selectedMuscles.includes(id));
-    return matchesSearch && matchesMuscles;
-  });
+  const changeViewMode = (value: string) => {
+    if (value !== 'list' && value !== 'tiles') return;
+    setViewMode(value);
+    try { localStorage.setItem(VIEW_MODE_KEY, value); } catch { /* preference is non-essential */ }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedMuscles([]);
+    setCategoryFilter('all');
+    setDifficultyFilter('all');
+  };
   
   const handleCreateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const existingExercise = exercises.find(
-      ex => ex.name.toLowerCase() === exerciseData.name.toLowerCase()
+      ex => exerciseNamesOverlap(ex, exerciseData)
     );
     
     if (existingExercise) {
       toast({
         title: "Error",
-        description: `An exercise named "${exerciseData.name}" already exists.`,
+        description: `The name or one of the aliases conflicts with "${existingExercise.name}".`,
         variant: "destructive",
       });
       return;
@@ -95,13 +120,13 @@ const ExerciseManager: React.FC = () => {
     if (currentExercise) {
       const existingExercise = exercises.find(
         ex => ex.id !== currentExercise.id && 
-             ex.name.toLowerCase() === exerciseData.name.toLowerCase()
+             exerciseNamesOverlap(ex, exerciseData)
       );
       
       if (existingExercise) {
         toast({
           title: "Error",
-          description: `An exercise named "${exerciseData.name}" already exists.`,
+          description: `The name or one of the aliases conflicts with "${existingExercise.name}".`,
           variant: "destructive",
         });
         return;
@@ -183,76 +208,136 @@ const ExerciseManager: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 relative pb-20">
-      <div className="flex justify-between items-center gap-2">
-        <h2 className="text-2xl font-bold">Exercise Library</h2>
-        <div className="flex gap-2">
+    <div className="relative space-y-6 pb-20">
+      <div className="page-heading mb-0">
+        <div className="page-heading__main">
+          <div className="page-heading__icon"><Library className="h-5 w-5" /></div>
+          <div>
+            <h1 className="page-title">Exercise library</h1>
+            <p className="page-subtitle">Browse, filter, and manage your movement collection</p>
+          </div>
+        </div>
+        <div className="page-actions">
           <ImportShareButton />
           <Button
             onClick={() => setIsFormOpen(true)}
-            className="bg-primary hover:bg-primary/90"
+            className="hidden bg-primary hover:bg-primary/90 sm:inline-flex"
           >
             <Plus className="mr-2 h-4 w-4" /> New Exercise
           </Button>
         </div>
       </div>
-      
-      <div className="relative">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search exercises..."
-          aria-label="Search exercises"
-          className="pl-8"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
 
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-xs text-muted-foreground">Filter by muscle group</p>
-          <button
-            type="button"
-            onClick={() => setIsManageMusclesOpen(true)}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-          >
-            <Settings2 className="h-3 w-3" /> Manage
-          </button>
-        </div>
-        <ToggleGroup
-          type="multiple"
-          value={selectedMuscles}
-          onValueChange={(value) => setSelectedMuscles(value)}
-          className="justify-start flex-wrap"
-        >
-          {muscleGroups.map((group) => (
-            <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-7 px-2.5 text-xs">
-              {group.name}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
-
-      <div className="space-y-3">
-        {filteredExercises.length > 0 ? (
-          filteredExercises.map((exercise) => (
-            <ExerciseItem
-              key={exercise.id}
-              exercise={exercise}
-              onSelect={setViewingExercise}
-              onEdit={handleEdit}
+      <div className="surface-panel space-y-4 p-3 sm:p-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="relative col-span-2">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, alias, or muscle..."
+              aria-label="Search exercises"
+              className="border-border/80 bg-background/70 pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-          ))
+          </div>
+
+          <Select value={categoryFilter} onValueChange={value => setCategoryFilter(value as ExerciseCategoryFilter)}>
+            <SelectTrigger aria-label="Filter by exercise type" className="bg-background/70">
+              <SelectValue placeholder="All exercise types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All exercise types</SelectItem>
+              <SelectItem value="strength">Strength</SelectItem>
+              <SelectItem value="cardio">Cardio</SelectItem>
+              <SelectItem value="flexibility">Flexibility</SelectItem>
+              <SelectItem value="balance">Balance</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={difficultyFilter} onValueChange={value => setDifficultyFilter(value as ExerciseDifficultyFilter)}>
+            <SelectTrigger aria-label="Filter by difficulty level" className="bg-background/70">
+              <SelectValue placeholder="All levels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All levels</SelectItem>
+              <SelectItem value="beginner">Beginner</SelectItem>
+              <SelectItem value="intermediate">Intermediate</SelectItem>
+              <SelectItem value="advanced">Advanced</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="border-t border-border/60 pt-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">Muscle groups</p>
+            <button
+              type="button"
+              onClick={() => setIsManageMusclesOpen(true)}
+              className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              <Settings2 className="h-3 w-3" /> Manage
+            </button>
+          </div>
+          <ToggleGroup
+            type="multiple"
+            value={selectedMuscles}
+            onValueChange={(value) => setSelectedMuscles(value)}
+            className="justify-start flex-nowrap overflow-x-auto pb-1"
+          >
+            {muscleGroups.map((group) => (
+              <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                {group.name}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
+
+        <div className="flex min-h-9 items-center justify-between gap-2 border-t border-border/60 pt-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm font-medium text-muted-foreground" role="status">
+              {filteredExercises.length} of {exercises.length} exercises
+            </p>
+            {hasActiveFilters && (
+              <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-primary" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={changeViewMode}
+            aria-label="Exercise layout"
+            className="shrink-0 rounded-lg border bg-background/70 p-0.5"
+          >
+            <ToggleGroupItem value="list" aria-label="List view" className="h-8 w-8 p-0 data-[state=on]:bg-card data-[state=on]:shadow-sm">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="tiles" aria-label="Compact tile view" className="h-8 w-8 p-0 data-[state=on]:bg-card data-[state=on]:shadow-sm">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+
+      <div className={viewMode === 'tiles'
+        ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
+        : 'space-y-3'}>
+        {filteredExercises.length > 0 ? (
+          filteredExercises.map((exercise) => viewMode === 'tiles'
+            ? <ExerciseTile key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />
+            : <ExerciseItem key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />)
         ) : (
-          <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
+          <div className={viewMode === 'tiles'
+            ? 'col-span-full text-center py-12 bg-muted/50 rounded-lg border border-dashed'
+            : 'text-center py-12 bg-muted/50 rounded-lg border border-dashed'}>
             <FileImage className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-2 text-sm font-medium text-foreground">No exercises found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {searchQuery || selectedMuscles.length > 0
-                ? "Try adjusting your search or muscle filter"
+              {hasActiveFilters
+                ? "Try adjusting your search or filters"
                 : "Get started by creating a new exercise"}
             </p>
-            {!searchQuery && selectedMuscles.length === 0 && (
+            {!hasActiveFilters && (
               <div className="mt-6">
                 <Button
                   onClick={() => setIsFormOpen(true)}

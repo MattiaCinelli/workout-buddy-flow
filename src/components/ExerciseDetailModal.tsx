@@ -91,6 +91,12 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
           <DialogDescription>{muscleGroupNames || 'No muscle groups tagged'}</DialogDescription>
         </DialogHeader>
 
+        {!!exercise.aliases?.length && (
+          <p className="text-sm text-muted-foreground">
+            Also known as: {exercise.aliases.join(', ')}
+          </p>
+        )}
+
         {exercise.imageUrl ? (
           <ExerciseImage
             imageUrl={exercise.imageUrl}

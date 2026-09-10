@@ -29,8 +29,14 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
 
   return (
     <Card 
-      className="hover:shadow-lg transition-shadow cursor-pointer"
+      className="group h-full cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-lg"
       onClick={() => navigate(`/courses/${course.id}`)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={event => {
+        if (event.currentTarget !== event.target) return;
+        if (event.key === 'Enter') navigate(`/courses/${course.id}`);
+      }}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
@@ -40,7 +46,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
           </div>
           {isCompleted && (
             <Badge variant="default" className="bg-green-500">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+              <CheckCircle2 className="completion-check h-3 w-3 mr-1" />
               Completed
             </Badge>
           )}

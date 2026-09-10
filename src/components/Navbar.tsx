@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dumbbell, Home, Menu, Library, Calendar, History, ListChecks, TrendingUp, BookOpen, Settings } from "lucide-react";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AccountButton } from "@/components/AccountButton";
 import { RemindersDialog, RemindersTriggerButton } from "@/components/RemindersButton";
+import { cn } from '@/lib/utils';
 
 // How far from the left edge a touch has to start, and how far it has to
 // travel right, to count as "open the drawer" rather than an ordinary
@@ -15,6 +15,7 @@ const EDGE_ZONE_PX = 24;
 const OPEN_SWIPE_PX = 60;
 const CLOSE_SWIPE_PX = 60;
 const MAX_VERTICAL_DRIFT_PX = 60;
+type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => unknown };
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,11 +23,20 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path
+    || (path !== '/' && location.pathname.startsWith(`${path}/`));
 
   const goTo = (path: string) => {
-    navigate(path);
-    setMobileMenuOpen(false);
+    const updateRoute = () => {
+      navigate(path);
+      setMobileMenuOpen(false);
+    };
+    const viewTransitionDocument = document as ViewTransitionDocument;
+    if (!document.documentElement.classList.contains('reduce-motion') && viewTransitionDocument.startViewTransition) {
+      viewTransitionDocument.startViewTransition(updateRoute);
+      return;
+    }
+    updateRoute();
   };
 
   // Swipe from the screen's left edge to reveal the drawer, without a
@@ -102,54 +112,70 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-card shadow-sm py-4 px-6 border-b">
-      <div className="container mx-auto flex justify-between items-center">
-        <div className="flex items-center gap-1">
+    <nav className="lcars-nav sticky top-0 z-40 bg-card px-4 md:px-6" aria-label="Primary navigation">
+      <div className="lcars-top-rail" aria-hidden="true">
+        <span /><span /><span>WORKOUT BUDDY</span>
+      </div>
+      <div className="container mx-auto flex items-center justify-between gap-3">
+        <div className="flex shrink-0 items-center gap-1">
           {/* Menu sits before the logo, mobile only — thumb-reachable on
               the left edge, next to the left-edge open-swipe zone. */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="-ml-2 md:hidden"
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open menu"
           >
             <Menu className="h-6 w-6" />
           </Button>
-          <div
-            className="flex items-center gap-2 cursor-pointer"
-            onClick={() => navigate('/')}
+          <button
+            type="button"
+            className="group flex shrink-0 cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left"
+            onClick={() => goTo('/')}
+            aria-label="Workout Buddy home"
           >
-            <Dumbbell className="h-6 w-6 text-primary" />
-            <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WorkoutBuddy</span>
-          </div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:-rotate-3">
+              <Dumbbell className="h-5 w-5" />
+            </span>
+            <span className="nav-brand-name text-base font-bold tracking-tight text-foreground sm:text-lg">
+              Workout<span className="text-primary">Buddy</span>
+            </span>
+          </button>
         </div>
 
         {/* Desktop navigation */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden min-w-0 items-center gap-1 md:flex">
           {navLinks.map(link => (
             <Button
               key={link.path}
-              variant={isActive(link.path) ? "default" : "ghost"}
-              className="flex items-center gap-2"
-              onClick={() => navigate(link.path)}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'nav-desktop-link h-9 px-2.5 text-muted-foreground hover:text-foreground min-[1360px]:px-3',
+                isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+              )}
+              onClick={() => goTo(link.path)}
+              aria-label={link.label}
+              aria-current={isActive(link.path) ? 'page' : undefined}
             >
               {link.icon}
-              <span>{link.label}</span>
+              <span className="hidden min-[1360px]:inline">{link.label}</span>
             </Button>
           ))}
 
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
           <RemindersTriggerButton onClick={() => setRemindersOpen(true)} />
           <AccountButton />
-          <ThemeToggle />
         </div>
 
         {/* Mobile top bar — menu lives on the left, next to the logo */}
         <div className="md:hidden flex items-center gap-1">
           <AccountButton />
-          <ThemeToggle />
         </div>
       </div>
+
+      <div className="lcars-bottom-rail" aria-hidden="true"><span /><span>LCARS 47</span></div>
 
       {/* Mobile navigation drawer — opens via the button above or by
           swiping right from the screen's left edge; closes via the
@@ -157,23 +183,29 @@ const Navbar: React.FC = () => {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent
           side="left"
-          className="w-4/5 max-w-xs flex flex-col gap-2 md:hidden"
+          className="w-4/5 max-w-xs flex flex-col gap-2 border-r-border/70 bg-card p-4 md:hidden"
           onTouchStart={onPanelTouchStart}
           onTouchMove={onPanelTouchMove}
         >
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Dumbbell className="h-5 w-5 text-primary" />
-              WorkoutBuddy
+          <SheetHeader className="mb-3 border-b pb-4 text-left">
+            <SheetTitle className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Dumbbell className="h-5 w-5" />
+              </span>
+              <span>Workout<span className="text-primary">Buddy</span></span>
             </SheetTitle>
           </SheetHeader>
 
           {navLinks.map(link => (
             <Button
               key={link.path}
-              variant={isActive(link.path) ? "default" : "outline"}
-              className="flex items-center gap-2 w-full justify-start"
+              variant="ghost"
+              className={cn(
+                'h-11 w-full justify-start gap-3 px-3 text-muted-foreground',
+                isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+              )}
               onClick={() => goTo(link.path)}
+              aria-current={isActive(link.path) ? 'page' : undefined}
             >
               {link.icon}
               <span>{link.label}</span>

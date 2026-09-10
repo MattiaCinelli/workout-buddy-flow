@@ -110,6 +110,7 @@ describe('parseShare', () => {
     expect(img('https://ok/x.png')).toBe('https://ok/x.png');
     expect(img('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
     expect(img('private-exercise:mobility-cat-cow.jpg')).toBe('private-exercise:mobility-cat-cow.jpg');
+    expect(img('private-exercise:mobility-neck-rolls.gif')).toBe('private-exercise:mobility-neck-rolls.gif');
     expect(img('private-exercise:../secret.jpg')).toBeUndefined();
   });
 
@@ -250,6 +251,25 @@ describe('parseBackup', () => {
     expect(a.imageUrl).toBeUndefined();
     expect(b.imageUrl).toBe('https://example.com/x.png');
     expect(c.imageUrl).toBe('private-exercise:mobility-cat-cow.jpg');
+  });
+
+  it('sanitizes direction-specific exercise images independently', () => {
+    const { data } = parseBackup(v3({
+      data: {
+        exercises: [{
+          id: 'a', name: 'A', category: 'strength', muscleGroups: [], difficulty: 'beginner',
+          directionImageUrls: {
+            left: 'https://example.com/left.png',
+            right: 'javascript:alert(1)',
+            sideways: 'https://example.com/not-a-direction.png',
+          },
+        }],
+        workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+      },
+    }));
+    expect((data.data.exercises[0] as Exercise).directionImageUrls).toEqual({
+      left: 'https://example.com/left.png',
+    });
   });
 
   it('strips a dangerous exercise videoUrl but keeps a valid https one', () => {

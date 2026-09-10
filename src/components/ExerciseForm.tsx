@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Exercise, getLogType, DEFAULT_SECONDS_PER_REP, EXECUTION_DIRECTIONS,
-  EXECUTION_DIRECTION_LABELS, getExecutionDirections,
+  EXECUTION_DIRECTION_LABELS, getExecutionDirections, type ExecutionDirection,
 } from '@/data/exercises';
 import { Trash, FileImage, Loader2, Settings2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -25,6 +25,7 @@ import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 import ExerciseImage from '@/components/ExerciseImage';
+import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
   if (!value?.trim()) return true;
@@ -42,6 +43,10 @@ const formSchema = z.object({
   name: z.string().min(2, {
     message: "Exercise name must be at least 2 characters.",
   }),
+  aliases: z.string().max(1000, 'Alternative names are too long.').refine(value => {
+    const aliases = normalizeExerciseAliases(value);
+    return aliases.length <= 20 && aliases.every(alias => alias.length <= 100);
+  }, 'Use at most 20 alternative names, each no longer than 100 characters.'),
   category: z.enum(['strength', 'cardio', 'flexibility', 'balance']),
   muscleGroups: z.array(z.string()).default([]),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
@@ -60,6 +65,12 @@ const formSchema = z.object({
   instructions: z.string().optional(),
   videoUrl: optionalHttpsUrl,
   imageUrl: z.string().optional(),
+  directionImageUrls: z.object({
+    left: z.string().optional(),
+    right: z.string().optional(),
+    forward: z.string().optional(),
+    backward: z.string().optional(),
+  }).optional(),
 });
 
 const toNumber = (value?: string) => (value && value.trim() ? Number(value) : undefined);
@@ -80,7 +91,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   isSubmitting = false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const directionFileInputRefs = useRef<Partial<Record<ExecutionDirection, HTMLInputElement | null>>>({});
+  const [processingImage, setProcessingImage] = useState<'default' | ExecutionDirection | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(!!exercise?.secondsPerRep || !!exercise?.progression);
   const { muscleGroups: availableMuscleGroups } = useData();
 
@@ -88,6 +100,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: exercise?.name || "",
+      aliases: exercise?.aliases?.join(', ') || "",
       category: exercise?.category || 'strength',
       muscleGroups: exercise?.muscleGroups || [],
       difficulty: exercise?.difficulty || 'beginner',
@@ -106,12 +119,15 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       instructions: exercise?.instructions || "",
       videoUrl: exercise?.videoUrl || "",
       imageUrl: exercise?.imageUrl || "",
+      directionImageUrls: exercise?.directionImageUrls || {},
     },
   });
 
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    const aliases = normalizeExerciseAliases(values.aliases, values.name);
     onSubmit({
       name: values.name,
+      aliases: aliases.length ? aliases : undefined,
       category: values.category,
       muscleGroups: values.muscleGroups,
       difficulty: values.difficulty,
@@ -136,11 +152,19 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         : undefined,
       instructions: values.instructions || undefined,
       videoUrl: normalizeHttpsUrl(values.videoUrl),
-      imageUrl: values.imageUrl,
+      imageUrl: values.imageUrl || undefined,
+      directionImageUrls: Object.fromEntries(
+        values.executionDirections
+          .map(direction => [direction, values.directionImageUrls?.[direction]] as const)
+          .filter((entry): entry is readonly [ExecutionDirection, string] => !!entry[1]),
+      ),
     });
   };
 
-  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    direction?: ExecutionDirection,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -168,7 +192,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       return;
     }
 
-    setIsProcessingImage(true);
+    setProcessingImage(direction ?? 'default');
     try {
       // GIFs go through as-is so animation is preserved; canvas resizing
       // would flatten them to a single frame. Static images are downscaled
@@ -184,12 +208,13 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         return;
       }
 
-      form.setValue('imageUrl', dataUrl);
+      if (direction) form.setValue(`directionImageUrls.${direction}`, dataUrl);
+      else form.setValue('imageUrl', dataUrl);
     } catch (error) {
       console.error('Failed to process image:', error);
       toast.error('Could not read that image. Try a different file.');
     } finally {
-      setIsProcessingImage(false);
+      setProcessingImage(null);
     }
   };
 
@@ -200,7 +225,14 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     }
   };
 
+  const handleRemoveDirectionImage = (direction: ExecutionDirection) => {
+    form.setValue(`directionImageUrls.${direction}`, '');
+    const input = directionFileInputRefs.current[direction];
+    if (input) input.value = '';
+  };
+
   const logType = form.watch('logType');
+  const executionDirections = form.watch('executionDirections');
 
   return (
     <Form {...form}>
@@ -217,6 +249,22 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           />
           {form.formState.errors.name && (
             <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          <label htmlFor="aliases" className="text-right inline-block w-32 pr-2">
+            Alternative names
+          </label>
+          <Input
+            id="aliases"
+            placeholder="e.g. RDL, Romanian deadlift"
+            {...form.register("aliases")}
+            disabled={isSubmitting}
+          />
+          <p className="text-xs text-muted-foreground">Separate aliases with commas. They are included when searching.</p>
+          {form.formState.errors.aliases && (
+            <p className="text-sm text-red-500">{form.formState.errors.aliases.message}</p>
           )}
         </div>
 
@@ -499,14 +547,14 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="w-full"
-              disabled={isSubmitting || isProcessingImage}
+              disabled={isSubmitting || processingImage !== null}
             >
-              {isProcessingImage ? (
+              {processingImage === 'default' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <FileImage className="h-4 w-4 mr-2" />
               )}
-              {isProcessingImage ? 'Processing…' : 'Choose Image'}
+              {processingImage === 'default' ? 'Processing…' : 'Choose Image'}
             </Button>
             <input
               type="file"
@@ -533,6 +581,44 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               >
                 Remove
               </Button>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            This default is used in the exercise library and whenever a direction has no image of its own.
+          </p>
+          {executionDirections.length > 0 && (
+            <div className="mt-2 space-y-3 rounded-md border bg-muted/30 p-3">
+              <div>
+                <p className="text-sm font-medium">Images by direction (optional)</p>
+                <p className="text-xs text-muted-foreground">Shown for the matching set during a guided workout.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {executionDirections.map(direction => {
+                  const imageUrl = form.watch(`directionImageUrls.${direction}`);
+                  return (
+                    <div key={direction} className="space-y-2 rounded-md border bg-background p-2">
+                      <p className="text-sm font-medium">{EXECUTION_DIRECTION_LABELS[direction]}</p>
+                      <Button type="button" variant="outline" className="w-full"
+                        onClick={() => directionFileInputRefs.current[direction]?.click()}
+                        disabled={isSubmitting || processingImage !== null}>
+                        {processingImage === direction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileImage className="mr-2 h-4 w-4" />}
+                        {processingImage === direction ? 'Processing…' : imageUrl ? 'Replace image' : 'Choose image'}
+                      </Button>
+                      <input type="file" accept="image/*,.gif" className="hidden"
+                        ref={element => { directionFileInputRefs.current[direction] = element; }}
+                        onChange={event => handleImageChange(event, direction)} />
+                      {imageUrl && (
+                        <div className="relative">
+                          <ExerciseImage imageUrl={imageUrl} alt={`${EXECUTION_DIRECTION_LABELS[direction]} demonstration`}
+                            className="h-32 w-full rounded-md object-contain" />
+                          <Button type="button" variant="destructive" size="sm" className="absolute right-1 top-1"
+                            onClick={() => handleRemoveDirectionImage(direction)} disabled={isSubmitting}>Remove</Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
           <p className="text-xs text-muted-foreground">

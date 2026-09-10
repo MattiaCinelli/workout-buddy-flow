@@ -18,6 +18,7 @@ export interface ExerciseProgression {
 export interface Exercise {
   id: string;
   name: string;
+  aliases?: string[]; // Alternative searchable names, without creating duplicate exercise records
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
   muscleGroups: string[]; // MuscleGroup ids — see src/data/muscleGroups.ts
   difficulty: 'beginner' | 'intermediate' | 'advanced';
@@ -56,9 +57,20 @@ export interface Exercise {
   // workout. Constrained to https: on input and when importing a shared file.
   videoUrl?: string;
   imageUrl?: string; // URL to the local image
+  // Optional direction-specific alternatives used by the guided workout.
+  // `imageUrl` remains the default everywhere and is the fallback whenever
+  // the active direction has no image of its own.
+  directionImageUrls?: Partial<Record<ExecutionDirection, string>>;
   updatedAt?: string; // stamped by useIndexedDBCollection; used as the sync watermark
   deletedAt?: string; // sync tombstone — set by useIndexedDBCollection on delete while a sync server is connected; offline deletes hard-remove the row instead
 }
+
+export const getExerciseImageUrl = (
+  exercise: Pick<Exercise, 'imageUrl' | 'directionImageUrls'>,
+  direction?: ExecutionDirection,
+): string | undefined => direction
+  ? exercise.directionImageUrls?.[direction] || exercise.imageUrl
+  : exercise.imageUrl;
 
 export const getExecutionDirections = (
   exercise: Pick<Exercise, 'executionDirections' | 'unilateral'>,

@@ -59,6 +59,15 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
         onSelect && 'cursor-pointer',
       )}
       onClick={() => onSelect && onSelect(exercise)}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onKeyDown={event => {
+        if (event.currentTarget !== event.target || !onSelect) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect(exercise);
+        }
+      }}
     >
       <div className="flex justify-between items-start">
         <div className="flex gap-3">
@@ -78,6 +87,11 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
           
           <div className="flex-grow">
             <h3 className="font-medium">{exercise.name}</h3>
+            {!!exercise.aliases?.length && (
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                Also known as {exercise.aliases.join(', ')}
+              </p>
+            )}
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
               {logType === 'time' ? <Timer className="h-3 w-3" /> : <Repeat className="h-3 w-3" />}
               {setSummary}

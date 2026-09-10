@@ -10,6 +10,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AccessibilityController } from "./components/AccessibilityController";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import Index from "./pages/Index";
+import { AppearanceController } from "@/hooks/useTheme";
+import ReminderRefresh from "@/components/ReminderRefresh";
 
 // Every route past the dashboard is code-split so the initial load only
 // ships the landing screen. The Suspense fallback covers the fetch.
@@ -45,11 +47,14 @@ const App = () => (
     <TooltipProvider>
       <DataProvider>
         <AutoSync />
+        <ReminderRefresh />
         <AccessibilityController />
+        <AppearanceController />
         <PwaUpdatePrompt />
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <div className="lcars-app">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />
@@ -72,6 +77,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          </div>
         </BrowserRouter>
       </DataProvider>
     </TooltipProvider>
