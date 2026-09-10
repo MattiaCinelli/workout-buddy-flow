@@ -33,7 +33,7 @@ test('large creation dialogs stay inside a phone viewport and notices appear at 
   expect(workoutBox!.x + workoutBox!.width).toBeLessThanOrEqual(320);
   expect(workoutBox!.y).toBeGreaterThanOrEqual(0);
   expect(workoutBox!.y + workoutBox!.height).toBeLessThanOrEqual(568);
-  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
 
   await page.goto('/courses');
   await page.getByRole('button', { name: /create your first course|create course/i }).first().click();

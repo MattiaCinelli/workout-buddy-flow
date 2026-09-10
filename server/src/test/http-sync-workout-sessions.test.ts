@@ -12,9 +12,11 @@ const session = (overrides: Record<string, unknown> = {}) => ({
   sets: [{ exerciseId: 'squat', reps: 8, weight: 100 }],
   completedAt: '2026-01-05T10:30:00.000Z',
   plannedDuration: 45,
+  restBetweenSets: 90,
+  restBetweenExercises: 120,
   actualSets: [
-    { exerciseId: 'squat', setIndex: 0, completed: true, direction: 'left', reps: 8, weight: 100 },
-    { exerciseId: 'squat', setIndex: 1, completed: false, direction: 'right' },
+    { exerciseId: 'squat', setIndex: 0, completed: true, direction: 'left', reps: 8, weight: 100, rpe: 8, warmup: true },
+    { exerciseId: 'squat', setIndex: 1, completed: false, direction: 'right', amrap: true },
   ],
   perceivedExertion: 7,
   updatedAt: '2026-01-05T10:30:00.000Z',
@@ -39,7 +41,26 @@ test('a session round-trips including skipped sets in actualSets', async () => {
   assert.equal(stored.actualSets[1].completed, false);
   assert.equal(stored.actualSets[0].direction, 'left');
   assert.equal(stored.actualSets[1].direction, 'right');
+  assert.equal(stored.actualSets[0].rpe, 8);
+  assert.equal(stored.actualSets[0].warmup, true);
+  assert.equal(stored.actualSets[1].amrap, true);
+  assert.equal(stored.restBetweenSets, 90);
+  assert.equal(stored.restBetweenExercises, 120);
   assert.equal(stored.perceivedExertion, 7);
+});
+
+test('a session keeps its exact scheduled occurrence through sync', async () => {
+  const { app, aliceToken } = await setupTwoUsers();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/workoutSessions', headers,
+    payload: { workoutSessions: [session({ scheduledWorkoutId: 'series-1', scheduledDate: '2026-01-05' })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/workoutSessions', headers });
+
+  assert.equal(pull.json().workoutSessions[0].scheduledWorkoutId, 'series-1');
+  assert.equal(pull.json().workoutSessions[0].scheduledDate, '2026-01-05');
 });
 
 test('a session with no actualSets round-trips without it (optional field, not required)', async () => {

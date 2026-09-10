@@ -16,7 +16,7 @@ import {
 import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
 import { clearDiagnostics, formatDiagnostics } from '@/lib/diagnosticLog';
 import { saveTextFile } from '@/lib/downloadFile';
-import { scheduleWorkoutReminders } from '@/lib/notifications';
+import { replaceAllWorkoutReminders } from '@/lib/notifications';
 import { isConnected } from '@/lib/syncClient';
 import { useTheme, Theme, useInterfaceStyle, InterfaceStyle } from '@/hooks/useTheme';
 import { useData } from '@/contexts/DataContext';
@@ -73,12 +73,17 @@ const SettingsPage = () => {
     if (!pendingBackup) return;
     try {
       await restoreBackup(pendingBackup);
-      await Promise.all(pendingBackup.data.scheduledWorkouts.map(schedule =>
-        scheduleWorkoutReminders(
-          schedule,
-          pendingBackup.data.workouts.find(workout => workout.id === schedule.workoutId)?.title || 'Workout',
-        )
-      ));
+      // The data transaction is already committed at this point. Reminder
+      // reconciliation is best-effort and must not turn a successful restore
+      // into a misleading failure or prevent the UI from reloading its data.
+      try {
+        await replaceAllWorkoutReminders(
+          pendingBackup.data.scheduledWorkouts,
+          workoutId => pendingBackup.data.workouts.find(workout => workout.id === workoutId)?.title,
+        );
+      } catch (error) {
+        console.warn('Backup restored, but reminders could not be rebuilt:', error);
+      }
       window.location.reload();
     } catch {
       toast.error('Restore failed; current data was not reloaded');

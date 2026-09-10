@@ -118,13 +118,15 @@ const Navbar: React.FC = () => {
           >
             <Menu className="h-6 w-6" />
           </Button>
-          <div
-            className="flex items-center gap-2 cursor-pointer"
+          <button
+            type="button"
+            className="flex items-center gap-2 cursor-pointer bg-transparent border-0 p-0"
             onClick={() => navigate('/')}
+            aria-label="Workout Buddy home"
           >
             <Dumbbell className="h-6 w-6 text-primary" />
             <span className="hidden text-xl font-bold text-primary min-[400px]:inline">WORKOUT<span className="text-foreground">BUDDY</span></span>
-          </div>
+          </button>
         </div>
 
         {/* Desktop navigation */}

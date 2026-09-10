@@ -90,3 +90,18 @@ export const rescheduleAllReminders = async (
     await scheduleWorkoutReminders(schedule, getWorkoutTitle(schedule.workoutId) ?? 'Workout');
   }
 };
+
+// Used after a replace-style backup restore. Unlike the ordinary refresh,
+// this also removes reminders for schedules that no longer exist.
+export const replaceAllWorkoutReminders = async (
+  scheduledWorkouts: ScheduledWorkout[],
+  getWorkoutTitle: (workoutId: string) => string | undefined,
+) => {
+  if (!Capacitor.isNativePlatform()) return;
+  const pending = await LocalNotifications.getPending();
+  const appNotifications = pending.notifications.filter(item => typeof item.extra?.scheduleId === 'string');
+  if (appNotifications.length) {
+    await LocalNotifications.cancel({ notifications: appNotifications.map(item => ({ id: item.id })) });
+  }
+  await rescheduleAllReminders(scheduledWorkouts, getWorkoutTitle);
+};

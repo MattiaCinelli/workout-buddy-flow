@@ -44,7 +44,7 @@ const HistoryPage: React.FC = () => {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   
-  const { sessions: workouts, exercises, deleteSession, updateSession, uncompleteWorkoutInCourse } = useData();
+  const { sessions: workouts, exercises, createSession, deleteSession, updateSession, uncompleteWorkoutInCourse } = useData();
   const { toast } = useToast();
 
   const exportCsv = async () => {
@@ -64,9 +64,20 @@ const HistoryPage: React.FC = () => {
     if (!pendingDelete) return;
     setIsDeleting(true);
     try {
-      await deleteSession(pendingDelete.id);
+      const removed = await deleteSession(pendingDelete.id);
+      if (!removed) throw new Error('The history record no longer exists.');
       if (pendingDelete.courseId && pendingDelete.courseItemId) {
-        await uncompleteWorkoutInCourse(pendingDelete.courseId, pendingDelete.courseItemId);
+        try {
+          const updatedCourse = await uncompleteWorkoutInCourse(pendingDelete.courseId, pendingDelete.courseItemId);
+          if (!updatedCourse) throw new Error('The linked course or workout slot no longer exists.');
+        } catch (courseError) {
+          // Restore the history entry (under a new local id) when course
+          // reconciliation fails, so the two views never disagree silently.
+          const sessionData = { ...removed };
+          delete (sessionData as Partial<WorkoutSession>).id;
+          await createSession(sessionData);
+          throw courseError;
+        }
       }
       toast({ title: 'Removed from history', description: `"${pendingDelete.title}" was deleted.` });
     } catch (error) {

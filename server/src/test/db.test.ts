@@ -81,6 +81,17 @@ test('exercises: demonstration links survive a database round trip', () => {
   assert.equal(listChangedSince(db, user.id)[0].videoUrl, videoUrl);
 });
 
+test('exercises: progression policy survives a database round trip', () => {
+  const db = freshDb();
+  const user = createUser(db, 'you@example.com', 'hash');
+  const progression = { mode: 'double' as const, incrementKg: 2.5, repRangeMin: 8, repRangeMax: 12 };
+
+  const stored = upsertExercise(db, user.id, exercise({ progression }));
+
+  assert.deepEqual(stored.progression, progression);
+  assert.deepEqual(listChangedSince(db, user.id)[0].progression, progression);
+});
+
 test('exercises: an older write loses to a newer one already stored (last-write-wins)', () => {
   const db = freshDb();
   const user = createUser(db, 'you@example.com', 'hash');

@@ -45,9 +45,11 @@ const bestRecordLabel = (record?: PersonalRecord): string | null => {
 };
 
 type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; timeLeft: number;
-  deadline: number | null; paused: boolean };
+  deadline: number | null; paused: boolean; activeElapsedMs?: number; activeSince?: number | null;
+  actualSets?: WorkoutSetResult[]; rpe?: string; completionNotes?: string; completionOpen?: boolean };
 type WakeLockLike = { release: () => Promise<void>; released?: boolean };
-const runtimeKey = (id: string) => `workout-buddy-active:${id}`;
+const runtimeKey = (id: string, occurrenceIdentity: string) =>
+  `workout-buddy-active:${id}${occurrenceIdentity ? `:${encodeURIComponent(occurrenceIdentity)}` : ''}`;
 
 // A left-to-right fill that mirrors the numeric countdown, so time
 // remaining is readable at a glance without parsing digits. Colours are
@@ -72,8 +74,15 @@ const WorkoutPresentation = () => {
     completeWorkoutInCourse, uncompleteWorkoutInCourse, courses, scheduledWorkouts,
   } = useData();
   const workout = workouts.find(item => item.id === id);
+  const occurrenceIdentity = [
+    searchParams.get('scheduledWorkoutId'), searchParams.get('scheduledDate'),
+    searchParams.get('courseId'), searchParams.get('courseItemId'),
+  ].filter(Boolean).join(':');
+  const activeRuntimeKey = runtimeKey(id, occurrenceIdentity);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
   const startedAt = useRef(Date.now());
+  const activeElapsedMs = useRef(0);
+  const activeSince = useRef<number | null>(Date.now());
   const wakeLock = useRef<WakeLockLike | null>(null);
   const advancing = useRef(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -187,11 +196,13 @@ const WorkoutPresentation = () => {
 
   useEffect(() => {
     if (!workout || !steps.length || restored) return;
-    const raw = localStorage.getItem(runtimeKey(workout.id));
+    const raw = localStorage.getItem(activeRuntimeKey);
     let saved: SavedRuntime | null = null;
-    try { saved = raw ? JSON.parse(raw) as SavedRuntime : null; } catch { localStorage.removeItem(runtimeKey(workout.id)); }
+    try { saved = raw ? JSON.parse(raw) as SavedRuntime : null; } catch { localStorage.removeItem(activeRuntimeKey); }
     if (saved?.workoutId === workout.id && saved.activeStep < steps.length) {
       startedAt.current = saved.startedAt;
+      activeElapsedMs.current = saved.activeElapsedMs ?? 0;
+      activeSince.current = saved.paused ? null : (saved.activeSince ?? saved.startedAt);
       setActiveStep(saved.activeStep);
       setPaused(saved.paused);
       const remaining = saved.deadline && !saved.paused
@@ -208,23 +219,31 @@ const WorkoutPresentation = () => {
       setTimeLeft(restoredDuration);
       setDeadline(saved.paused || restoredDuration <= 0 ? null : Date.now() + restoredDuration * 1000);
       if (remaining === 0 && saved.deadline && !savedIsSelfPaced && saved.activeStep + 1 >= steps.length) setCompletionOpen(true);
+      if (saved.completionOpen) setCompletionOpen(true);
       toast({ title: 'Workout resumed', description: 'Continuing from your last saved step.' });
     } else {
       const duration = steps[0].duration || 0;
       setTimeLeft(duration);
       setDeadline(duration ? Date.now() + duration * 1000 : null);
     }
-    setActualSets(workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
+    const plannedResults = workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
       completed: true, reps: set.reps, weight: set.weight, duration: set.duration, distance: set.distance,
-      direction: set.direction, warmup: set.warmup, amrap: set.amrap })));
+      direction: set.direction, warmup: set.warmup, amrap: set.amrap }));
+    setActualSets(saved?.actualSets ?? plannedResults);
+    setRpe(saved?.rpe ?? '');
+    setCompletionNotes(saved?.completionNotes ?? '');
     setRestored(true);
-  }, [workout, steps, restored, toast]);
+  }, [workout, steps, restored, toast, activeRuntimeKey]);
 
   useEffect(() => {
-    if (!workout || !restored || completionOpen) return;
-    const value: SavedRuntime = { workoutId: workout.id, activeStep, startedAt: startedAt.current, timeLeft, deadline, paused };
-    localStorage.setItem(runtimeKey(workout.id), JSON.stringify(value));
-  }, [workout, restored, activeStep, timeLeft, deadline, paused, completionOpen]);
+    if (!workout || !restored) return;
+    const value: SavedRuntime = {
+      workoutId: workout.id, activeStep, startedAt: startedAt.current, timeLeft, deadline, paused,
+      activeElapsedMs: activeElapsedMs.current, activeSince: activeSince.current,
+      actualSets, rpe, completionNotes, completionOpen,
+    };
+    localStorage.setItem(activeRuntimeKey, JSON.stringify(value));
+  }, [workout, restored, activeStep, timeLeft, deadline, paused, completionOpen, actualSets, rpe, completionNotes, activeRuntimeKey]);
 
   useEffect(() => {
     if (!restored) return;
@@ -297,15 +316,22 @@ const WorkoutPresentation = () => {
   // otherwise do nothing forever. Releasing it here covers that path too.
   useEffect(() => { if (!completionOpen) advancing.current = false; }, [completionOpen]);
 
+  const stopActiveClock = useCallback(() => {
+    if (activeSince.current === null) return;
+    activeElapsedMs.current += Math.max(0, Date.now() - activeSince.current);
+    activeSince.current = null;
+  }, []);
+
   const nextStep = useCallback(() => {
     if (advancing.current) return;
     advancing.current = true;
     const next = activeStep + 1;
     if (next >= steps.length) {
+      stopActiveClock();
       setDeadline(null); setPaused(true); setCompletionOpen(true); return;
     }
     startStep(next);
-  }, [activeStep, steps.length, startStep]);
+  }, [activeStep, steps.length, startStep, stopActiveClock]);
 
   const previousStep = () => {
     if (activeStep === 0) return;
@@ -340,8 +366,12 @@ const WorkoutPresentation = () => {
   }, [paused, deadline, completionOpen, nextStep, steps, activeStep, speak]);
 
   const togglePause = () => {
-    if (paused) { setPaused(false); setDeadline(timeLeft > 0 ? Date.now() + timeLeft * 1000 : null); }
+    if (paused) {
+      activeSince.current = Date.now();
+      setPaused(false); setDeadline(timeLeft > 0 ? Date.now() + timeLeft * 1000 : null);
+    }
     else {
+      stopActiveClock();
       setTimeLeft(deadline ? remainingSeconds(deadline) : timeLeft);
       setDeadline(null); setPaused(true);
     }
@@ -362,8 +392,10 @@ const WorkoutPresentation = () => {
     setActualSets(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...updates } : item));
 
   const restartWorkout = () => {
-    localStorage.removeItem(runtimeKey(workout?.id || id));
+    localStorage.removeItem(activeRuntimeKey);
     startedAt.current = Date.now();
+    activeElapsedMs.current = 0;
+    activeSince.current = Date.now();
     startStep(0);
     setRestartConfirmOpen(false);
   };
@@ -372,7 +404,7 @@ const WorkoutPresentation = () => {
   // the completion dialog's "Don't save" button and closing that dialog via
   // its X (they're the same action, not "close the dialog but stay").
   const discardAndExit = () => {
-    localStorage.removeItem(runtimeKey(workout?.id || id));
+    localStorage.removeItem(activeRuntimeKey);
     void TextToSpeech.stop().catch(() => undefined);
     navigate(`/workouts/${id}`);
   };
@@ -388,13 +420,31 @@ const WorkoutPresentation = () => {
       const nextSameDay = course && courseItemId
         ? getNextSameDayWorkout(course.workouts, courseItemId)
         : undefined;
+      const activeDuration = activeElapsedMs.current
+        + (activeSince.current === null ? 0 : Math.max(0, Date.now() - activeSince.current));
       const createdSession = await createSession({ workoutId: workout.id, completedAt, date: completedAt, title: workout.title,
-        duration: Math.max(1, Math.round((Date.now() - startedAt.current) / 60000)), plannedDuration: workout.duration,
-        category: workout.category, sets: workout.sets, notes: workout.notes, courseId, courseItemId,
+        duration: Math.max(1, Math.round(activeDuration / 60000)), plannedDuration: workout.duration,
+        category: workout.category, sets: workout.sets, restBetweenSets: workout.restBetweenSets,
+        restBetweenExercises: workout.restBetweenExercises, notes: workout.notes, courseId, courseItemId,
         scheduledWorkoutId: searchParams.get('scheduledWorkoutId') || undefined, actualSets,
+        scheduledDate: searchParams.get('scheduledDate') || undefined,
         perceivedExertion: rpe ? Number(rpe) : undefined, completionNotes: completionNotes.trim() || undefined });
-      if (courseId && courseItemId) await completeWorkoutInCourse(courseId, courseItemId);
-      localStorage.removeItem(runtimeKey(workout.id));
+      if (courseId && courseItemId) {
+        try {
+          const updatedCourse = await completeWorkoutInCourse(courseId, courseItemId);
+          if (!updatedCourse) throw new Error('The linked course or workout slot no longer exists.');
+        } catch (courseError) {
+          // Do not leave a history row behind when the second half of the
+          // completion fails; keeping the resumable state lets the user retry.
+          try { await deleteSession(createdSession.id); }
+          catch (rollbackError) {
+            console.error('Could not roll back session after course update failed:', rollbackError);
+            logDiagnostic('error', `Session rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
+          }
+          throw courseError;
+        }
+      }
+      localStorage.removeItem(activeRuntimeKey);
 
       // Compare against sessions as they stood BEFORE this one was added —
       // `sessions` here is still the pre-save snapshot, since the context

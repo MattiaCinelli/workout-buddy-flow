@@ -155,4 +155,22 @@ describe('WorkoutPresentation — guided run', () => {
     expect(createSession).toHaveBeenCalledOnce();
     expect(navigate).toHaveBeenLastCalledWith('/');
   });
+
+  it('excludes paused time from the recorded workout duration', async () => {
+    setExercises([ex({ id: 'pushup', name: 'Push-up', logType: 'reps' })]);
+    setWorkout([{ exerciseId: 'pushup', reps: 10 }]);
+
+    await startAndSkipPrep();
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    await advance(5 * 60_000);
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    await advance(50_000);
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save workout' }));
+      await Promise.resolve();
+    });
+
+    expect(createSession).toHaveBeenCalledWith(expect.objectContaining({ duration: 1 }));
+  });
 });

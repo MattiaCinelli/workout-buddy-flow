@@ -5,18 +5,16 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import packageJson from "./package.json";
 
-// The Lovable in-browser editor requires a remote script in index.html. It
-// has full access to the origin (IndexedDB, localStorage — including any
-// sync token) and phones home on every load, so it must not ship in a
-// distributed build. Kept for `vite` dev (the editor), stripped from every
-// `vite build`.
-const stripLovableEditorScript = (): Plugin => ({
-  name: "strip-lovable-editor-script",
-  apply: "build",
-  transformIndexHtml: (html) =>
-    html
-      .replace(/\s*<!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->/g, "")
-      .replace(/\s*<script src="https:\/\/cdn\.gpteng\.co\/gptengineer\.js"[^>]*><\/script>/g, ""),
+// The optional in-browser editor has origin-level access to local app data,
+// so load it only for a deliberately opted-in development session:
+// ENABLE_LOVABLE_EDITOR=true npm run dev
+const lovableEditorScript = (): Plugin => ({
+  name: "lovable-editor-script",
+  apply: "serve",
+  transformIndexHtml: (html) => html.replace(
+    '</body>',
+    '  <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>\n  </body>',
+  ),
 });
 
 // https://vitejs.dev/config/
@@ -25,13 +23,13 @@ export default defineConfig(({ mode }) => ({
     __APP_VERSION__: JSON.stringify(packageJson.version),
   },
   server: {
-    host: "::",
+    host: process.env.VITE_DEV_HOST ?? "127.0.0.1",
     port: 8080,
   },
   plugins: [
     react(),
-    mode === 'development' && componentTagger(),
-    stripLovableEditorScript(),
+    mode === 'development' && process.env.ENABLE_LOVABLE_EDITOR === 'true' && componentTagger(),
+    mode === 'development' && process.env.ENABLE_LOVABLE_EDITOR === 'true' && lovableEditorScript(),
     VitePWA({
       // "prompt" — the app shows an Update available banner rather than
       // silently swapping the running code (see PwaUpdatePrompt).

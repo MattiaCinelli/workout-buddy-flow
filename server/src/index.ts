@@ -1,12 +1,14 @@
 import { openDb } from './db';
 import { buildApp } from './http/app';
 import { getDatabasePath } from './config';
+import { deleteExpiredSessions } from './db/sessions';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const HOST = process.env.HOST ?? '0.0.0.0';
 
 const main = async () => {
   const db = openDb(getDatabasePath());
+  deleteExpiredSessions(db);
   const app = buildApp(db);
   await app.listen({ port: PORT, host: HOST });
   console.log(`Workout Buddy sync server listening on ${HOST}:${PORT}`);

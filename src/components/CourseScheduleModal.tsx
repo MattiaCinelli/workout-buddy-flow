@@ -13,7 +13,7 @@ import { addMinutesToTime, sortCourseItems } from '@/lib/courseSchedule';
 interface Props { course: Course; open: boolean; onOpenChange: (open: boolean) => void; }
 
 const CourseScheduleModal = ({ course, open, onOpenChange }: Props) => {
-  const { createScheduledWorkout, workouts } = useData();
+  const { createScheduledWorkout, scheduledWorkouts, workouts } = useData();
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('18:00');
   const [saving, setSaving] = useState(false);
@@ -40,8 +40,16 @@ const CourseScheduleModal = ({ course, open, onOpenChange }: Props) => {
           courseItemId: item.id,
         };
       });
-      await Promise.all(scheduled.map(item => createScheduledWorkout(item)));
-      toast.success(`${sessions.length} course sessions added to the calendar`);
+      // Retrying after a partial failure must be safe. Course/item links are
+      // stable, so only create the slots that are not already on a calendar.
+      const existingItems = new Set(scheduledWorkouts
+        .filter(item => item.courseId === course.id && item.courseItemId)
+        .map(item => item.courseItemId));
+      const missing = scheduled.filter(item => !existingItems.has(item.courseItemId));
+      await Promise.all(missing.map(item => createScheduledWorkout(item)));
+      toast.success(missing.length
+        ? `${missing.length} course session${missing.length === 1 ? '' : 's'} added to the calendar`
+        : 'This course is already on the calendar');
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to schedule course:', error);

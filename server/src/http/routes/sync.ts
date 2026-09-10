@@ -19,6 +19,8 @@ const workoutSetSchema = {
     duration: { type: 'number' },
     distance: { type: 'number' },
     restAfter: { type: 'number' },
+    warmup: { type: 'boolean' },
+    amrap: { type: 'boolean' },
   },
 };
 
@@ -44,6 +46,17 @@ const exerciseSchema = {
       type: 'array',
       items: { type: 'string', enum: ['left', 'right', 'forward', 'backward'] },
       uniqueItems: true,
+    },
+    progression: {
+      type: 'object',
+      required: ['mode'],
+      additionalProperties: false,
+      properties: {
+        mode: { type: 'string', enum: ['linear', 'double'] },
+        incrementKg: { type: 'number', exclusiveMinimum: 0 },
+        repRangeMin: { type: 'number', minimum: 1 },
+        repRangeMax: { type: 'number', minimum: 1 },
+      },
     },
     instructions: { type: 'string' },
     videoUrl: { type: 'string' },
@@ -144,6 +157,9 @@ const workoutSetResultSchema = {
     weight: { type: 'number' },
     duration: { type: 'number' },
     distance: { type: 'number' },
+    rpe: { type: 'number', minimum: 1, maximum: 10 },
+    warmup: { type: 'boolean' },
+    amrap: { type: 'boolean' },
   },
 };
 
@@ -166,6 +182,7 @@ const workoutSessionSchema = {
     courseId: { type: 'string' },
     courseItemId: { type: 'string' },
     scheduledWorkoutId: { type: 'string' },
+    scheduledDate: { type: 'string' },
     actualSets: { type: 'array', items: workoutSetResultSchema },
     perceivedExertion: { type: 'number' },
     completionNotes: { type: 'string' },

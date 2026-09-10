@@ -168,11 +168,20 @@ const pull = async <T extends SyncedRecord>(collection: string, since?: string) 
 
 const push = async <T extends SyncedRecord>(collection: string, items: T[]): Promise<T[]> => {
   if (items.length === 0) return [];
-  const body = await authorizedRequest<Record<string, unknown>>(`/sync/${collection}`, {
-    method: 'POST',
-    body: JSON.stringify({ [collection]: items }),
-  });
-  return (body[collection] ?? []) as T[];
+  // The server intentionally caps one transaction at 1,000 records. Keep
+  // some headroom and split large personal histories instead of making a
+  // collection permanently unsyncable once it crosses that threshold.
+  const batchSize = 500;
+  const stored: T[] = [];
+  for (let offset = 0; offset < items.length; offset += batchSize) {
+    const batch = items.slice(offset, offset + batchSize);
+    const body = await authorizedRequest<Record<string, unknown>>(`/sync/${collection}`, {
+      method: 'POST',
+      body: JSON.stringify({ [collection]: batch }),
+    });
+    stored.push(...((body[collection] ?? []) as T[]));
+  }
+  return stored;
 };
 
 export interface CollectionSyncResult {
@@ -207,6 +216,20 @@ const syncCollection = async <T extends SyncedRecord>(
   direction: SyncDirection = 'both',
 ): Promise<CollectionSyncResult> => {
   const { path, getAll, save, remove } = config;
+
+  // Apply last-write-wins locally too. A user may edit a record while a
+  // network request is in flight; in that case the newer local timestamp
+  // must survive the older response and be pushed on the next sync.
+  const saveRemoteUnlessLocalIsNewer = async (items: T[], force = false) => {
+    const current = new Map((await getAll()).map(item => [item.id, item]));
+    for (const item of items) {
+      const local = current.get(item.id);
+      const localIsNewer = !!local?.updatedAt && (!item.updatedAt || local.updatedAt > item.updatedAt);
+      if (!force && localIsNewer) continue;
+      await save(item);
+      current.set(item.id, item);
+    }
+  };
 
   // Records created before sync was configured (or before this field
   // existed at all) may not have updatedAt yet. Backfill and persist it
@@ -249,7 +272,7 @@ const syncCollection = async <T extends SyncedRecord>(
         console.warn(`Conflict detection for ${path} failed (sync itself is unaffected):`, error);
       }
     }
-    await Promise.all(pushed.map(item => save(item)));
+    await saveRemoteUnlessLocalIsNewer(pushed);
   }
 
   let pulled: T[] = [];
@@ -260,7 +283,9 @@ const syncCollection = async <T extends SyncedRecord>(
     const watermark = localStorage.getItem(watermarkKey(path)) ?? undefined;
     const { items, serverTime } = await pull<T>(path, watermark);
     pulled = items;
-    await Promise.all(pulled.map(item => save(item)));
+    // Pull-only is an explicit "server wins" operation. Normal two-way
+    // sync preserves edits made locally while the pull request was pending.
+    await saveRemoteUnlessLocalIsNewer(pulled, direction === 'pull');
     localStorage.setItem(watermarkKey(path), serverTime);
   }
 
@@ -346,8 +371,7 @@ const syncSettings = async (direction: SyncDirection): Promise<void> => {
 // one collection's sync fails partway through, the caller sees the error
 // and can retry, rather than this silently reporting partial success. The
 // failure is also recorded so the UI can surface it after a background run.
-export const syncAll = async (direction: SyncDirection = 'both'): Promise<CollectionSyncResult[]> => {
-  setSyncActive(1);
+const runSyncAll = async (direction: SyncDirection): Promise<CollectionSyncResult[]> => {
   try {
     const results = [
       await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }, direction),
@@ -375,9 +399,21 @@ export const syncAll = async (direction: SyncDirection = 'both'): Promise<Collec
     localStorage.setItem(lastErrorKey, error instanceof Error ? error.message : 'Sync failed');
     localStorage.setItem(lastErrorAtKey, new Date().toISOString());
     throw error;
-  } finally {
-    setSyncActive(-1);
   }
+};
+
+// One process-wide queue covers both automatic and manually-triggered
+// syncs. This prevents two last-write-wins merges from interleaving while
+// still honoring a deliberate push/pull request made during another run.
+let syncQueue: Promise<unknown> = Promise.resolve();
+export const syncAll = (direction: SyncDirection = 'both'): Promise<CollectionSyncResult[]> => {
+  setSyncActive(1);
+  const result = syncQueue.then(
+    () => runSyncAll(direction),
+    () => runSyncAll(direction),
+  );
+  syncQueue = result.then(() => undefined, () => undefined);
+  return result.finally(() => setSyncActive(-1));
 };
 
 // Forget every pull watermark and conflict baseline so the next sync

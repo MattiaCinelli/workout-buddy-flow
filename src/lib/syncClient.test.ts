@@ -254,6 +254,54 @@ describe('syncAll — both (bidirectional merge)', () => {
 
     expect(stores.exercises.get('e1')!.updatedAt).toEqual(expect.any(String));
   });
+
+  it('does not overwrite an edit made while a sync request is in flight', async () => {
+    await connect();
+    stores.exercises.set('e1', { id: 'e1', name: 'before request', updatedAt: '2026-01-01T00:00:00.000Z' });
+    const realImpl = fetchMock.getMockImplementation()!;
+    let releaseRequest!: () => void;
+    let markStarted!: () => void;
+    const requestStarted = new Promise<void>(resolve => { markStarted = resolve; });
+    const requestGate = new Promise<void>(resolve => { releaseRequest = resolve; });
+    let held = false;
+    fetchMock.mockImplementation(async (input, init) => {
+      const isExercisePush = String(input).endsWith('/sync/exercises') && init?.method === 'POST';
+      if (isExercisePush && !held) {
+        held = true;
+        markStarted();
+        await requestGate;
+      }
+      return realImpl(input, init as RequestInit);
+    });
+
+    const pending = syncAll('both');
+    await requestStarted;
+    stores.exercises.set('e1', { id: 'e1', name: 'edited while syncing', updatedAt: '2027-01-01T00:00:00.000Z' });
+    releaseRequest();
+    await pending;
+
+    expect(stores.exercises.get('e1')).toMatchObject({
+      name: 'edited while syncing',
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    });
+  });
+
+  it('pushes collections larger than the server batch limit in chunks', async () => {
+    await connect();
+    for (let index = 0; index < 1001; index += 1) {
+      stores.exercises.set(`e${index}`, {
+        id: `e${index}`,
+        name: `Exercise ${index}`,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+    }
+
+    await syncAll('both');
+
+    const pushes = reqsTo('/sync/exercises').filter(request => request.method === 'POST');
+    expect(pushes).toHaveLength(3);
+    expect(pushes.map(request => (request.body as { exercises: unknown[] }).exercises.length)).toEqual([500, 500, 1]);
+  });
 });
 
 describe('syncAll — one-way modes', () => {

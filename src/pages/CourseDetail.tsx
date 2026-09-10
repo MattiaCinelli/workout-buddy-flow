@@ -37,6 +37,8 @@ const CourseDetail = () => {
     completeWorkoutInCourse,
     restartCourse,
     deleteCourse,
+    scheduledWorkouts,
+    deleteScheduledWorkout,
     startCourse
   } = useData();
 
@@ -88,6 +90,10 @@ const CourseDetail = () => {
   };
 
   const handleDeleteCourse = async () => {
+    // Remove future launch points before their course metadata disappears.
+    // Retrying is safe if one of these operations fails part-way through.
+    const linkedSchedules = scheduledWorkouts.filter(item => item.courseId === course.id);
+    await Promise.all(linkedSchedules.map(item => deleteScheduledWorkout(item.id)));
     await deleteCourse(course.id);
     toast.success('Course deleted');
     navigate('/courses');

@@ -10,9 +10,25 @@ interface LoginBody {
 }
 
 const INVALID_CREDENTIALS = { error: 'Invalid email or password' };
+// A syntactically valid throwaway hash makes unknown-email attempts do the
+// same expensive KDF work as wrong-password attempts, reducing the timing
+// signal available for account enumeration.
+const DUMMY_PASSWORD_HASH = `scrypt:${'00'.repeat(16)}:${'00'.repeat(64)}`;
 
 export const registerAuthRoutes = (app: FastifyInstance) => {
-  app.post<{ Body: LoginBody }>('/auth/login', async (request, reply) => {
+  app.post<{ Body: LoginBody }>('/auth/login', {
+    schema: {
+      body: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['email', 'password'],
+        properties: {
+          email: { type: 'string', minLength: 1, maxLength: 320 },
+          password: { type: 'string', minLength: 1, maxLength: 1024 },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const { email, password } = request.body ?? {};
     if (!email || !password) {
       reply.code(400).send({ error: 'email and password are required' });
@@ -23,7 +39,8 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
     // Same response whether the email is unknown or the password is wrong —
     // distinguishing the two would let a caller enumerate which emails have
     // accounts on this server.
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    const passwordMatches = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+    if (!user || !passwordMatches) {
       reply.code(401).send(INVALID_CREDENTIALS);
       return;
     }

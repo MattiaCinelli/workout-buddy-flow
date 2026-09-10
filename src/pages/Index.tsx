@@ -9,6 +9,7 @@ import WeeklyGoal from '@/components/dashboard/WeeklyGoal';
 import QuickStats from '@/components/dashboard/QuickStats';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { useData } from '@/contexts/DataContext';
+import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ const Index = () => {
         {/* Main Dashboard Grid */}
         <div className="space-y-6">
           {/* Calendar Preview - Full Width */}
-          <CalendarPreview onStartWorkout={(id) => navigate(`/workouts/${id}/session`)} />
+          <CalendarPreview onStartWorkout={(schedule) => navigate(scheduledWorkoutSessionUrl(schedule))} />
           
           {/* Today's Focus + Streak/Goal Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

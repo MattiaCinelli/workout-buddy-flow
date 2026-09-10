@@ -59,6 +59,15 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
         onSelect && 'cursor-pointer',
       )}
       onClick={() => onSelect && onSelect(exercise)}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onKeyDown={event => {
+        if (event.currentTarget !== event.target || !onSelect) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect(exercise);
+        }
+      }}
     >
       <div className="flex justify-between items-start">
         <div className="flex gap-3">

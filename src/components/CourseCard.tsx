@@ -31,6 +31,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
     <Card 
       className="hover:shadow-lg transition-shadow cursor-pointer"
       onClick={() => navigate(`/courses/${course.id}`)}
+      role="link"
+      tabIndex={0}
+      onKeyDown={event => {
+        if (event.currentTarget !== event.target) return;
+        if (event.key === 'Enter') navigate(`/courses/${course.id}`);
+      }}
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">

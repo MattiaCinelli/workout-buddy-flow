@@ -5,13 +5,14 @@ import { Play, Clock, Dumbbell, Zap, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
 import { startOfToday } from 'date-fns';
+import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
 
 const TodaysFocus: React.FC = () => {
   const navigate = useNavigate();
   const { getScheduledWorkoutsForDate, getWorkoutById } = useData();
   
   const today = startOfToday();
-  const todaysWorkouts = getScheduledWorkoutsForDate(today);
+  const todaysWorkouts = getScheduledWorkoutsForDate(today).filter(schedule => !schedule.skipped);
   
   if (todaysWorkouts.length === 0) {
     return (
@@ -71,7 +72,7 @@ const TodaysFocus: React.FC = () => {
               <Button 
                 size="sm" 
                 className="gap-1"
-                onClick={() => navigate(`/workouts/${workout.id}/session`)}
+                onClick={() => navigate(scheduledWorkoutSessionUrl(scheduled))}
               >
                 <Play className="h-4 w-4" />
                 Start

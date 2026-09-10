@@ -8,6 +8,8 @@ export interface SyncedWorkoutSet {
   duration?: number;
   distance?: number;
   restAfter?: number;
+  warmup?: boolean;
+  amrap?: boolean;
 }
 
 export interface SyncedWorkout {

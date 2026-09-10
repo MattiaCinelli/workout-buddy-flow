@@ -24,7 +24,7 @@ vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => native.
 vi.mock('@capacitor/local-notifications', () => ({ LocalNotifications: notif }));
 vi.mock('@/lib/notificationSettings', () => ({ getNotificationSettings: () => settings.value }));
 
-import { scheduleWorkoutReminders, cancelWorkoutReminders, rescheduleAllReminders } from './notifications';
+import { scheduleWorkoutReminders, cancelWorkoutReminders, replaceAllWorkoutReminders, rescheduleAllReminders } from './notifications';
 
 const schedule = (over: Partial<ScheduledWorkout> = {}): ScheduledWorkout => ({
   id: 's1', workoutId: 'w1',
@@ -135,6 +135,20 @@ describe('rescheduleAllReminders', () => {
       () => 'Leg Day',
     );
     // 'a' schedules once; 'b' is skipped entirely.
+    expect(notif.schedule).toHaveBeenCalledOnce();
+  });
+
+  it('removes reminders for schedules absent from a replacement backup', async () => {
+    notif.getPending.mockResolvedValue({
+      notifications: [
+        { id: 1, extra: { scheduleId: 'removed-schedule' } },
+        { id: 2, extra: { unrelated: true } },
+      ],
+    });
+
+    await replaceAllWorkoutReminders([schedule({ id: 'restored-schedule' })], () => 'Leg Day');
+
+    expect(notif.cancel).toHaveBeenCalledWith({ notifications: [{ id: 1 }] });
     expect(notif.schedule).toHaveBeenCalledOnce();
   });
 });

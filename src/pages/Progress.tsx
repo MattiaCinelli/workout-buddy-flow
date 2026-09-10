@@ -148,7 +148,11 @@ const ProgressPage = () => {
     const totalWorkouts = filteredWorkouts.length;
     const totalDuration = filteredWorkouts.reduce((sum, w) => sum + w.duration, 0);
     const avgDuration = totalWorkouts > 0 ? Math.round(totalDuration / totalWorkouts) : 0;
-    const totalSets = filteredWorkouts.reduce((sum, w) => sum + w.sets.length, 0);
+    const totalSets = filteredWorkouts.reduce((sum, workout) => sum + (
+      workout.actualSets
+        ? workout.actualSets.filter(set => set.completed && !set.warmup).length
+        : workout.sets.filter(set => !set.warmup).length
+    ), 0);
     
     return { totalWorkouts, totalDuration, avgDuration, totalSets };
   }, [filteredWorkouts]);
