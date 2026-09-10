@@ -15,9 +15,7 @@ together — a single tag `vX.Y.Z` releases both.
   in the library and detail view, and match them in search. Aliases are
   deduplicated, checked for naming conflicts, backed up and synced.
 - **Animated private exercise media** — private exercise illustrations can now
-  use looping GIFs; Neck rolls includes a controlled movement demonstration,
-  while Neck Tilts uses a directional four-position composite served from the
-  local sync server.
+  use looping GIFs; Neck rolls includes a controlled movement demonstration.
 - **Optional Starship interface** — users can choose a futuristic console-style
   interface or the original Classic design from Settings. Classic remains the
   default, both interfaces support distinct light and dark palettes, and compact
@@ -29,15 +27,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Changed
 
-- **Post-workout destination** — saving the final workout in a sequence now
-  returns to the homepage; consecutive workouts on the same course day still
-  continue seamlessly into the next session.
-- **Focused guided workouts** — active workouts no longer show when an exercise
-  was last performed or display set details from its previous session. Personal
-  records and progression suggestions remain available without exposing the
-  previous-session report.
-- **Matching browser chrome** — browser and installed-PWA theme colors now track
-  Classic Light, Classic Dark, Starship Light and Starship Dark dynamically.
+- **Complete exercise guidance** — every active exercise in the local sync library now includes instructions and at least one valid muscle-group assignment; existing populated fields, workout plans and history are preserved.
+- **Post-workout destination** — saving the final workout in a sequence now returns to the homepage; consecutive workouts on the same course day still continue seamlessly into the next session.
+- **Focused guided workouts** — active workouts no longer show when an exercise was last performed or display set details from its previous session. Personal records and progression suggestions remain available without exposing the previous-session report.
+- **Matching browser chrome** — browser and installed-PWA theme colors now track Classic Light, Classic Dark, Starship Light and Starship Dark dynamically.
 
 ### Fixed
 
