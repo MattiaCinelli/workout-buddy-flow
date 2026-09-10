@@ -109,6 +109,8 @@ describe('parseShare', () => {
     expect(img('http://insecure/x.png')).toBeUndefined();
     expect(img('https://ok/x.png')).toBe('https://ok/x.png');
     expect(img('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
+    expect(img('private-exercise:mobility-cat-cow.jpg')).toBe('private-exercise:mobility-cat-cow.jpg');
+    expect(img('private-exercise:../secret.jpg')).toBeUndefined();
   });
 
   it('keeps only a plain https videoUrl on an imported exercise', () => {
@@ -233,19 +235,21 @@ describe('parseBackup', () => {
     expect(() => parseBackup('x'.repeat(128 * 1024 * 1024 + 1))).toThrow(/too large/i);
   });
 
-  it('strips a dangerous exercise imageUrl but keeps a valid https one', () => {
+  it('strips a dangerous exercise imageUrl but keeps valid https and private-media values', () => {
     const { data } = parseBackup(v3({
       data: {
         exercises: [
           { id: 'a', name: 'A', category: 'strength', muscleGroups: [], difficulty: 'beginner', imageUrl: 'javascript:alert(1)' },
           { id: 'b', name: 'B', category: 'strength', muscleGroups: [], difficulty: 'beginner', imageUrl: 'https://example.com/x.png' },
+          { id: 'c', name: 'C', category: 'strength', muscleGroups: [], difficulty: 'beginner', imageUrl: 'private-exercise:mobility-cat-cow.jpg' },
         ],
         workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
       },
     }));
-    const [a, b] = (data.data.exercises as { imageUrl?: string }[]);
+    const [a, b, c] = (data.data.exercises as { imageUrl?: string }[]);
     expect(a.imageUrl).toBeUndefined();
     expect(b.imageUrl).toBe('https://example.com/x.png');
+    expect(c.imageUrl).toBe('private-exercise:mobility-cat-cow.jpg');
   });
 
   it('strips a dangerous exercise videoUrl but keeps a valid https one', () => {

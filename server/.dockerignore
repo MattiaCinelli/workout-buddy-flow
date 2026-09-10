@@ -1,6 +1,7 @@
 node_modules
 dist
 data
+private
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal

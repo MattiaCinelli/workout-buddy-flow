@@ -45,7 +45,7 @@ vi.mock('./seedVersion', () => ({ SEED_IDS: new Set<string>() }));
 
 import {
   changePassword, deleteAccount, getLastSyncedAt, getOtherDeviceCount,
-  getServerUrl, getSyncStatus, isConnected, isSyncing, login, logout, resetSyncState, revokeOtherSessions,
+  fetchPrivateExerciseImage, getServerUrl, getSyncStatus, isConnected, isSyncing, login, logout, resetSyncState, revokeOtherSessions,
   subscribeSyncActivity, syncAll, updateDisplayName, updateEmail,
 } from './syncClient';
 import { getConflicts, setBaseline } from './syncConflicts';
@@ -166,6 +166,31 @@ describe('login / logout / connection state', () => {
     expect(isConnected()).toBe(false);
     expect(getServerUrl()).toBeNull();
     expect(localStorage.getItem('workout-buddy-sync:watermark:exercises')).toBeNull();
+  });
+});
+
+describe('private exercise media', () => {
+  it('fetches a safe image from the configured server with the session token', async () => {
+    await connect();
+    fetchMock.mockImplementationOnce(async (_input, init = {}) => {
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-token');
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'image/jpeg' }),
+        blob: async () => new Blob(['jpeg'], { type: 'image/jpeg' }),
+      } as Response;
+    });
+
+    const image = await fetchPrivateExerciseImage('mobility-cat-cow.jpg');
+    expect(image.type).toBe('image/jpeg');
+  });
+
+  it('rejects path traversal before making a request', async () => {
+    await connect();
+    fetchMock.mockClear();
+    await expect(fetchPrivateExerciseImage('../secret.jpg')).rejects.toThrow(/invalid/i);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

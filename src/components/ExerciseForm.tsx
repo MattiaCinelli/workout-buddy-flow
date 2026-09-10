@@ -24,6 +24,7 @@ import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
 import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import ExerciseImage from '@/components/ExerciseImage';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
   if (!value?.trim()) return true;
@@ -517,8 +518,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           </div>
           {form.watch('imageUrl') && (
             <div className="relative mt-2">
-              <img
-                src={form.watch('imageUrl')}
+              <ExerciseImage
+                imageUrl={form.watch('imageUrl')}
                 alt="Selected exercise"
                 className="max-h-40 object-contain rounded-md"
               />

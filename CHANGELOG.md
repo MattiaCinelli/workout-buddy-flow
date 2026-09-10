@@ -36,6 +36,47 @@ together — a single tag `vX.Y.Z` releases both.
   Light-palette warning, muted and selected-control colors now meet WCAG AA
   contrast requirements, and interface fonts no longer require a network request.
 
+## [1.0.3] - 2026-09-10
+
+### Added
+
+- **Mobility exercise cards** — added or upgraded Cat-Cow, Open-Book Rotations,
+  Deep Squat Hold, Half-Kneeling Hip-Flexor Stretch, Hamstring Stretch, Frog
+  Stretch, Butterfly, Figure-4 Stretch, Puppy Pose, Supported Straddle,
+  Cossack Squat and Straight-Leg Raises. Each starter exercise includes its
+  action areas, researched instructions, two-set defaults, a demonstration link
+  and an inclusive fitness-editorial photograph served privately by the optional
+  sync server. Existing
+  exercise records are reused where the movement was already present, avoiding
+  duplicate cards.
+- **Expanded mobility library** — added 90/90 Hip Switches, Pigeon Pose,
+  Single-Leg Deadlift-Position Stretch, Reclined Hamstring Stretch with Strap,
+  Side Lunge Hold, Doorframe Lat Stretch, Sleeper Stretch, Knee-to-Wall Ankle
+  Mobilization, Bent-Knee Soleus Stretch, Downward Dog with Heel Pumps, Thread
+  the Needle and Foam-Roller Thoracic Extension. Timed stretches default to two
+  30-second sets and active drills to two sets of 13 repetitions, with separate
+  left/right sets where appropriate.
+
+### Changed
+
+- **Reviewed stretch cards and photography** — corrected Child's Pose and
+  Cross-Body Shoulder Stretch to two 30-second sets, distinguished the
+  straight-knee calf and bent-knee soleus variants, and replaced the remaining
+  stick figures for Seated Forward Fold, Child's Pose, Downward Dog,
+  Cross-Body Shoulder Stretch and Standing Calf Stretch. New photographs use
+  varied adult trainers and outfit colors with natural, movement-focused gazes.
+- **Private generated exercise media** — generated photographs are no longer
+  bundled into the web app or tracked in Git. They live in the server's ignored
+  `private/exercise-images` directory and are returned only to a client with a
+  valid sync-session Bearer token.
+
+### Fixed
+
+- **Exercise demonstration-link sync** — video links now round-trip through the
+  optional sync server instead of disappearing after a pull.
+- **Current Node.js server startup** — updated the server's SQLite driver so it
+  starts reliably on supported Node.js 24 and newer installations.
+
 ## [1.0.2] - 2026-09-06
 
 ### Added
@@ -155,6 +196,7 @@ a real Android device, and cut from a repeatable signed build.
   must be enabled at build time (`WB_ALLOW_INSECURE_SYNC=1`); the token and data travel
   unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/MattiaCinelli/workout-buddy-flow/releases/tag/v1.0.0

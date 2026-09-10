@@ -60,6 +60,17 @@ test('exercises: directional defaults survive a database round trip', () => {
   assert.deepEqual(listChangedSince(db, user.id)[0].executionDirections, ['left', 'right', 'forward', 'backward']);
 });
 
+test('exercises: demonstration links survive a database round trip', () => {
+  const db = freshDb();
+  const user = createUser(db, 'you@example.com', 'hash');
+  const videoUrl = 'https://www.youtube.com/watch?v=example';
+
+  const stored = upsertExercise(db, user.id, exercise({ videoUrl }));
+
+  assert.equal(stored.videoUrl, videoUrl);
+  assert.equal(listChangedSince(db, user.id)[0].videoUrl, videoUrl);
+});
+
 test('exercises: an older write loses to a newer one already stored (last-write-wins)', () => {
   const db = freshDb();
   const user = createUser(db, 'you@example.com', 'hash');

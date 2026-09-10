@@ -10,6 +10,7 @@ import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer, TrendingUp,
 import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
+import ExerciseImage from '@/components/ExerciseImage';
 
 interface ExerciseDetailModalProps {
   exercise: Exercise | null;
@@ -91,8 +92,8 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
         </DialogHeader>
 
         {exercise.imageUrl ? (
-          <img
-            src={exercise.imageUrl}
+          <ExerciseImage
+            imageUrl={exercise.imageUrl}
             alt={exercise.name}
             className="w-full max-h-64 object-contain rounded-md bg-muted"
           />

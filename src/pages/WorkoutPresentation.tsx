@@ -28,6 +28,7 @@ import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/access
 import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
+import ExerciseImage from '@/components/ExerciseImage';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -509,7 +510,7 @@ const WorkoutPresentation = () => {
     </section>
     <main className="flex-1 flex flex-col items-center justify-center overflow-y-auto p-4 pb-28 landscape:justify-start landscape:pt-2">
       {current.type === 'exercise' && exercise ? <>
-        {exercise.imageUrl && <img src={exercise.imageUrl} alt="" className="mb-6 h-48 w-full max-w-xs rounded-lg object-contain landscape:h-28" />}
+        {exercise.imageUrl && <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="mb-6 h-48 w-full max-w-xs rounded-lg object-contain landscape:h-28" />}
         <div className="text-center mb-8">
           {(current.direction || current.warmup || current.amrap) && (
             <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
@@ -619,7 +620,7 @@ const WorkoutPresentation = () => {
           <div className="mt-8 w-full max-w-xs rounded-2xl border border-white/15 bg-white/5 p-4 text-center">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-workout-green">Next up</p>
             {upcomingExercise?.imageUrl && (
-              <img src={upcomingExercise.imageUrl} alt={upcomingExercise.name}
+              <ExerciseImage imageUrl={upcomingExercise.imageUrl} alt={upcomingExercise.name}
                 className="mx-auto mb-3 h-36 w-full rounded-lg object-contain" />
             )}
             <p className="text-2xl font-bold">{upcomingLabel}</p>

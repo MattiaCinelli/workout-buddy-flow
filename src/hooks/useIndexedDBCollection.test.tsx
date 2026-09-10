@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useIndexedDBCollection } from './useIndexedDBCollection';
+import { SEED_VERSION } from '@/lib/seedVersion';
 
 let connected = false;
 vi.mock('@/lib/syncClient', () => ({ isConnected: () => connected }));
@@ -41,7 +42,7 @@ describe('useIndexedDBCollection', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.items.map(i => i.id)).toEqual(['a', 'b']);
     expect(store.bulkSave).toHaveBeenCalledOnce();
-    expect(localStorage.getItem('workout-buddy-seed-version:rows')).toBe('1');
+    expect(localStorage.getItem('workout-buddy-seed-version:rows')).toBe(String(SEED_VERSION));
   });
 
   it('hides tombstoned rows from the in-memory list', async () => {

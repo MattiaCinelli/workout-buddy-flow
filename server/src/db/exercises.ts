@@ -16,6 +16,7 @@ export interface SyncedExercise {
   unilateral?: boolean;
   executionDirections?: string[];
   instructions?: string;
+  videoUrl?: string;
   imageUrl?: string;
   updatedAt: string;
   deletedAt?: string;
@@ -37,6 +38,7 @@ interface ExerciseRow {
   unilateral: number;
   execution_directions: string | null;
   instructions: string | null;
+  video_url: string | null;
   image_url: string | null;
   updated_at: string;
   deleted_at: string | null;
@@ -58,6 +60,7 @@ const fromRow = (row: ExerciseRow): SyncedExercise => ({
   unilateral: row.unilateral === 1,
   executionDirections: row.execution_directions ? JSON.parse(row.execution_directions) : undefined,
   instructions: row.instructions ?? undefined,
+  videoUrl: row.video_url ?? undefined,
   imageUrl: row.image_url ?? undefined,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at ?? undefined,
@@ -92,12 +95,12 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     INSERT INTO exercises (
       id, user_id, name, category, muscle_groups, difficulty,
       log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, execution_directions,
-      instructions, image_url, updated_at, deleted_at, synced_at
+      instructions, video_url, image_url, updated_at, deleted_at, synced_at
     )
     VALUES (
       @id, @userId, @name, @category, @muscleGroups, @difficulty,
       @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @executionDirections,
-      @instructions, @imageUrl, @updatedAt, @deletedAt, @syncedAt
+      @instructions, @videoUrl, @imageUrl, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
       name = excluded.name,
@@ -114,6 +117,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
       unilateral = excluded.unilateral,
       execution_directions = excluded.execution_directions,
       instructions = excluded.instructions,
+      video_url = excluded.video_url,
       image_url = excluded.image_url,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
@@ -136,6 +140,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     unilateral: exercise.unilateral ? 1 : 0,
     executionDirections: exercise.executionDirections?.length ? JSON.stringify(exercise.executionDirections) : null,
     instructions: exercise.instructions ?? null,
+    videoUrl: exercise.videoUrl ?? null,
     imageUrl: exercise.imageUrl ?? null,
     updatedAt: exercise.updatedAt,
     deletedAt: exercise.deletedAt ?? null,

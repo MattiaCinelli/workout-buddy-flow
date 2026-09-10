@@ -15,6 +15,7 @@ import {
 } from '@/lib/exerciseHistory';
 import { describeSeries } from '@/lib/chartA11y';
 import { suggestNextSet } from '@/lib/progression';
+import ExerciseImage from '@/components/ExerciseImage';
 
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--card))',
@@ -114,7 +115,7 @@ const ExerciseProgress = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           {exercise.imageUrl && (
-            <img src={exercise.imageUrl} alt="" className="h-12 w-12 rounded-md object-cover" />
+            <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-12 w-12 rounded-md object-cover" />
           )}
           <div className="flex-1 min-w-0">
             <h1 className="truncate text-2xl font-bold">{exercise.name}</h1>

@@ -6,6 +6,7 @@ import { registerSyncRoutes } from './routes/sync';
 import { registerHealthRoute } from './routes/health';
 import { registerAccountRoutes } from './routes/account';
 import { registerSettingsRoutes } from './routes/settings';
+import { registerExerciseMediaRoute } from './routes/exerciseMedia';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -41,6 +42,7 @@ export const buildApp = (db: Db): FastifyInstance => {
   registerAuthRoutes(app);
   registerAccountRoutes(app);
   registerSettingsRoutes(app);
+  registerExerciseMediaRoute(app);
   registerSyncRoutes(app);
 
   return app;

@@ -7,6 +7,7 @@ import { Image, Edit, Repeat, Timer } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
+import ExerciseImage from '@/components/ExerciseImage';
 
 interface ExerciseItemProps {
   exercise: Exercise;
@@ -63,13 +64,10 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
         <div className="flex gap-3">
           {exercise.imageUrl ? (
             <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
-              <img 
-                src={exercise.imageUrl} 
+              <ExerciseImage
+                imageUrl={exercise.imageUrl}
                 alt={exercise.name} 
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = '/placeholder.svg';
-                }}
               />
             </div>
           ) : (

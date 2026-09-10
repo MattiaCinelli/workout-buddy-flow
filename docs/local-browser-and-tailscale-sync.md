@@ -93,6 +93,23 @@ PORT=3001 npm run dev
 
 The account command asks for a password without displaying it.
 
+### Private exercise photographs
+
+The generated exercise photographs live in
+`server/private/exercise-images/`. The whole `server/private/` directory is
+ignored by Git, so the files do not appear on GitHub. Keep this directory on the
+Mac and include it in your own local backup.
+
+The app downloads these photographs through the authenticated sync connection.
+Consequently, the browser and phone must be connected to the server to display
+them. The exercise data itself and the rest of the app continue to work offline.
+If you move the server, copy this private directory to the new machine and set
+`EXERCISE_MEDIA_DIR` if you store it somewhere else:
+
+```sh
+EXERCISE_MEDIA_DIR=/absolute/private/path PORT=3001 npm run dev
+```
+
 ## 4. Connect Tailscale on the Mac and phone
 
 Open the Tailscale application on the Mac and select **Connect**. Open Tailscale

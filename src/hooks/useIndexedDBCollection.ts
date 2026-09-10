@@ -16,6 +16,8 @@ export interface IndexedDBCollectionConfig<T extends { id: string }, StampedKeys
   /** Namespaces the stored seed-version marker. Provide alongside `defaults`
    *  to let existing installs additively pick up newly-added defaults. */
   seedKey?: string;
+  /** Optional conservative upgrades for untouched seed records. */
+  seedUpdates?: (stored: T[], defaults: T[], storedVersion: number) => T[];
   /** Logged and surfaced via `error` when a DB operation fails. */
   errorMessage: string;
   /** Applied after every load/create/update so ordering and normalization stay consistent. */
@@ -50,7 +52,7 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
   const hasLoadedOnceRef = useRef(false);
 
   const load = useCallback(async () => {
-    const { getAll, bulkSave, defaults, seedKey, errorMessage, transform } = configRef.current;
+    const { getAll, bulkSave, defaults, seedKey, seedUpdates, errorMessage, transform } = configRef.current;
     const isFirstLoad = !hasLoadedOnceRef.current;
     try {
       if (isFirstLoad) setIsLoading(true);
@@ -66,17 +68,22 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
         // since this device last seeded — never resurrecting a record the
         // user deleted (tombstone rows still count as "known"). Then drop
         // tombstones from the in-memory view.
+        const storedVersion = seedKey ? getSeedVersion(seedKey) : 0;
         const additions = seedKey && defaults?.length
-          ? pendingSeedAdditions(stored, defaults, getSeedVersion(seedKey), SEED_VERSION)
+          ? pendingSeedAdditions(stored, defaults, storedVersion, SEED_VERSION)
           : [];
-        if (additions.length && bulkSave) {
+        const updates = defaults?.length && seedUpdates
+          ? seedUpdates(stored, defaults, storedVersion)
+          : [];
+        if ((additions.length || updates.length) && bulkSave) {
           const now = new Date().toISOString();
-          const stamped = additions.map(item =>
+          const stamped = [...additions, ...updates].map(item =>
             ((item as { updatedAt?: string }).updatedAt ? item : { ...item, updatedAt: now }) as T);
           await bulkSave(stamped);
         }
         if (seedKey && defaults?.length) setSeedVersion(seedKey, SEED_VERSION);
-        loaded = [...stored, ...additions].filter(isLiveRecord);
+        const replacements = new Map(updates.map(item => [item.id, item]));
+        loaded = [...stored.map(item => replacements.get(item.id) ?? item), ...additions].filter(isLiveRecord);
       }
       setItems(transform ? transform(loaded) : loaded);
       setError(null);

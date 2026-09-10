@@ -136,12 +136,13 @@ const MAX_IMPORT_BYTES = 128 * 1024 * 1024;
 const MAX_IMAGE_URL_LENGTH = 4 * 1024 * 1024; // ~3 MB once base64-decoded
 const MAX_AUDIO_DATA_URL_LENGTH = 40 * 1024 * 1024; // ~30 MB decoded
 
-// An imported `imageUrl` is untrusted. Keep only a plain https URL or an
-// inline image data URI of a sane size; drop anything else (javascript:,
-// data:text/html, absurdly long strings) rather than storing and rendering it.
+// An imported `imageUrl` is untrusted. Private server images use an inert,
+// filename-only marker which the authenticated ExerciseImage component resolves;
+// also keep a plain https URL or an inline image data URI of a sane size.
 const sanitizeImageUrl = (value: unknown): string | undefined => {
   if (typeof value !== 'string' || value.length > MAX_IMAGE_URL_LENGTH) return undefined;
-  return /^https:\/\//i.test(value) || /^data:image\/(png|jpe?g|gif|webp|avif);/i.test(value)
+  return /^private-exercise:[a-z0-9][a-z0-9-]*\.jpg$/.test(value)
+    || /^https:\/\//i.test(value) || /^data:image\/(png|jpe?g|gif|webp|avif);/i.test(value)
     ? value : undefined;
 };
 
