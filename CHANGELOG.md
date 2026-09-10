@@ -9,6 +9,8 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-10
+
 ### Added
 
 - **Exercise aliases** — exercises can store alternative names, display them in the library and detail view, and match them in search. Aliases are deduplicated, checked for naming conflicts, backed up and synced.
@@ -101,7 +103,8 @@ First release. The app was usable and offline-capable throughout development; th
 - Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/MattiaCinelli/workout-buddy-flow/releases/tag/v1.0.0
