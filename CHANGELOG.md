@@ -11,19 +11,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Added
 
-- **Exercise aliases** — exercises can store alternative names, display them
-  in the library and detail view, and match them in search. Aliases are
-  deduplicated, checked for naming conflicts, backed up and synced.
-- **Animated private exercise media** — private exercise illustrations can now
-  use looping GIFs; Neck rolls includes a controlled movement demonstration.
-- **Optional Starship interface** — users can choose a futuristic console-style
-  interface or the original Classic design from Settings. Classic remains the
-  default, both interfaces support distinct light and dark palettes, and compact
-  previews make the choices easier to compare.
-- **Appearance regression coverage** — automated WCAG AA audits now check
-  contrast, accessible labels, keyboard navigation and visible focus states in
-  every interface/color combination. Portable screenshot baselines guard all
-  four appearances against unintended visual changes.
+- **Exercise aliases** — exercises can store alternative names, display them in the library and detail view, and match them in search. Aliases are deduplicated, checked for naming conflicts, backed up and synced.
+- **Animated private exercise media** — private exercise illustrations can now use looping GIFs; Neck rolls includes a controlled movement demonstration.
+- **Optional Starship interface** — users can choose a futuristic console-style interface or the original Classic design from Settings. Classic remains the default, both interfaces support distinct light and dark palettes, and compact previews make the choices easier to compare.
+- **Appearance regression coverage** — automated WCAG AA audits now check contrast, accessible labels, keyboard navigation and visible focus states in every interface/color combination. Portable screenshot baselines guard all four appearances against unintended visual changes.
 
 ### Changed
 
@@ -34,170 +25,81 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Fixed
 
-- **Appearance startup and accessibility** — saved interface and color choices
-  are applied on every route before the first render, avoiding reload flicker.
-  Light-palette warning, muted and selected-control colors now meet WCAG AA
-  contrast requirements, and interface fonts no longer require a network request.
+- **Appearance startup and accessibility** — saved interface and color choices are applied on every route before the first render, avoiding reload flicker. Light-palette warning, muted and selected-control colors now meet WCAG AA contrast requirements, and interface fonts no longer require a network request.
 
 ## [1.0.3] - 2026-09-10
 
 ### Added
 
-- **Mobility exercise cards** — added or upgraded Cat-Cow, Open-Book Rotations,
-  Deep Squat Hold, Half-Kneeling Hip-Flexor Stretch, Hamstring Stretch, Frog
-  Stretch, Butterfly, Figure-4 Stretch, Puppy Pose, Supported Straddle,
-  Cossack Squat and Straight-Leg Raises. Each starter exercise includes its
-  action areas, researched instructions, two-set defaults, a demonstration link
-  and an inclusive fitness-editorial photograph served privately by the optional
-  sync server. Existing
-  exercise records are reused where the movement was already present, avoiding
-  duplicate cards.
-- **Expanded mobility library** — added 90/90 Hip Switches, Pigeon Pose,
-  Single-Leg Deadlift-Position Stretch, Reclined Hamstring Stretch with Strap,
-  Side Lunge Hold, Doorframe Lat Stretch, Sleeper Stretch, Knee-to-Wall Ankle
-  Mobilization, Bent-Knee Soleus Stretch, Downward Dog with Heel Pumps, Thread
-  the Needle and Foam-Roller Thoracic Extension. Timed stretches default to two
-  30-second sets and active drills to two sets of 13 repetitions, with separate
-  left/right sets where appropriate.
+- **Mobility exercise cards** — added or upgraded Cat-Cow, Open-Book Rotations, Deep Squat Hold, Half-Kneeling Hip-Flexor Stretch, Hamstring Stretch, Frog Stretch, Butterfly, Figure-4 Stretch, Puppy Pose, Supported Straddle, Cossack Squat and Straight-Leg Raises. Each starter exercise includes its action areas, researched instructions, two-set defaults, a demonstration link and an inclusive fitness-editorial photograph served privately by the optional sync server. Existing exercise records are reused where the movement was already present, avoiding duplicate cards.
+- **Expanded mobility library** — added 90/90 Hip Switches, Pigeon Pose, Single-Leg Deadlift-Position Stretch, Reclined Hamstring Stretch with Strap, Side Lunge Hold, Doorframe Lat Stretch, Sleeper Stretch, Knee-to-Wall Ankle Mobilization, Bent-Knee Soleus Stretch, Downward Dog with Heel Pumps, Thread the Needle and Foam-Roller Thoracic Extension. Timed stretches default to two 30-second sets and active drills to two sets of 13 repetitions, with separate left/right sets where appropriate.
 
 ### Changed
 
-- **Reviewed stretch cards and photography** — corrected Child's Pose and
-  Cross-Body Shoulder Stretch to two 30-second sets, distinguished the
-  straight-knee calf and bent-knee soleus variants, and replaced the remaining
-  stick figures for Seated Forward Fold, Child's Pose, Downward Dog,
-  Cross-Body Shoulder Stretch and Standing Calf Stretch. New photographs use
-  varied adult trainers and outfit colors with natural, movement-focused gazes.
-- **Private generated exercise media** — generated photographs are no longer
-  bundled into the web app or tracked in Git. They live in the server's ignored
-  `private/exercise-images` directory and are returned only to a client with a
-  valid sync-session Bearer token.
+- **Reviewed stretch cards and photography** — corrected Child's Pose and Cross-Body Shoulder Stretch to two 30-second sets, distinguished the straight-knee calf and bent-knee soleus variants, and replaced the remaining stick figures for Seated Forward Fold, Child's Pose, Downward Dog, Cross-Body Shoulder Stretch and Standing Calf Stretch. New photographs use varied adult trainers and outfit colors with natural, movement-focused gazes.
+- **Private generated exercise media** — generated photographs are no longer bundled into the web app or tracked in Git. They live in the server's ignored `private/exercise-images` directory and are returned only to a client with a valid sync-session Bearer token.
 
 ### Fixed
 
-- **Exercise demonstration-link sync** — video links now round-trip through the
-  optional sync server instead of disappearing after a pull.
-- **Current Node.js server startup** — updated the server's SQLite driver so it
-  starts reliably on supported Node.js 24 and newer installations.
+- **Exercise demonstration-link sync** — video links now round-trip through the optional sync server instead of disappearing after a pull.
+- **Current Node.js server startup** — updated the server's SQLite driver so it starts reliably on supported Node.js 24 and newer installations.
 
 ## [1.0.2] - 2026-09-06
 
 ### Added
 
-- **Explicit course-day sequencing** — selecting days 1–5 creates a workout on
-  each selected day without inventing rest-day entries. Multiple workouts can
-  share one course day in a clear order, are placed consecutively on the
-  calendar, and completing one opens the next same-day workout automatically.
-- **Course calendar cleanup** — deleting a course workout from the calendar can
-  remove only that calendar entry or every entry for the same workout from the
-  selected date onward. Past entries, the course plan, workout template and
-  completed history remain unchanged.
-- **Directional exercise sets** — exercises can define left, right, forward and
-  backward defaults. Adding one to a workout creates a separate, visible set for
-  every selected direction, and each set's direction can be changed independently
-  in the workout builder or editor. The guided workout displays and announces the
-  active direction. Existing unilateral exercises and workouts remain compatible.
+- **Explicit course-day sequencing** — selecting days 1–5 creates a workout on each selected day without inventing rest-day entries. Multiple workouts can share one course day in a clear order, are placed consecutively on the calendar, and completing one opens the next same-day workout automatically.
+- **Course calendar cleanup** — deleting a course workout from the calendar can remove only that calendar entry or every entry for the same workout from the selected date onward. Past entries, the course plan, workout template and completed history remain unchanged.
+- **Directional exercise sets** — exercises can define left, right, forward and backward defaults. Adding one to a workout creates a separate, visible set for every selected direction, and each set's direction can be changed independently in the workout builder or editor. The guided workout displays and announces the active direction. Existing unilateral exercises and workouts remain compatible.
 
 ### Fixed
 
-- **Responsive dialogs and notifications** — dialogs and confirmations now keep
-  safe margins, scroll within short phone screens and stack rigid form layouts
-  on narrow displays. Save/change notifications consistently appear at the
-  bottom on phones and computers.
-- **Workout exercise selection flow** — adding an exercise while creating a
-  workout now keeps the Exercise Library open so several exercises can be added
-  without repeatedly switching tabs.
-- **One-limb exercise sync** — the sync server now persists the unilateral setting
-  instead of dropping it and clearing the toggle on the next pull. Additive SQLite
-  migrations preserve all existing exercises, workouts and history.
+- **Responsive dialogs and notifications** — dialogs and confirmations now keep safe margins, scroll within short phone screens and stack rigid form layouts on narrow displays. Save/change notifications consistently appear at the bottom on phones and computers.
+- **Workout exercise selection flow** — adding an exercise while creating a workout now keeps the Exercise Library open so several exercises can be added without repeatedly switching tabs.
+- **One-limb exercise sync** — the sync server now persists the unilateral setting instead of dropping it and clearing the toggle on the next pull. Additive SQLite migrations preserve all existing exercises, workouts and history.
 
 ## [1.0.0] - 2026-09-02
 
-First release. The app was usable and offline-capable throughout development; this is
-the point where the scope in `docs/overview.md` is complete, verified on the web and on
-a real Android device, and cut from a repeatable signed build.
+First release. The app was usable and offline-capable throughout development; this is the point where the scope in `docs/overview.md` is complete, verified on the web and on a real Android device, and cut from a repeatable signed build.
 
 ### Added — core app (offline, no account required)
 
-- **Exercise library** — create, edit and delete exercises with category, editable
-  muscle-group tags, difficulty, a photo taken on the device, and an optional
-  `https://` link to a demonstration video. Library cards are tinted by category for
-  quick scanning.
-- **One-limb-at-a-time exercises** — an exercise can be marked unilateral; the guided
-  run then splits every set into a left side, a short switch pause, and a right side,
-  and the builder shows each authored set as covering both sides.
-- **Workout builder** — ordered sets of reps/weight or duration/distance with per-set
-  rest, sensible defaults per exercise type, warm-up and AMRAP set flags, and preserved
-  circuit/superset order.
-- **Guided workout mode** — full-screen run with deadline-based timers that catch up
-  after backgrounding, a screen wake lock, resume-after-interruption, and a completion
-  chime. Optional spoken and haptic cues, with distinct prompts for switching sides,
-  resting between sets, and changing exercise (the next exercise is named aloud).
-  Optional background audio: a generated ambient bed or a user-supplied track.
-- **Calendar** — weekly and monthly views; one-off, daily, or weekly multi-day
-  recurring schedules; skip and restore individual occurrences; move a single
-  occurrence without disturbing the series.
-- **Courses** — week/day programs of repeatable workouts and recovery days with goals,
-  difficulty, prerequisites and per-session notes; schedule an entire program from one
-  start date; progress, next-session and restart tracking.
-- **History & progress** — filterable completed-session history, streaks, weekly goal,
-  charts, personal records, per-exercise progression suggestions, and a clear-history
-  reset.
+- **Exercise library** — create, edit and delete exercises with category, editable muscle-group tags, difficulty, a photo taken on the device, and an optional `https://` link to a demonstration video. Library cards are tinted by category for quick scanning.
+- **One-limb-at-a-time exercises** — an exercise can be marked unilateral; the guided run then splits every set into a left side, a short switch pause, and a right side, and the builder shows each authored set as covering both sides.
+- **Workout builder** — ordered sets of reps/weight or duration/distance with per-set rest, sensible defaults per exercise type, warm-up and AMRAP set flags, and preserved circuit/superset order.
+- **Guided workout mode** — full-screen run with deadline-based timers that catch up after backgrounding, a screen wake lock, resume-after-interruption, and a completion chime. Optional spoken and haptic cues, with distinct prompts for switching sides, resting between sets, and changing exercise (the next exercise is named aloud). Optional background audio: a generated ambient bed or a user-supplied track.
+- **Calendar** — weekly and monthly views; one-off, daily, or weekly multi-day recurring schedules; skip and restore individual occurrences; move a single occurrence without disturbing the series.
+- **Courses** — week/day programs of repeatable workouts and recovery days with goals, difficulty, prerequisites and per-session notes; schedule an entire program from one start date; progress, next-session and restart tracking.
+- **History & progress** — filterable completed-session history, streaks, weekly goal, charts, personal records, per-exercise progression suggestions, and a clear-history reset.
 - **Body metrics** — dated body-weight log with BMI (height set once in settings).
-- **Corrections** — edit or delete mistaken history records, undo a just-saved
-  completion, and correct a session's details.
-- **Accessibility** — large-text and reduced-motion preferences, voice and haptic
-  toggles, screen-reader status announcements, phone-safe controls.
+- **Corrections** — edit or delete mistaken history records, undo a just-saved completion, and correct a session's details.
+- **Accessibility** — large-text and reduced-motion preferences, voice and haptic toggles, screen-reader status announcements, phone-safe controls.
 - **Light / dark / system theme.**
-- **Backup & restore** — full-device JSON export/import (device preferences and the
-  custom audio track included). Share a single exercise or workout as a self-contained
-  file that merges into another library, remapping ids and reusing same-named entries.
-- **Reminders** — local notifications for scheduled workouts with a configurable lead
-  time (installed Android app).
-- **PWA** — build-time-precached offline shell, installable, "update available" prompt
-  rather than a silent swap.
-- **Android app** — same build wrapped with Capacitor; signed APKs published to GitHub
-  Releases on each `vX.Y.Z` tag, installing as data-preserving updates.
+- **Backup & restore** — full-device JSON export/import (device preferences and the custom audio track included). Share a single exercise or workout as a self-contained file that merges into another library, remapping ids and reusing same-named entries.
+- **Reminders** — local notifications for scheduled workouts with a configurable lead time (installed Android app).
+- **PWA** — build-time-precached offline shell, installable, "update available" prompt rather than a silent swap.
+- **Android app** — same build wrapped with Capacitor; signed APKs published to GitHub Releases on each `vX.Y.Z` tag, installing as data-preserving updates.
 
 ### Added — optional self-hosted sync server (`server/`)
 
-- Node + Fastify + SQLite, packaged as an OCI container (built and run with Podman; the
-  `Dockerfile` also works with Docker). No managed-cloud APIs.
-- **Accounts are admin-created only** — no public signup endpoint. Passwords hashed
-  with scrypt; sessions are opaque tokens stored only as a SHA-256 hash.
-- **Sync** for all seven collections plus account-level settings (theme, accessibility,
-  height). Pull-since-timestamp + push with last-write-wins per record; deletes are
-  tombstones.
-- **Automatic background sync** on app load, every 30s while open, and on return to the
-  foreground, with exponential backoff after failures.
-- **Conflict visibility** — a losing local edit is kept and can be re-applied from the
-  Sync settings ("Keep mine" / "Dismiss").
-- **Manual one-way sync** — "Push this device to server" and "Replace this device with
-  server" overrides for when the automatic merge would do the wrong thing.
-- **Self-service account management** — change display name, email or password; see how
-  many other devices are connected and sign them all out; delete the account and all
-  its server-side data (local data is untouched).
-- **Admin password recovery** — `npm run reset-password -- <email>` on the server
-  (there is no email/SMTP dependency by design).
+- Node + Fastify + SQLite, packaged as an OCI container (built and run with Podman; the `Dockerfile` also works with Docker). No managed-cloud APIs.
+- **Accounts are admin-created only** — no public signup endpoint. Passwords hashed with scrypt; sessions are opaque tokens stored only as a SHA-256 hash.
+- **Sync** for all seven collections plus account-level settings (theme, accessibility, height). Pull-since-timestamp + push with last-write-wins per record; deletes are tombstones.
+- **Automatic background sync** on app load, every 30s while open, and on return to the foreground, with exponential backoff after failures.
+- **Conflict visibility** — a losing local edit is kept and can be re-applied from the Sync settings ("Keep mine" / "Dismiss").
+- **Manual one-way sync** — "Push this device to server" and "Replace this device with server" overrides for when the automatic merge would do the wrong thing.
+- **Self-service account management** — change display name, email or password; see how many other devices are connected and sign them all out; delete the account and all its server-side data (local data is untouched).
+- **Admin password recovery** — `npm run reset-password -- <email>` on the server (there is no email/SMTP dependency by design).
 
 ### Security & privacy
 
-- No third-party runtime code and no telemetry; the only outbound requests are to a
-  sync server the user configures. The Lovable editor script is stripped from every
-  production build.
-- Imported backup/share files are validated per-record (Zod); `imageUrl` is restricted
-  to `https:` or an `image/*` data URI and exercise `videoUrl` to a plain `https:`
-  link; oversized files are rejected; CSV export escapes formula-injection characters.
+- No third-party runtime code and no telemetry; the only outbound requests are to a sync server the user configures. The Lovable editor script is stripped from every production build.
+- Imported backup/share files are validated per-record (Zod); `imageUrl` is restricted to `https:` or an `image/*` data URI and exercise `videoUrl` to a plain `https:` link; oversized files are rejected; CSV export escapes formula-injection characters.
 
 ### Known limitations
 
-- Sync conflict resolution is whole-record last-write-wins, not field-level merge: two
-  devices editing the _same field_ of the _same record_ while both offline can lose one
-  side's edit. The losing edit is surfaced for manual recovery rather than silently
-  dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
-- Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and
-  must be enabled at build time (`WB_ALLOW_INSECURE_SYNC=1`); the token and data travel
-  unencrypted on that network. Prefer an HTTPS sync server.
+- Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
+- Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
 [Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...HEAD
 [1.0.3]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...v1.0.3
