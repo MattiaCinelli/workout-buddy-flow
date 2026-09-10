@@ -3,6 +3,7 @@ import { Db } from './index';
 export interface SyncedExercise {
   id: string;
   name: string;
+  aliases?: string[];
   category: string;
   muscleGroups: string[];
   difficulty: string;
@@ -25,6 +26,7 @@ export interface SyncedExercise {
 interface ExerciseRow {
   id: string;
   name: string;
+  aliases: string | null;
   category: string;
   muscle_groups: string;
   difficulty: string;
@@ -47,6 +49,7 @@ interface ExerciseRow {
 const fromRow = (row: ExerciseRow): SyncedExercise => ({
   id: row.id,
   name: row.name,
+  aliases: row.aliases ? JSON.parse(row.aliases) : undefined,
   category: row.category,
   muscleGroups: JSON.parse(row.muscle_groups),
   difficulty: row.difficulty,
@@ -93,17 +96,18 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
   const syncedAt = new Date().toISOString();
   db.prepare(`
     INSERT INTO exercises (
-      id, user_id, name, category, muscle_groups, difficulty,
+      id, user_id, name, aliases, category, muscle_groups, difficulty,
       log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, execution_directions,
       instructions, video_url, image_url, updated_at, deleted_at, synced_at
     )
     VALUES (
-      @id, @userId, @name, @category, @muscleGroups, @difficulty,
+      @id, @userId, @name, @aliases, @category, @muscleGroups, @difficulty,
       @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @executionDirections,
       @instructions, @videoUrl, @imageUrl, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
       name = excluded.name,
+      aliases = excluded.aliases,
       category = excluded.category,
       muscle_groups = excluded.muscle_groups,
       difficulty = excluded.difficulty,
@@ -127,6 +131,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     id: exercise.id,
     userId,
     name: exercise.name,
+    aliases: exercise.aliases?.length ? JSON.stringify(exercise.aliases) : null,
     category: exercise.category,
     muscleGroups: JSON.stringify(exercise.muscleGroups),
     difficulty: exercise.difficulty,

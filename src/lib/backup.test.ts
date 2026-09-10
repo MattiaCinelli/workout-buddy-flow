@@ -110,6 +110,7 @@ describe('parseShare', () => {
     expect(img('https://ok/x.png')).toBe('https://ok/x.png');
     expect(img('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
     expect(img('private-exercise:mobility-cat-cow.jpg')).toBe('private-exercise:mobility-cat-cow.jpg');
+    expect(img('private-exercise:mobility-neck-rolls.gif')).toBe('private-exercise:mobility-neck-rolls.gif');
     expect(img('private-exercise:../secret.jpg')).toBeUndefined();
   });
 

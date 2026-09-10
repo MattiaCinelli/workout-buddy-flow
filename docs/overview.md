@@ -41,7 +41,7 @@ with all data stored on the device.
 
 | Concept | Meaning |
 | --- | --- |
-| **Exercise** | A single movement (Bench Press, Plank). Has a category, muscle groups, difficulty and optional image. |
+| **Exercise** | A single movement (Bench Press, Plank). Has a name, optional searchable aliases, category, muscle groups, difficulty and optional image. |
 | **Set** | One block of work for an exercise inside a workout: reps + weight, or duration/distance, plus rest after. |
 | **Workout** | A reusable, named and ordered collection of planned sets. |
 | **Workout Session** | An immutable completion record created by guided mode, including actual elapsed time and optional course/calendar links. |
@@ -51,7 +51,7 @@ with all data stored on the device.
 ## The main user journeys
 
 ```text
-Exercises page   ->  create / edit / delete exercises (with photo upload)
+Exercises page   ->  create / edit / delete exercises (with aliases and photo upload)
        |
        v
 Create Workout   ->  pick exercises, set sets x reps or duration, rest times

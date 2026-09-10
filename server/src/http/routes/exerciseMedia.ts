@@ -4,7 +4,7 @@ import { FastifyInstance } from 'fastify';
 import { getExerciseMediaDirectory } from '../../config';
 import { requireAuth } from '../requireAuth';
 
-const SAFE_JPEG_NAME = /^[a-z0-9][a-z0-9-]*\.jpg$/;
+const SAFE_IMAGE_NAME = /^[a-z0-9][a-z0-9-]*\.(?:jpg|gif)$/;
 
 export const registerExerciseMediaRoute = (app: FastifyInstance) => {
   app.get<{ Params: { filename: string } }>(
@@ -12,7 +12,7 @@ export const registerExerciseMediaRoute = (app: FastifyInstance) => {
     { preHandler: requireAuth },
     async (request, reply) => {
       const { filename } = request.params;
-      if (!SAFE_JPEG_NAME.test(filename)) {
+      if (!SAFE_IMAGE_NAME.test(filename)) {
         return reply.code(400).send({ error: 'Invalid exercise image name' });
       }
 
@@ -22,7 +22,7 @@ export const registerExerciseMediaRoute = (app: FastifyInstance) => {
         const file = await fs.readFile(filePath);
         return reply
           .header('Cache-Control', 'private, max-age=86400')
-          .type('image/jpeg')
+          .type(filename.endsWith('.gif') ? 'image/gif' : 'image/jpeg')
           .send(file);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

@@ -182,7 +182,7 @@ same treatment as `exercises.muscle_groups`.
 ```text
 users               id, email, password_hash, created_at            (001)
 sessions            token, user_id, created_at, expires_at          (001)
-exercises           id, user_id, name, category, muscle_groups,
+exercises           id, user_id, name, aliases, category, muscle_groups,
                     difficulty, image_url, updated_at, deleted_at   (001)
 workouts            id, user_id, date, title, duration, category,
                     sets, rest_between_exercises, notes,
@@ -260,7 +260,7 @@ Endpoints that exist right now:
 | `DELETE /account` | `Authorization: Bearer <token>` | `{ currentPassword }` — irreversibly deletes the user, all their sessions, and every synced row they own, in one transaction. No tombstone; other devices just start failing auth and keep working offline. `204`, no body. |
 | `GET /settings` | `Authorization: Bearer <token>` | `{ settings, updatedAt }` — the caller's account-level preferences blob; both fields are `null` if it was never set. |
 | `PUT /settings` | `Authorization: Bearer <token>` | `{ settings, updatedAt }` (`settings` an object, `updatedAt` an ISO string) — upserts the blob with last-write-wins on `updatedAt`, returns the winner. `settings` is opaque JSON the server never inspects. |
-| `GET /media/exercises/<filename>.jpg` | `Authorization: Bearer <token>` | Returns a JPEG from `EXERCISE_MEDIA_DIR` (default `private/exercise-images`). Only safe filename-only paths are accepted; the directory is Git-ignored. |
+| `GET /media/exercises/<filename>` | `Authorization: Bearer <token>` | Returns a JPEG or animated GIF from `EXERCISE_MEDIA_DIR` (default `private/exercise-images`). Only safe filename-only paths are accepted; the directory is Git-ignored. |
 | `GET /sync/<collection>?since=<ISO timestamp>` | `Authorization: Bearer <token>` | Rows for the caller changed after `since` (all of them if omitted), plus `serverTime`. Includes soft-deleted rows. |
 | `POST /sync/<collection>` | `Authorization: Bearer <token>` | `{ <collection>: [...] }`, up to 1000 per request, validated by JSON schema. Applies each with last-write-wins in one transaction and returns the post-merge state — a caller whose write lost a conflict gets told what actually won, not an echo of what it sent. |
 

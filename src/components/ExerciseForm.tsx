@@ -25,6 +25,7 @@ import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 import ExerciseImage from '@/components/ExerciseImage';
+import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
   if (!value?.trim()) return true;
@@ -42,6 +43,10 @@ const formSchema = z.object({
   name: z.string().min(2, {
     message: "Exercise name must be at least 2 characters.",
   }),
+  aliases: z.string().max(1000, 'Alternative names are too long.').refine(value => {
+    const aliases = normalizeExerciseAliases(value);
+    return aliases.length <= 20 && aliases.every(alias => alias.length <= 100);
+  }, 'Use at most 20 alternative names, each no longer than 100 characters.'),
   category: z.enum(['strength', 'cardio', 'flexibility', 'balance']),
   muscleGroups: z.array(z.string()).default([]),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
@@ -88,6 +93,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: exercise?.name || "",
+      aliases: exercise?.aliases?.join(', ') || "",
       category: exercise?.category || 'strength',
       muscleGroups: exercise?.muscleGroups || [],
       difficulty: exercise?.difficulty || 'beginner',
@@ -110,8 +116,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   });
 
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    const aliases = normalizeExerciseAliases(values.aliases, values.name);
     onSubmit({
       name: values.name,
+      aliases: aliases.length ? aliases : undefined,
       category: values.category,
       muscleGroups: values.muscleGroups,
       difficulty: values.difficulty,
@@ -217,6 +225,22 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           />
           {form.formState.errors.name && (
             <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          <label htmlFor="aliases" className="text-right inline-block w-32 pr-2">
+            Alternative names
+          </label>
+          <Input
+            id="aliases"
+            placeholder="e.g. RDL, Romanian deadlift"
+            {...form.register("aliases")}
+            disabled={isSubmitting}
+          />
+          <p className="text-xs text-muted-foreground">Separate aliases with commas. They are included when searching.</p>
+          {form.formState.errors.aliases && (
+            <p className="text-sm text-red-500">{form.formState.errors.aliases.message}</p>
           )}
         </div>
 

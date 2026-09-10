@@ -60,6 +60,16 @@ test('exercises: directional defaults survive a database round trip', () => {
   assert.deepEqual(listChangedSince(db, user.id)[0].executionDirections, ['left', 'right', 'forward', 'backward']);
 });
 
+test('exercises: aliases survive a database round trip', () => {
+  const db = freshDb();
+  const user = createUser(db, 'you@example.com', 'hash');
+
+  const stored = upsertExercise(db, user.id, exercise({ aliases: ['RDL', 'Romanian deadlift'] }));
+
+  assert.deepEqual(stored.aliases, ['RDL', 'Romanian deadlift']);
+  assert.deepEqual(listChangedSince(db, user.id)[0].aliases, ['RDL', 'Romanian deadlift']);
+});
+
 test('exercises: demonstration links survive a database round trip', () => {
   const db = freshDb();
   const user = createUser(db, 'you@example.com', 'hash');

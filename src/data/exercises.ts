@@ -18,6 +18,7 @@ export interface ExerciseProgression {
 export interface Exercise {
   id: string;
   name: string;
+  aliases?: string[]; // Alternative searchable names, without creating duplicate exercise records
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
   muscleGroups: string[]; // MuscleGroup ids — see src/data/muscleGroups.ts
   difficulty: 'beginner' | 'intermediate' | 'advanced';

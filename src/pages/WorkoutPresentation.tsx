@@ -432,7 +432,7 @@ const WorkoutPresentation = () => {
         if (nextSchedule) params.set('scheduledWorkoutId', nextSchedule.id);
         navigate(`/workouts/${nextSameDay.workoutId}/session?${params.toString()}`);
       } else {
-        navigate(courseId ? `/courses/${courseId}` : '/history');
+        navigate('/');
       }
     } catch (error) {
       console.error('Failed to save workout:', error);

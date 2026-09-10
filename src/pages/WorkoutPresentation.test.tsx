@@ -1,19 +1,21 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, cleanup } from '@testing-library/react';
+import { act, render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 // --- mock the whole environment the page pulls in -------------------------
 
-const { speak, ttsStop, workouts, exercises } = vi.hoisted(() => ({
+const { speak, ttsStop, navigate, createSession, workouts, exercises } = vi.hoisted(() => ({
   speak: vi.fn(async (_opts: { text: string }) => {}),
   ttsStop: vi.fn(async () => {}),
+  navigate: vi.fn(),
+  createSession: vi.fn(async () => ({ id: 's1' })),
   workouts: [] as Record<string, unknown>[],
   exercises: [] as Record<string, unknown>[],
 }));
 
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ id: 'w1' }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigate,
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
 vi.mock('@capacitor-community/text-to-speech', () => ({
@@ -25,6 +27,7 @@ vi.mock('@capacitor/haptics', () => ({
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/hooks/useWorkoutMusic', () => ({ useWorkoutMusic: vi.fn() }));
+vi.mock('@/lib/completionSound', () => ({ playCompletionChime: vi.fn() }));
 vi.mock('@/lib/diagnosticLog', () => ({ logDiagnostic: vi.fn() }));
 vi.mock('@/lib/accessibilitySettings', () => ({
   getAccessibilitySettings: () => ({
@@ -36,8 +39,9 @@ vi.mock('@/lib/accessibilitySettings', () => ({
 vi.mock('@/contexts/DataContext', () => ({
   useData: () => ({
     workouts, exercises, sessions: [], workoutsLoading: false,
-    createSession: vi.fn(async () => ({ id: 's1' })), deleteSession: vi.fn(),
+    createSession, deleteSession: vi.fn(),
     completeWorkoutInCourse: vi.fn(), uncompleteWorkoutInCourse: vi.fn(),
+    courses: [], scheduledWorkouts: [],
   }),
 }));
 
@@ -71,6 +75,8 @@ beforeEach(() => {
   localStorage.clear();
   speak.mockClear();
   ttsStop.mockClear();
+  navigate.mockClear();
+  createSession.mockClear();
 });
 afterEach(() => {
   cleanup();
@@ -131,5 +137,22 @@ describe('WorkoutPresentation — guided run', () => {
 
     expect(spoke('Rest, changing exercise. Next up: Wall Sit')).toBe(true);
     expect(spoke('Rest')).toBe(false); // not the plain between-sets cue
+  });
+
+  it('returns to the homepage after saving a completed workout', async () => {
+    setExercises([ex({ id: 'pushup', name: 'Push-up', logType: 'reps', secondsPerRep: 3 })]);
+    setWorkout([{ exerciseId: 'pushup', reps: 10 }]);
+
+    await startAndSkipPrep();
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }));
+    expect(screen.getByRole('heading', { name: 'Complete workout' })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save workout' }));
+      await Promise.resolve();
+    });
+
+    expect(createSession).toHaveBeenCalledOnce();
+    expect(navigate).toHaveBeenLastCalledWith('/');
   });
 });

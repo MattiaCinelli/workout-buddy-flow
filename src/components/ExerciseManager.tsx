@@ -22,6 +22,7 @@ import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, FileImage, Loader2, Settings2 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { exerciseMatchesNameQuery, exerciseNamesOverlap } from '@/lib/exerciseAliases';
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
@@ -47,7 +48,7 @@ const ExerciseManager: React.FC = () => {
 
   const filteredExercises = exercises.filter(exercise => {
     const matchesSearch = !searchQuery ||
-      exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      exerciseMatchesNameQuery(exercise, searchQuery) ||
       exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       exercise.muscleGroups.some(id =>
         muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
@@ -59,13 +60,13 @@ const ExerciseManager: React.FC = () => {
   
   const handleCreateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const existingExercise = exercises.find(
-      ex => ex.name.toLowerCase() === exerciseData.name.toLowerCase()
+      ex => exerciseNamesOverlap(ex, exerciseData)
     );
     
     if (existingExercise) {
       toast({
         title: "Error",
-        description: `An exercise named "${exerciseData.name}" already exists.`,
+        description: `The name or one of the aliases conflicts with "${existingExercise.name}".`,
         variant: "destructive",
       });
       return;
@@ -95,13 +96,13 @@ const ExerciseManager: React.FC = () => {
     if (currentExercise) {
       const existingExercise = exercises.find(
         ex => ex.id !== currentExercise.id && 
-             ex.name.toLowerCase() === exerciseData.name.toLowerCase()
+             exerciseNamesOverlap(ex, exerciseData)
       );
       
       if (existingExercise) {
         toast({
           title: "Error",
-          description: `An exercise named "${exerciseData.name}" already exists.`,
+          description: `The name or one of the aliases conflicts with "${existingExercise.name}".`,
           variant: "destructive",
         });
         return;
