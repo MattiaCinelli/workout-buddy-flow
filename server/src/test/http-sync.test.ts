@@ -84,6 +84,20 @@ test('instructions round-trips through push and pull', async () => {
   assert.equal(pull.json().exercises[0].instructions, 'Keep your back straight and drive through your heels.');
 });
 
+test('videoUrl round-trips through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+  const videoUrl = 'https://www.youtube.com/watch?v=example';
+
+  await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ videoUrl })] },
+  });
+  const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
+
+  assert.equal(pull.json().exercises[0].videoUrl, videoUrl);
+});
+
 test('secondsPerRep round-trips through push and pull', async () => {
   const { app, aliceToken } = await setup();
   const headers = { authorization: `Bearer ${aliceToken}` };

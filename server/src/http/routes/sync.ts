@@ -45,6 +45,7 @@ const exerciseSchema = {
       uniqueItems: true,
     },
     instructions: { type: 'string' },
+    videoUrl: { type: 'string' },
     imageUrl: { type: 'string' },
     updatedAt: { type: 'string' },
     deletedAt: { type: 'string' },

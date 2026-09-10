@@ -24,5 +24,10 @@ export const defaultMuscleGroups: MuscleGroup[] = [
   { id: 'Quadriceps', name: 'Quadriceps' },
   { id: 'Hamstrings', name: 'Hamstrings' },
   { id: 'Calves', name: 'Calves' },
+  { id: 'Hip Flexors', name: 'Hip Flexors' },
+  { id: 'Inner Thighs', name: 'Inner Thighs' },
+  { id: 'Groin', name: 'Groin' },
+  { id: 'Hips', name: 'Hips' },
+  { id: 'Ankles', name: 'Ankles' },
   { id: 'Full Body', name: 'Full Body' },
 ];

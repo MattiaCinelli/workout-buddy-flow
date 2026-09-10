@@ -21,6 +21,8 @@ import {
   getAllBodyMetricsFromDB, saveBodyMetricToDB, deleteBodyMetricFromDB,
 } from './db';
 
+export { fetchPrivateExerciseImage } from './exerciseMediaClient';
+
 // Talks to the optional self-hosted sync server (server/). See
 // docs/self-hosted-sync.md. Everything here is a no-op path if the user
 // never configures a server — nothing in this file runs unless login() has

@@ -6,3 +6,9 @@ export const getDatabasePath = (): string => {
   fs.mkdirSync(path.dirname(configured), { recursive: true });
   return configured;
 };
+
+export const getExerciseMediaDirectory = (): string => {
+  const configured = process.env.EXERCISE_MEDIA_DIR
+    ?? path.join(process.cwd(), 'private', 'exercise-images');
+  return path.resolve(configured);
+};

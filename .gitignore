@@ -35,3 +35,7 @@ dev-dist
 
 # Local opt-in for plain-HTTP LAN sync in local Android builds (see capacitor.config.ts).
 android/.allow-insecure-sync
+
+# Private exercise photographs are served by the local sync server and must
+# never be committed to the public repository.
+server/private/
