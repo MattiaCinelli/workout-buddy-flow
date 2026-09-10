@@ -108,7 +108,7 @@ const WorkoutStreak: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold">{streakData.currentStreak}</span>
+              <span className="metric-number text-5xl font-bold">{streakData.currentStreak}</span>
               <span className="text-muted-foreground">days</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
@@ -120,7 +120,7 @@ const WorkoutStreak: React.FC = () => {
             <div className="flex items-center gap-1 text-sm">
               <Trophy className="h-4 w-4 text-amber-500" />
               <span className="text-muted-foreground">Best:</span>
-              <span className="font-semibold">{streakData.longestStreak} days</span>
+              <span className="metric-number font-bold">{streakData.longestStreak} days</span>
             </div>
             {streakData.lastWorkoutDaysAgo !== null && streakData.lastWorkoutDaysAgo > 0 && (
               <div className="flex items-center gap-1 text-sm">

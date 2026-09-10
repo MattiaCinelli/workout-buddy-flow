@@ -272,7 +272,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 onClick={handleStartWorkout}
               >
                 {completed
-                  ? <CheckCircle2 className="h-4 w-4 mr-2" />
+                  ? <CheckCircle2 className="completion-check h-4 w-4 mr-2" />
                   : <Play className="h-4 w-4 mr-2" />}
                 {completed ? 'Done' : 'Start'}
               </Button>

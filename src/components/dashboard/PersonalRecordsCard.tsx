@@ -66,7 +66,7 @@ export function PersonalRecordsCard() {
                       const entry = record[key]!;
                       return (
                         <span key={kind}>
-                          {PR_LABEL[kind]}: <span className="font-medium text-foreground">{entry.value} {PR_UNIT[kind]}</span>
+                          {PR_LABEL[kind]}: <span className="metric-number text-base font-bold text-foreground">{entry.value} {PR_UNIT[kind]}</span>
                           {' '}<span className="text-xs">({format(parseISO(entry.date), 'MMM d, yyyy')})</span>
                         </span>
                       );

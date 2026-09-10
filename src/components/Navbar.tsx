@@ -15,6 +15,7 @@ const EDGE_ZONE_PX = 24;
 const OPEN_SWIPE_PX = 60;
 const CLOSE_SWIPE_PX = 60;
 const MAX_VERTICAL_DRIFT_PX = 60;
+type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => unknown };
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,8 +27,16 @@ const Navbar: React.FC = () => {
     || (path !== '/' && location.pathname.startsWith(`${path}/`));
 
   const goTo = (path: string) => {
-    navigate(path);
-    setMobileMenuOpen(false);
+    const updateRoute = () => {
+      navigate(path);
+      setMobileMenuOpen(false);
+    };
+    const viewTransitionDocument = document as ViewTransitionDocument;
+    if (!document.documentElement.classList.contains('reduce-motion') && viewTransitionDocument.startViewTransition) {
+      viewTransitionDocument.startViewTransition(updateRoute);
+      return;
+    }
+    updateRoute();
   };
 
   // Swipe from the screen's left edge to reveal the drawer, without a
@@ -123,7 +132,7 @@ const Navbar: React.FC = () => {
           <button
             type="button"
             className="group flex shrink-0 cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left"
-            onClick={() => navigate('/')}
+            onClick={() => goTo('/')}
             aria-label="Workout Buddy home"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:-rotate-3">
@@ -146,7 +155,7 @@ const Navbar: React.FC = () => {
                 'nav-desktop-link h-9 px-2.5 text-muted-foreground hover:text-foreground min-[1360px]:px-3',
                 isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
               )}
-              onClick={() => navigate(link.path)}
+              onClick={() => goTo(link.path)}
               aria-label={link.label}
               aria-current={isActive(link.path) ? 'page' : undefined}
             >

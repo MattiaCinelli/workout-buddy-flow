@@ -213,7 +213,7 @@ const ProgressPage = () => {
                 <Dumbbell className="h-4 w-4" />
                 <span className="text-sm">Workouts</span>
               </div>
-              <p className="text-2xl font-bold">{stats.totalWorkouts}</p>
+              <p className="metric-number text-3xl font-bold">{stats.totalWorkouts}</p>
             </CardContent>
           </Card>
           <Card>
@@ -222,7 +222,7 @@ const ProgressPage = () => {
                 <Timer className="h-4 w-4" />
                 <span className="text-sm">Total Time</span>
               </div>
-              <p className="text-2xl font-bold">{Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}m</p>
+              <p className="metric-number text-3xl font-bold">{Math.floor(stats.totalDuration / 60)}h {stats.totalDuration % 60}m</p>
             </CardContent>
           </Card>
           <Card>
@@ -231,7 +231,7 @@ const ProgressPage = () => {
                 <Calendar className="h-4 w-4" />
                 <span className="text-sm">Avg Duration</span>
               </div>
-              <p className="text-2xl font-bold">{stats.avgDuration}m</p>
+              <p className="metric-number text-3xl font-bold">{stats.avgDuration}m</p>
             </CardContent>
           </Card>
           <Card>
@@ -240,7 +240,7 @@ const ProgressPage = () => {
                 <TrendingUp className="h-4 w-4" />
                 <span className="text-sm">Total Sets</span>
               </div>
-              <p className="text-2xl font-bold">{stats.totalSets}</p>
+              <p className="metric-number text-3xl font-bold">{stats.totalSets}</p>
             </CardContent>
           </Card>
         </div>

@@ -52,7 +52,7 @@ describe('applyStoredAppearance', () => {
     document.documentElement.classList.add('starship');
     applyStoredAppearance();
     expect(document.documentElement.classList.contains('starship')).toBe(false);
-    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute('content', '#f8fafc');
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute('content', '#f7f8fa');
   });
 });
 afterEach(() => cleanup());

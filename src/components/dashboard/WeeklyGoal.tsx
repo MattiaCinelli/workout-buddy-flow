@@ -92,10 +92,10 @@ const WeeklyGoal: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-baseline justify-between">
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold">{completedCount}</span>
-              <span className="text-muted-foreground">/ {weeklyGoal}</span>
+              <span className="metric-number text-5xl font-bold">{completedCount}</span>
+              <span className="metric-number text-lg text-muted-foreground">/ {weeklyGoal}</span>
             </div>
-            <span className={`text-sm font-medium ${isGoalMet ? 'text-accent' : 'text-muted-foreground'}`}>
+            <span className={`metric-number text-base font-bold ${isGoalMet ? 'text-accent' : 'text-muted-foreground'}`}>
               {Math.round(progress)}%
             </span>
           </div>

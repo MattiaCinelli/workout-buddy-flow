@@ -1,4 +1,6 @@
 import { createRoot } from 'react-dom/client'
+import '@fontsource-variable/manrope/wght.css'
+import '@fontsource-variable/roboto-condensed/wght.css'
 import App from './App.tsx'
 import './index.css'
 import { applyStoredAppearance } from './hooks/useTheme.ts'

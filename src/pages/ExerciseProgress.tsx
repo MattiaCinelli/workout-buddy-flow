@@ -53,7 +53,7 @@ const StatCard = ({ label, value, sub }: { label: string; value: string; sub?: s
   <Card>
     <CardContent className="p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+      <p className="metric-number mt-1 text-3xl font-bold">{value}</p>
       {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
     </CardContent>
   </Card>

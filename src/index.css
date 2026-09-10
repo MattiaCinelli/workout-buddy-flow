@@ -16,6 +16,15 @@ html.reduce-motion *::after {
   transition-duration: 0.01ms !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  * , *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer base {
   :root {
     --background: 216 33% 97%;
@@ -146,7 +155,7 @@ html.reduce-motion *::after {
 }
 
 html:not(.starship) body {
-  font-family: system-ui, sans-serif;
+  font-family: 'Manrope Variable', system-ui, sans-serif;
   background-image:
     radial-gradient(circle at 8% -10%, hsl(var(--primary) / .07), transparent 28rem),
     linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
@@ -156,13 +165,14 @@ html:not(.starship) body {
 html:not(.starship) h1,
 html:not(.starship) h2,
 html:not(.starship) h3 {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  letter-spacing: -.025em;
+  font-family: 'Roboto Condensed Variable', 'Arial Narrow', sans-serif;
+  font-stretch: condensed;
+  letter-spacing: -.018em;
 }
 
 html:not(.starship) button,
 html:not(.starship) nav {
-  font-family: system-ui, sans-serif;
+  font-family: 'Manrope Variable', system-ui, sans-serif;
   letter-spacing: normal;
 }
 
@@ -173,13 +183,14 @@ html:not(.starship) nav {
 
   body {
     @apply bg-background text-foreground;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Manrope Variable', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-optical-sizing: auto;
     background-image: radial-gradient(circle at 50% -20%, hsl(var(--secondary) / .16), transparent 42%);
     min-width: 320px;
   }
 
   h1, h2, h3, button, nav {
-    font-family: 'Arial Narrow', 'Aptos Narrow', 'Roboto Condensed', sans-serif;
+    font-family: 'Roboto Condensed Variable', 'Arial Narrow', 'Aptos Narrow', sans-serif;
     letter-spacing: .055em;
   }
 }
@@ -187,6 +198,7 @@ html:not(.starship) nav {
 @layer components {
   .app-page {
     @apply container mx-auto flex-1 px-4 py-6 sm:px-6 lg:py-8;
+    animation: page-enter 320ms cubic-bezier(.22, 1, .36, 1);
   }
   .page-heading {
     @apply mb-7 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center;
@@ -208,6 +220,34 @@ html:not(.starship) nav {
   }
   .surface-panel {
     @apply rounded-xl border border-border/70 bg-card/90 shadow-sm backdrop-blur-sm;
+  }
+  .metric-number,
+  [role="timer"],
+  input[type="number"] {
+    font-family: 'Roboto Condensed Variable', 'Arial Narrow', sans-serif;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-stretch: condensed;
+    letter-spacing: -.025em;
+  }
+  .instruction-copy {
+    font-family: 'Manrope Variable', system-ui, sans-serif;
+    font-weight: 430;
+    line-height: 1.65;
+    letter-spacing: -.006em;
+  }
+  .app-card {
+    animation: card-enter 420ms cubic-bezier(.22, 1, .36, 1);
+  }
+  .progress-indicator {
+    transform: translateX(calc(var(--progress-value, 0%) - 100%));
+    animation: progress-reveal 700ms cubic-bezier(.22, 1, .36, 1);
+  }
+  .completion-check {
+    transform-origin: center;
+    animation: check-complete 340ms cubic-bezier(.34, 1.56, .64, 1);
+  }
+  .workout-step-enter {
+    animation: workout-step-enter 360ms cubic-bezier(.22, 1, .36, 1);
   }
   .interface-preview {
     display: grid;
@@ -266,6 +306,40 @@ html:not(.starship) nav {
   .lcars-footer span:nth-child(3) { background: var(--lcars-blue); }
   .lcars-footer span:last-child { background: var(--lcars-peach); }
   @keyframes lcars-pulse { 50% { opacity: .45; box-shadow: 0 0 3px var(--lcars-orange); } }
+  @keyframes page-enter {
+    from { transform: translateY(5px); }
+    to { transform: translateY(0); }
+  }
+  @keyframes card-enter {
+    from { transform: translateY(8px) scale(.995); }
+    to { transform: translateY(0) scale(1); }
+  }
+  @keyframes progress-reveal {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(calc(var(--progress-value, 0%) - 100%)); }
+  }
+  @keyframes check-complete {
+    from { opacity: 0; transform: scale(.55) rotate(-10deg); }
+    to { opacity: 1; transform: scale(1) rotate(0); }
+  }
+  @keyframes workout-step-enter {
+    from { transform: translateX(10px); }
+    to { transform: translateX(0); }
+  }
+}
+
+@supports (view-transition-name: root) {
+  ::view-transition-old(root) {
+    animation: 150ms ease-out both view-fade-out;
+  }
+  ::view-transition-new(root) {
+    animation: 220ms cubic-bezier(.22, 1, .36, 1) both view-fade-in;
+  }
+  @keyframes view-fade-out { to { opacity: .94; } }
+  @keyframes view-fade-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }
 
 @media (max-width: 767px) {

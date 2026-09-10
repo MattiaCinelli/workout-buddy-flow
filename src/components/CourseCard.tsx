@@ -46,7 +46,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
           </div>
           {isCompleted && (
             <Badge variant="default" className="bg-green-500">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+              <CheckCircle2 className="completion-check h-3 w-3 mr-1" />
               Completed
             </Badge>
           )}

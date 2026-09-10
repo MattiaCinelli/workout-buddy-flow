@@ -268,7 +268,7 @@ const ExerciseManager: React.FC = () => {
 
         <div className="border-t border-border/60 pt-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Muscle groups</p>
+            <p className="text-sm font-medium text-muted-foreground">Muscle groups</p>
             <button
               type="button"
               onClick={() => setIsManageMusclesOpen(true)}

@@ -93,12 +93,12 @@ const QuickStats: React.FC = () => {
             } ${idx >= 2 ? 'border-t lg:border-t-0' : ''} ${idx > 0 ? 'lg:border-l' : ''}`}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground sm:text-sm sm:normal-case sm:tracking-normal">{stat.label}</span>
+              <span className="text-sm font-medium text-muted-foreground">{stat.label}</span>
               <span className={`rounded-lg p-1.5 ${stat.iconBg}`}>
                 <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
               </span>
             </div>
-            <div className={`text-xl font-bold tracking-tight sm:text-2xl ${stat.capitalize ? 'capitalize' : ''}`}>
+            <div className={`metric-number text-2xl font-bold sm:text-3xl ${stat.capitalize ? 'capitalize' : ''}`}>
               {stat.value}
             </div>
             <p className="text-xs text-muted-foreground">{stat.subtext}</p>

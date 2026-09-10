@@ -68,7 +68,7 @@ const TodaysFocus: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className={`rounded-full p-2 ${completed ? 'bg-workout-green/15' : 'bg-primary/10'}`}>
                   {completed
-                    ? <CheckCircle2 className="h-4 w-4 text-workout-green" />
+                    ? <CheckCircle2 className="completion-check h-4 w-4 text-workout-green" />
                     : <Dumbbell className="h-4 w-4 text-primary" />}
                 </div>
                 <div>
@@ -89,7 +89,7 @@ const TodaysFocus: React.FC = () => {
                 aria-label={completed ? `${workout.title} completed` : `Start ${workout.title}`}
                 onClick={() => navigate(scheduledWorkoutSessionUrl(scheduled))}
               >
-                {completed ? <CheckCircle2 className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {completed ? <CheckCircle2 className="completion-check h-4 w-4" /> : <Play className="h-4 w-4" />}
                 {completed ? 'Done' : 'Start'}
               </Button>
             </div>
