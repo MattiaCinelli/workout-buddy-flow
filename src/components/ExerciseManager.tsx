@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,15 +14,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Exercise } from '@/data/exercises';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ExerciseItem from './ExerciseItem';
+import ExerciseTile from './ExerciseTile';
 import ExerciseForm from './ExerciseForm';
 import ImportShareButton from './ImportShareButton';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Loader2, Settings2 } from 'lucide-react';
+import { Plus, Search, FileImage, Loader2, Settings2, LayoutGrid, List } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
-import { exerciseMatchesNameQuery, exerciseNamesOverlap } from '@/lib/exerciseAliases';
+import { exerciseNamesOverlap } from '@/lib/exerciseAliases';
+import {
+  ExerciseCategoryFilter, ExerciseDifficultyFilter, filterExerciseLibrary,
+} from '@/lib/exerciseLibrary';
+
+type ExerciseViewMode = 'list' | 'tiles';
+const VIEW_MODE_KEY = 'workout-buddy-exercise-view';
+const initialViewMode = (): ExerciseViewMode => {
+  try { return localStorage.getItem(VIEW_MODE_KEY) === 'tiles' ? 'tiles' : 'list'; }
+  catch { return 'list'; }
+};
 
 const ExerciseManager: React.FC = () => {
   const { toast } = useToast();
@@ -37,6 +49,9 @@ const ExerciseManager: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<ExerciseCategoryFilter>('all');
+  const [difficultyFilter, setDifficultyFilter] = useState<ExerciseDifficultyFilter>('all');
+  const [viewMode, setViewMode] = useState<ExerciseViewMode>(initialViewMode);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -44,19 +59,28 @@ const ExerciseManager: React.FC = () => {
   const [isManageMusclesOpen, setIsManageMusclesOpen] = useState(false);
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
 
-  const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
+  const filteredExercises = useMemo(() => filterExerciseLibrary(exercises, {
+    searchQuery,
+    muscleGroupIds: selectedMuscles,
+    category: categoryFilter,
+    difficulty: difficultyFilter,
+  }, id => muscleGroups.find(group => group.id === id)?.name ?? id),
+  [exercises, searchQuery, selectedMuscles, categoryFilter, difficultyFilter, muscleGroups]);
+  const hasActiveFilters = !!searchQuery.trim() || selectedMuscles.length > 0
+    || categoryFilter !== 'all' || difficultyFilter !== 'all';
 
-  const filteredExercises = exercises.filter(exercise => {
-    const matchesSearch = !searchQuery ||
-      exerciseMatchesNameQuery(exercise, searchQuery) ||
-      exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      exercise.muscleGroups.some(id =>
-        muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    const matchesMuscles = selectedMuscles.length === 0 ||
-      exercise.muscleGroups.some(id => selectedMuscles.includes(id));
-    return matchesSearch && matchesMuscles;
-  });
+  const changeViewMode = (value: string) => {
+    if (value !== 'list' && value !== 'tiles') return;
+    setViewMode(value);
+    try { localStorage.setItem(VIEW_MODE_KEY, value); } catch { /* preference is non-essential */ }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedMuscles([]);
+    setCategoryFilter('all');
+    setDifficultyFilter('all');
+  };
   
   const handleCreateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const existingExercise = exercises.find(
@@ -209,6 +233,32 @@ const ExerciseManager: React.FC = () => {
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
+        <Select value={categoryFilter} onValueChange={value => setCategoryFilter(value as ExerciseCategoryFilter)}>
+          <SelectTrigger aria-label="Filter by exercise type">
+            <SelectValue placeholder="All exercise types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All exercise types</SelectItem>
+            <SelectItem value="strength">Strength</SelectItem>
+            <SelectItem value="cardio">Cardio</SelectItem>
+            <SelectItem value="flexibility">Flexibility</SelectItem>
+            <SelectItem value="balance">Balance</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={difficultyFilter} onValueChange={value => setDifficultyFilter(value as ExerciseDifficultyFilter)}>
+          <SelectTrigger aria-label="Filter by difficulty level">
+            <SelectValue placeholder="All levels" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All levels</SelectItem>
+            <SelectItem value="beginner">Beginner</SelectItem>
+            <SelectItem value="intermediate">Intermediate</SelectItem>
+            <SelectItem value="advanced">Advanced</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-xs text-muted-foreground">Filter by muscle group</p>
@@ -234,26 +284,52 @@ const ExerciseManager: React.FC = () => {
         </ToggleGroup>
       </div>
 
-      <div className="space-y-3">
+      <div className="flex min-h-9 items-center justify-between gap-2 border-t pt-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm text-muted-foreground" role="status">
+            {filteredExercises.length} of {exercises.length} exercises
+          </p>
+          {hasActiveFilters && (
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={changeViewMode}
+          aria-label="Exercise layout"
+          className="shrink-0"
+        >
+          <ToggleGroupItem value="list" aria-label="List view" className="h-8 w-8 p-0">
+            <List className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="tiles" aria-label="Compact tile view" className="h-8 w-8 p-0">
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      <div className={viewMode === 'tiles'
+        ? 'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+        : 'space-y-3'}>
         {filteredExercises.length > 0 ? (
-          filteredExercises.map((exercise) => (
-            <ExerciseItem
-              key={exercise.id}
-              exercise={exercise}
-              onSelect={setViewingExercise}
-              onEdit={handleEdit}
-            />
-          ))
+          filteredExercises.map((exercise) => viewMode === 'tiles'
+            ? <ExerciseTile key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />
+            : <ExerciseItem key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />)
         ) : (
-          <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
+          <div className={viewMode === 'tiles'
+            ? 'col-span-full text-center py-12 bg-muted/50 rounded-lg border border-dashed'
+            : 'text-center py-12 bg-muted/50 rounded-lg border border-dashed'}>
             <FileImage className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-2 text-sm font-medium text-foreground">No exercises found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {searchQuery || selectedMuscles.length > 0
-                ? "Try adjusting your search or muscle filter"
+              {hasActiveFilters
+                ? "Try adjusting your search or filters"
                 : "Get started by creating a new exercise"}
             </p>
-            {!searchQuery && selectedMuscles.length === 0 && (
+            {!hasActiveFilters && (
               <div className="mt-6">
                 <Button
                   onClick={() => setIsFormOpen(true)}
