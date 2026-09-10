@@ -26,7 +26,7 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
 
   return (
     <article className={cn(
-      'group relative min-w-0 overflow-hidden rounded-lg border transition-shadow hover:shadow-md',
+      'group relative min-w-0 overflow-hidden rounded-lg border bg-card/80 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
       exerciseCategoryTint(exercise.category),
     )}>
       <button
@@ -35,12 +35,12 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
         onClick={() => onSelect(exercise)}
         aria-label={`View ${exercise.name}`}
       >
-        <div className="mb-2 flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-muted sm:h-24">
+        <div className="mb-3 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border border-white/30 bg-muted sm:h-28">
           {exercise.imageUrl
             ? <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-full w-full object-cover" />
             : <Image className="h-8 w-8 text-muted-foreground" aria-hidden="true" />}
         </div>
-        <h3 className="line-clamp-2 min-h-10 w-full text-sm font-semibold leading-5">{exercise.name}</h3>
+        <h3 className="line-clamp-2 min-h-10 w-full text-sm font-semibold leading-5 tracking-tight">{exercise.name}</h3>
         <div className="mt-1 flex max-w-full flex-wrap gap-1">
           <Badge variant="secondary" className="h-5 max-w-full px-1.5 text-[10px] capitalize">{exercise.category}</Badge>
           <Badge variant="outline" className="h-5 max-w-full px-1.5 text-[10px] capitalize">{exercise.difficulty}</Badge>
@@ -55,7 +55,7 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
         type="button"
         variant="secondary"
         size="icon"
-        className="absolute right-4 top-4 h-7 w-7 shadow-sm"
+        className="absolute right-4 top-4 h-7 w-7 border-white/50 bg-card/90 opacity-100 shadow-sm backdrop-blur sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
         onClick={() => onEdit(exercise)}
         aria-label={`Edit ${exercise.name}`}
       >

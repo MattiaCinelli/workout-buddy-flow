@@ -6,7 +6,7 @@ const THEME_CHANGE_EVENT = 'workout-buddy-theme-change';
 const INTERFACE_CHANGE_EVENT = 'workout-buddy-interface-change';
 
 const browserThemeColors = {
-  classic: { light: '#f8fafc', dark: '#020817' },
+  classic: { light: '#f7f8fa', dark: '#080b16' },
   starship: { light: '#f7f0e3', dark: '#08080f' },
 } as const;
 

@@ -29,7 +29,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
 
   return (
     <Card 
-      className="hover:shadow-lg transition-shadow cursor-pointer"
+      className="group h-full cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-lg"
       onClick={() => navigate(`/courses/${course.id}`)}
       role="link"
       tabIndex={0}

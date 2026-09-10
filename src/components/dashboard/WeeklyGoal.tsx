@@ -58,7 +58,7 @@ const WeeklyGoal: React.FC = () => {
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">

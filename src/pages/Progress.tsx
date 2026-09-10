@@ -175,15 +175,18 @@ const ProgressPage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
+      <main className="app-page">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Progress</h1>
-            <p className="text-muted-foreground">Track your fitness journey over time</p>
+        <div className="page-heading">
+          <div className="page-heading__main">
+            <div className="page-heading__icon"><TrendingUp className="h-5 w-5" /></div>
+            <div>
+            <h1 className="page-title">Progress</h1>
+            <p className="page-subtitle">Understand your consistency, volume, and performance</p>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2 mt-4 md:mt-0">
+          <div className="page-actions">
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Time range" />

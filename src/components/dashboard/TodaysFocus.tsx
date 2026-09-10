@@ -17,13 +17,19 @@ const TodaysFocus: React.FC = () => {
   
   if (todaysWorkouts.length === 0) {
     return (
-      <Card className="border-dashed border-2 border-muted">
-        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="rounded-full bg-muted p-3 mb-3">
-            <Calendar className="h-6 w-6 text-muted-foreground" />
+      <Card className="h-full border-dashed border-primary/20 bg-gradient-to-br from-card to-primary/[0.035]">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Zap className="h-5 w-5 text-primary" />
+            Today's Focus
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex min-h-40 flex-col items-center justify-center pb-6 text-center">
+          <div className="mb-3 rounded-xl bg-muted p-2.5">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-lg mb-1">Rest Day</h3>
-          <p className="text-sm text-muted-foreground mb-4">
+          <h3 className="mb-1 font-semibold">Rest day</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
             No workouts scheduled for today
           </p>
           <Button 
@@ -39,7 +45,7 @@ const TodaysFocus: React.FC = () => {
   }
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+    <Card className="h-full border-primary/20 bg-gradient-to-br from-card to-primary/[0.05]">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Zap className="h-5 w-5 text-primary" />

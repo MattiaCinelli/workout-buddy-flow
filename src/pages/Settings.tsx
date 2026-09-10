@@ -93,12 +93,14 @@ const SettingsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="container mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2.5"><SettingsIcon className="h-6 w-6 text-primary" /></div>
+      <main className="app-page max-w-4xl">
+        <div className="page-heading">
+          <div className="page-heading__main">
+          <div className="page-heading__icon"><SettingsIcon className="h-5 w-5" /></div>
           <div>
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">Manage this device, your data, and optional sync.</p>
+            <h1 className="page-title">Settings</h1>
+            <p className="page-subtitle">Manage this device, your data, and optional sync</p>
+          </div>
           </div>
         </div>
 

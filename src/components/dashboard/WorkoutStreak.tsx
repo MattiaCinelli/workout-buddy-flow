@@ -97,7 +97,7 @@ const WorkoutStreak: React.FC = () => {
   };
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Flame className={`h-5 w-5 ${getFlameColor()}`} />

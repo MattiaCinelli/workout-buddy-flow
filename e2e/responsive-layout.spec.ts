@@ -10,7 +10,11 @@ test('primary pages fit phone and desktop widths', async ({ page }) => {
   await page.goto('/');
   for (const interfaceStyle of ['classic', 'starship']) {
     await page.evaluate(style => localStorage.setItem('interface-style', style), interfaceStyle);
-    for (const viewport of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) {
+    for (const viewport of [
+      { width: 320, height: 568 },
+      { width: 1280, height: 900 },
+      { width: 1440, height: 900 },
+    ]) {
       await page.setViewportSize(viewport);
       for (const route of primaryRoutes) {
         await page.goto(route);

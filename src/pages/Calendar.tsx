@@ -8,6 +8,7 @@ import ScheduleDetailModal from '@/components/calendar/ScheduleDetailModal';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useData } from '@/contexts/DataContext';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
+import { CalendarDays } from 'lucide-react';
 
 const CalendarPage: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -63,15 +64,23 @@ const CalendarPage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Workout Calendar</h1>
+      <main className="app-page">
+        <div className="page-heading">
+          <div className="page-heading__main">
+            <div className="page-heading__icon"><CalendarDays className="h-5 w-5" /></div>
+            <div>
+              <h1 className="page-title">Workout calendar</h1>
+              <p className="page-subtitle">Plan sessions and keep your training week organized</p>
+            </div>
+          </div>
+          <div className="page-actions">
           <Tabs value={view} onValueChange={(v) => setView(v as 'week' | 'month')}>
-            <TabsList>
+            <TabsList className="grid w-44 grid-cols-2">
               <TabsTrigger value="week">Week</TabsTrigger>
               <TabsTrigger value="month">Month</TabsTrigger>
             </TabsList>
           </Tabs>
+          </div>
         </div>
 
         {view === 'week' ? (

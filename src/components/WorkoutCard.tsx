@@ -53,7 +53,7 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, on
 
   return (
     <Card 
-      className="workout-card overflow-hidden border-l-4 hover:shadow-lg cursor-pointer transition-all" 
+      className="workout-card group h-full overflow-hidden border-l-4 cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-lg"
       style={{ borderLeftColor: workout.category === 'strength' ? '#3B82F6' :
                                workout.category === 'cardio' ? '#EF4444' :
                                workout.category === 'flexibility' ? '#8B5CF6' :
@@ -108,8 +108,8 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, on
         )}
       </CardContent>
       
-      <CardFooter className="pt-0 flex justify-between items-center text-sm text-muted-foreground">
-        <div className="flex gap-4">
+      <CardFooter className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/20 pt-3 text-xs text-muted-foreground sm:text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
           <div className="flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
             <span>{formattedDate}</span>

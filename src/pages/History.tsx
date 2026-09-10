@@ -158,22 +158,27 @@ const HistoryPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
+      <main className="app-page">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Workout History</h1>
-            <p className="text-muted-foreground">
+        <div className="page-heading">
+          <div className="page-heading__main">
+            <div className="page-heading__icon"><Dumbbell className="h-5 w-5" /></div>
+            <div>
+            <h1 className="page-title">Workout history</h1>
+            <p className="page-subtitle">
               {workouts.length} workout{workouts.length !== 1 ? 's' : ''} logged
             </p>
+            </div>
           </div>
-          <Button variant="outline" onClick={exportCsv} disabled={filteredAndSortedWorkouts.length === 0}>
-            <Download className="h-4 w-4 mr-2" />Export CSV
-          </Button>
+          <div className="page-actions">
+            <Button variant="outline" onClick={exportCsv} disabled={filteredAndSortedWorkouts.length === 0}>
+              <Download className="h-4 w-4 mr-2" />Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-card border rounded-lg p-4 mb-6 space-y-4">
+        <div className="surface-panel mb-7 space-y-4 p-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Filter className="h-4 w-4" />
             Filters

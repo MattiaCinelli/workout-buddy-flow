@@ -33,7 +33,7 @@ const CalendarPreview: React.FC<CalendarPreviewProps> = ({ onStartWorkout }) => 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(today, i));
 
   return (
-    <Card className="col-span-full">
+    <Card className="col-span-full overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-lg font-semibold">
           <Calendar className="h-5 w-5 text-primary" />
@@ -49,8 +49,8 @@ const CalendarPreview: React.FC<CalendarPreviewProps> = ({ onStartWorkout }) => 
           <ChevronRight className="ml-1 h-4 w-4" />
         </Button>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-2">
+      <CardContent className="overflow-x-auto pb-5">
+        <div className="grid min-w-[650px] grid-cols-7 gap-2 md:min-w-0">
           {weekDays.map((day, idx) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const daySchedule = scheduleByDate[dateKey] || [];
@@ -59,10 +59,10 @@ const CalendarPreview: React.FC<CalendarPreviewProps> = ({ onStartWorkout }) => 
             return (
               <div 
                 key={idx}
-                className={`min-h-[100px] rounded-lg border p-2 transition-colors ${
+                className={`min-h-[104px] rounded-lg border p-2.5 transition-all ${
                   isToday 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:border-muted-foreground/30'
+                    ? 'border-primary/60 bg-primary/[0.07] shadow-sm'
+                    : 'border-border/70 bg-background/50 hover:border-primary/25 hover:bg-muted/40'
                 }`}
               >
                 <div className={`text-xs font-medium mb-1 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>

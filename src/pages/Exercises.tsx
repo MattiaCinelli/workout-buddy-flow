@@ -7,7 +7,7 @@ const ExercisesPage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
-      <main className="flex-1 container mx-auto py-6 px-4 md:px-6">
+      <main className="app-page">
         <ExerciseManager />
       </main>
     </div>
