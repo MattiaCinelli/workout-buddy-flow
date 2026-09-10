@@ -281,10 +281,10 @@ const ExerciseManager: React.FC = () => {
             type="multiple"
             value={selectedMuscles}
             onValueChange={(value) => setSelectedMuscles(value)}
-            className="justify-start flex-wrap"
+            className="justify-start flex-nowrap overflow-x-auto pb-1"
           >
             {muscleGroups.map((group) => (
-              <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 rounded-full border border-transparent px-3 text-xs data-[state=on]:border-primary/20 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+              <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
                 {group.name}
               </ToggleGroupItem>
             ))}

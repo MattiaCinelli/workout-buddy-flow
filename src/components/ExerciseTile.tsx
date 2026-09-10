@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import ExerciseImage from '@/components/ExerciseImage';
 import { Exercise, getLogType } from '@/data/exercises';
 import { useData } from '@/contexts/DataContext';
-import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 import { cn } from '@/lib/utils';
 
 interface ExerciseTileProps {
@@ -23,11 +22,17 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
   const target = logType === 'time'
     ? exercise.defaultDuration ? `${sets} × ${exercise.defaultDuration}s` : `${sets} set${sets === 1 ? '' : 's'}`
     : exercise.defaultReps ? `${sets} × ${exercise.defaultReps} reps` : `${sets} set${sets === 1 ? '' : 's'}`;
+  const categoryAccent = {
+    strength: 'border-t-workout-blue',
+    cardio: 'border-t-workout-red',
+    flexibility: 'border-t-workout-purple',
+    balance: 'border-t-workout-yellow',
+  }[exercise.category] ?? 'border-t-primary';
 
   return (
     <article className={cn(
-      'group relative min-w-0 overflow-hidden rounded-lg border bg-card/80 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
-      exerciseCategoryTint(exercise.category),
+      'group relative min-w-0 overflow-hidden rounded-lg border border-t-[3px] bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-x-primary/15 hover:border-b-primary/15 hover:shadow-md',
+      categoryAccent,
     )}>
       <button
         type="button"
@@ -35,7 +40,7 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
         onClick={() => onSelect(exercise)}
         aria-label={`View ${exercise.name}`}
       >
-        <div className="mb-3 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border border-white/30 bg-muted sm:h-28">
+        <div className="mb-3 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border bg-slate-50 dark:bg-muted sm:h-28">
           {exercise.imageUrl
             ? <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-full w-full object-cover" />
             : <Image className="h-8 w-8 text-muted-foreground" aria-hidden="true" />}

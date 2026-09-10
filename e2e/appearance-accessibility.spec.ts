@@ -2,8 +2,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from '../playwright-fixture';
 
 const appearances = [
-  { style: 'classic', mode: 'light', themeColor: '#f8fafc' },
-  { style: 'classic', mode: 'dark', themeColor: '#020817' },
+  { style: 'classic', mode: 'light', themeColor: '#f7f8fa' },
+  { style: 'classic', mode: 'dark', themeColor: '#080b16' },
   { style: 'starship', mode: 'light', themeColor: '#f7f0e3' },
   { style: 'starship', mode: 'dark', themeColor: '#08080f' },
 ] as const;

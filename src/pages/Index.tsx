@@ -39,7 +39,7 @@ const Index = () => {
 
       <main className="lcars-main app-page">
         {/* Header */}
-        <div className="lcars-page-heading page-heading">
+        <div className="dashboard-hero lcars-page-heading page-heading">
           <div className="page-heading__main">
             <div className="page-heading__icon"><Activity className="h-5 w-5" /></div>
             <div>

@@ -129,7 +129,7 @@ const Navbar: React.FC = () => {
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:-rotate-3">
               <Dumbbell className="h-5 w-5" />
             </span>
-            <span className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+            <span className="nav-brand-name text-base font-bold tracking-tight text-foreground sm:text-lg">
               Workout<span className="text-primary">Buddy</span>
             </span>
           </button>
@@ -143,7 +143,7 @@ const Navbar: React.FC = () => {
               variant="ghost"
               size="sm"
               className={cn(
-                'h-9 px-2.5 text-muted-foreground hover:text-foreground min-[1360px]:px-3',
+                'nav-desktop-link h-9 px-2.5 text-muted-foreground hover:text-foreground min-[1360px]:px-3',
                 isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
               )}
               onClick={() => navigate(link.path)}
