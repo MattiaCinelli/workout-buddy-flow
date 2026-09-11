@@ -2,7 +2,7 @@
 
 The built-in exercise instructions are concise, original summaries. They were
 cross-checked against the following technique and demonstration resources on
-2026-09-10. Links in the exercise cards open the most focused demonstration
+2026-09-11. Links in the exercise cards open the most focused demonstration
 found; a normal video or illustrated demonstration is used where a dependable
 YouTube Short was not available.
 
@@ -36,6 +36,8 @@ YouTube Short was not available.
 | Seated Forward Fold | [Catalyst Physical Therapy demonstration](https://www.youtube.com/watch?v=Qfy-Qt295Bc) |
 | Cross-Body Shoulder Stretch | [Orthopaedic Trauma Association video library](https://ota.org/for-patients/physical-therapy/shoulder) |
 | Child's Pose with Arms Extended | [Body Works Sports Physiotherapy](https://body-works.ca/physio-video/modified-child-pose-stretch-for-shoulder-opening/) |
+| Standing Pancake Stretch | [YouTube Shorts demonstration](https://www.youtube.com/shorts/loOpwF1fkFc?feature=share) |
+| Hurdler Stretch | [YouTube Shorts demonstration](https://www.youtube.com/shorts/phSQ4UU7xFY) |
 
 These cards are general exercise guidance, not medical treatment. Stop if a
 movement causes pain and consult an appropriate health professional when needed.

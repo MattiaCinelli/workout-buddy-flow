@@ -20,8 +20,8 @@ import { WorkoutSetResult } from '@/data/workoutSessions';
 import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
 import { playCompletionChime } from '@/lib/completionSound';
 import { logDiagnostic } from '@/lib/diagnosticLog';
-import { computePersonalRecords, detectNewPersonalRecords, PersonalRecord, PRKind } from '@/lib/personalRecords';
-import { exerciseSessionHistory, formatLoggedDistance, formatLoggedDuration } from '@/lib/exerciseHistory';
+import { detectNewPersonalRecords, PRKind } from '@/lib/personalRecords';
+import { exerciseSessionHistory } from '@/lib/exerciseHistory';
 import { suggestNextSet } from '@/lib/progression';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
@@ -30,20 +30,10 @@ import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
 import { getExerciseImageUrl } from '@/data/exercises';
+import { buildExerciseTrial } from '@/lib/exerciseTrial';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
-
-// The single headline number for a "PR" badge — whichever dimension this
-// exercise is actually measured in.
-const bestRecordLabel = (record?: PersonalRecord): string | null => {
-  if (!record) return null;
-  if (record.maxWeight) return `${record.maxWeight.value} kg`;
-  if (record.maxDuration) return formatLoggedDuration(record.maxDuration.value);
-  if (record.maxDistance) return formatLoggedDistance(record.maxDistance.value);
-  if (record.maxReps) return `${record.maxReps.value} reps`;
-  return null;
-};
 
 type SavedRuntime = { workoutId: string; activeStep: number; startedAt: number; timeLeft: number;
   deadline: number | null; paused: boolean; activeElapsedMs?: number; activeSince?: number | null;
@@ -65,21 +55,30 @@ const CountdownBar = ({ percent, tone }: { percent: number; tone: string }) => (
   </div>
 );
 
-const WorkoutPresentation = () => {
+interface WorkoutPresentationProps {
+  trialMode?: boolean;
+}
+
+const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) => {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const {
-    workouts, exercises, sessions, workoutsLoading, createSession, deleteSession,
+    workouts, exercises, sessions, workoutsLoading, exercisesLoading, createSession, deleteSession,
     completeWorkoutInCourse, uncompleteWorkoutInCourse, courses, scheduledWorkouts,
   } = useData();
-  const workout = workouts.find(item => item.id === id);
+  const trialExercise = trialMode ? exercises.find(item => item.id === id) : undefined;
+  const trialWorkout = useMemo(
+    () => trialExercise ? buildExerciseTrial(trialExercise) : undefined,
+    [trialExercise],
+  );
+  const workout = trialMode ? trialWorkout : workouts.find(item => item.id === id);
   const occurrenceIdentity = [
     searchParams.get('scheduledWorkoutId'), searchParams.get('scheduledDate'),
     searchParams.get('courseId'), searchParams.get('courseItemId'),
   ].filter(Boolean).join(':');
-  const activeRuntimeKey = runtimeKey(id, occurrenceIdentity);
+  const activeRuntimeKey = runtimeKey(trialMode ? `exercise-trial:${id}` : id, occurrenceIdentity);
   const steps = useMemo(() => workout ? buildWorkoutSteps(workout, exercises) : [], [workout, exercises]);
   const startedAt = useRef(Date.now());
   const activeElapsedMs = useRef(0);
@@ -112,7 +111,6 @@ const WorkoutPresentation = () => {
 
   // Personal bests and progression use workout history internally, without
   // reporting the date or details of the previous session during a workout.
-  const personalRecords = useMemo(() => computePersonalRecords(sessions), [sessions]);
   const currentExerciseId = steps[activeStep]?.type === 'exercise' ? steps[activeStep]?.exerciseId : undefined;
   const currentExerciseHistory = useMemo(
     () => currentExerciseId ? exerciseSessionHistory(currentExerciseId, sessions) : [],
@@ -189,11 +187,18 @@ const WorkoutPresentation = () => {
   }, [requestWakeLock]);
 
   useEffect(() => {
-    if (!workoutsLoading && !workout) {
-      toast({ title: 'Workout not found', description: "The workout you're trying to start doesn't exist.", variant: 'destructive' });
-      navigate('/');
+    const loading = trialMode ? exercisesLoading : workoutsLoading;
+    if (!loading && !workout) {
+      toast({
+        title: trialMode ? 'Exercise not found' : 'Workout not found',
+        description: trialMode
+          ? "The exercise you're trying to test doesn't exist."
+          : "The workout you're trying to start doesn't exist.",
+        variant: 'destructive',
+      });
+      navigate(trialMode ? '/exercises' : '/');
     }
-  }, [workout, workoutsLoading, navigate, toast]);
+  }, [workout, workoutsLoading, exercisesLoading, navigate, toast, trialMode]);
 
   useEffect(() => {
     if (!workout || !steps.length || restored) return;
@@ -398,7 +403,24 @@ const WorkoutPresentation = () => {
     activeElapsedMs.current = 0;
     activeSince.current = Date.now();
     startStep(0);
+    setCompletionOpen(false);
     setRestartConfirmOpen(false);
+  };
+
+  // Reset only the active exercise set. This deliberately keeps the rest
+  // of the workout and its overall elapsed time intact, so a form/setup
+  // problem can be corrected without navigating away or starting over.
+  const restartExercise = () => {
+    const step = steps[activeStep];
+    if (step?.type !== 'exercise') return;
+    void TextToSpeech.stop().catch(() => undefined);
+    advancing.current = false;
+    lastSpokenCountdownRef.current = null;
+    announcedStepRef.current = true;
+    buzzedStepRef.current = true;
+    startStep(activeStep);
+    speak(stepStartAnnouncement(step));
+    vibrate(ImpactStyle.Heavy);
   };
 
   // Backs out of the whole workout without saving a session — used by both
@@ -407,7 +429,13 @@ const WorkoutPresentation = () => {
   const discardAndExit = () => {
     localStorage.removeItem(activeRuntimeKey);
     void TextToSpeech.stop().catch(() => undefined);
-    navigate(`/workouts/${id}`);
+    navigate(trialMode ? '/exercises' : `/workouts/${id}`);
+  };
+
+  const finishTrial = () => {
+    localStorage.removeItem(activeRuntimeKey);
+    void TextToSpeech.stop().catch(() => undefined);
+    navigate('/exercises');
   };
 
   const saveCompletion = async () => {
@@ -514,15 +542,14 @@ const WorkoutPresentation = () => {
     ? (upcoming.kind === 'switch' ? 'Change side' : `Rest · ${formatTime(upcoming.duration || 0)}`)
     : upcoming?.exerciseId
       ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.direction ? ` · ${workoutDirectionLabel(upcoming.direction)}` : ''}`
-      : 'Finish workout';
+      : trialMode ? 'Finish trial' : 'Finish workout';
   const activeStepDuration = current?.duration || 0;
   const countdownPercent = activeStepDuration > 0
     ? Math.min(100, Math.max(0, ((activeStepDuration - timeLeft) / activeStepDuration) * 100))
     : 0;
   const upcomingExercise = upcoming?.exerciseId
     ? exercises.find(item => item.id === upcoming.exerciseId) : undefined;
-  const currentBestLabel = bestRecordLabel(currentExerciseId ? personalRecords.get(currentExerciseId) : undefined);
-  const progressionSuggestion = exercise && current?.type === 'exercise' && !current.warmup
+  const progressionSuggestion = !trialMode && exercise && current?.type === 'exercise' && !current.warmup
     ? suggestNextSet(exercise, { reps: current.reps, weight: current.weight }, currentExerciseHistory)
     : null;
   const resultsValid = actualSets.every(result =>
@@ -535,8 +562,8 @@ const WorkoutPresentation = () => {
   if (!workout || !current) return null;
 
   return <div className="flex min-h-[100dvh] flex-col bg-[#070d18] text-white">
-    <header className="flex items-center justify-between gap-2 px-2 py-2 pt-[max(.5rem,env(safe-area-inset-top))] sm:px-4 sm:py-3">
-      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setExitConfirmOpen(true)} aria-label="Exit workout"><X className="h-5 w-5" /></Button>
+    <header className="flex items-center justify-between gap-2 px-2 py-2 pt-[max(.5rem,var(--app-safe-area-top))] sm:px-4 sm:py-3">
+      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setExitConfirmOpen(true)} aria-label={trialMode ? 'Exit exercise trial' : 'Exit workout'}><X className="h-5 w-5" /></Button>
       <h1 className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-white/85 sm:text-lg">{workout.title}</h1>
       <div className="flex items-center gap-0.5">
         <Button variant="ghost" size="icon" className={`hidden h-10 w-10 rounded-full text-white sm:inline-flex ${musicEnabled ? '' : 'opacity-40'}`} onClick={toggleMusic} aria-label={musicEnabled ? 'Turn off background music' : 'Turn on background music'} aria-pressed={musicEnabled}>
@@ -545,10 +572,10 @@ const WorkoutPresentation = () => {
         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
           {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </Button>
-        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setRestartConfirmOpen(true)} aria-label="Restart"><RotateCcw className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setRestartConfirmOpen(true)} aria-label={trialMode ? 'Restart trial' : 'Restart workout'}><RotateCcw className="h-4 w-4" /></Button>
       </div>
     </header>
-    <section className="space-y-2 px-4 pb-2" aria-label="Workout progress">
+    <section className="space-y-2 px-4 pb-2" aria-label={trialMode ? 'Exercise trial progress' : 'Workout progress'}>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : restKindLabel(current)}.
       </p>
@@ -563,7 +590,7 @@ const WorkoutPresentation = () => {
       {current.type === 'exercise' && exercise ? <div key={activeStep} className="workout-step-enter flex w-full flex-col items-center">
         <div className="relative w-full max-w-lg">
           {getExerciseImageUrl(exercise, current.direction) ? (
-            <ExerciseImage imageUrl={getExerciseImageUrl(exercise, current.direction)!} alt={`${exercise.name}${current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}`} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-slate-50 object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
+            <ExerciseImage imageUrl={getExerciseImageUrl(exercise, current.direction)!} alt={`${exercise.name}${current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}`} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-transparent object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
           ) : (
             <div className="flex h-[min(38dvh,20rem)] w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[.04] text-white/25">
               <Dumbbell className="h-20 w-20" aria-hidden="true" />
@@ -637,16 +664,14 @@ const WorkoutPresentation = () => {
             <CountdownBar percent={countdownPercent} tone="bg-workout-green" />
           </>}
         </div>
-        {(currentBestLabel || progressionSuggestion) && (
-          <div className="mx-auto mt-4 flex w-full max-w-sm items-center justify-center gap-3 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-sm landscape:hidden">
-            {currentBestLabel && (
-              <span className="text-slate-400">Best <strong className="metric-number ml-1 text-base text-white">{currentBestLabel}</strong></span>
-            )}
-            {progressionSuggestion && (
-              <span className={`${currentBestLabel ? 'border-l border-white/10 pl-3' : ''} text-workout-green`}>Try <strong className="metric-number">{progressionSuggestion.reps}{progressionSuggestion.weight ? ` × ${progressionSuggestion.weight} kg` : ''}</strong><span className="sr-only">. {progressionSuggestion.note}</span></span>
-            )}
-          </div>
-        )}
+        <div className="mx-auto mt-4 flex w-full max-w-sm items-center justify-center gap-3 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-sm">
+          <Button type="button" variant="ghost" size="sm" className="h-8 text-white hover:bg-white/10 hover:text-white" onClick={restartExercise}>
+            <RotateCcw className="mr-2 h-4 w-4" />Restart exercise
+          </Button>
+          {progressionSuggestion && (
+            <span className="border-l border-white/10 pl-3 text-workout-green">Try <strong className="metric-number">{progressionSuggestion.reps}{progressionSuggestion.weight ? ` × ${progressionSuggestion.weight} kg` : ''}</strong><span className="sr-only">. {progressionSuggestion.note}</span></span>
+          )}
+        </div>
       </div> : <div key={activeStep} className="workout-step-enter flex w-full flex-1 flex-col items-center justify-center">
         <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
           {current.kind === 'switch' ? <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /> : <Timer className="h-4 w-4" aria-hidden="true" />}
@@ -667,7 +692,7 @@ const WorkoutPresentation = () => {
             <p className="mb-2 text-sm font-medium text-workout-green">Next up</p>
             {upcomingExercise && getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined) && (
               <ExerciseImage imageUrl={getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined)!} alt={upcomingExercise.name}
-                className="mx-auto mb-3 h-44 w-full rounded-2xl bg-slate-50 object-contain p-2" />
+                className="mx-auto mb-3 h-44 w-full rounded-2xl bg-transparent object-contain p-2" />
             )}
             <p className="text-2xl font-semibold">{upcomingLabel}</p>
             {upcoming.type === 'exercise' && (upcoming.reps || upcoming.duration) && (
@@ -680,11 +705,25 @@ const WorkoutPresentation = () => {
         )}
       </div>}
     </main>
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)] gap-2 border-t border-white/10 bg-[#070d18]/90 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] shadow-[0_-16px_40px_-28px_rgb(0_0_0/.9)] backdrop-blur-xl sm:grid-cols-3" aria-label="Workout controls">
+    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)] gap-2 border-t border-white/10 bg-[#070d18]/90 p-3 pb-[max(.75rem,var(--app-safe-area-bottom))] shadow-[0_-16px_40px_-28px_rgb(0_0_0/.9)] backdrop-blur-xl sm:grid-cols-3" aria-label={trialMode ? 'Exercise trial controls' : 'Workout controls'}>
       <Button size="lg" variant="outline" className="h-14 min-w-0 rounded-2xl border-white/20 bg-white/[.03] px-0 text-white hover:bg-white/10 hover:text-white sm:px-2" onClick={previousStep} disabled={activeStep === 0} aria-label="Previous"><ChevronLeft className="h-5 w-5 sm:mr-1" /><span className="hidden sm:inline">Previous</span></Button>
       <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-purple px-0 text-white hover:bg-workout-purple/90 sm:px-2" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'}>{paused ? <Play className="h-5 w-5 sm:mr-1" /> : <Pause className="h-5 w-5 sm:mr-1" />}<span className="hidden sm:inline">{paused ? 'Resume' : 'Pause'}</span></Button>
       <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-green px-4 text-base font-bold text-white shadow-lg shadow-emerald-950/30 hover:bg-green-600 sm:px-2" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-2 h-5 w-5" /></Button>
     </nav>
+    {trialMode ? (
+      <Dialog open={completionOpen} onOpenChange={open => { if (!open) finishTrial(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="completion-check h-6 w-6 text-workout-green" aria-hidden="true" />Exercise trial complete</DialogTitle>
+            <DialogDescription>You completed the configured sets for {trialExercise?.name}. This trial was not added to your history.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={restartWorkout}><RotateCcw className="mr-2 h-4 w-4" />Try again</Button>
+            <Button onClick={finishTrial}>Return to exercises</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    ) : (
     <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle className="flex items-center gap-2"><CheckCircle2 className="completion-check h-6 w-6 text-workout-green" aria-hidden="true" />Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
       <div className="space-y-3">{actualSets.map((result, index) => {
         const planned = workout.sets[index];
@@ -711,8 +750,9 @@ const WorkoutPresentation = () => {
         <Button variant="outline" onClick={() => setExitConfirmOpen(true)} disabled={saving}>Discard</Button>
         <Button onClick={saveCompletion} disabled={saving || !resultsValid || (!!rpe && (Number(rpe) < 1 || Number(rpe) > 10))}>{saving ? 'Saving…' : 'Save workout'}</Button>
       </DialogFooter></DialogContent></Dialog>
-    <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard this workout?</AlertDialogTitle><AlertDialogDescription>Your progress and results for this active workout will not be saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Continue workout</AlertDialogCancel><AlertDialogAction onClick={discardAndExit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard and exit</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-    <AlertDialog open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Restart workout?</AlertDialogTitle><AlertDialogDescription>This returns to the first set and resets the workout timer.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restartWorkout}>Restart</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    )}
+    <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard this {trialMode ? 'trial' : 'workout'}?</AlertDialogTitle><AlertDialogDescription>Your progress in this active {trialMode ? 'trial' : 'workout'} will not be saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Continue {trialMode ? 'trial' : 'workout'}</AlertDialogCancel><AlertDialogAction onClick={discardAndExit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Discard and exit</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    <AlertDialog open={restartConfirmOpen} onOpenChange={setRestartConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Restart {trialMode ? 'trial' : 'workout'}?</AlertDialogTitle><AlertDialogDescription>This returns to the first set and resets the {trialMode ? 'trial' : 'workout'} timer.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restartWorkout}>Restart</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 };
 

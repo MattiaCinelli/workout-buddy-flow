@@ -129,6 +129,7 @@ const WorkoutDetail = () => {
         notes: notes.trim() || undefined,
       });
       toast({ title: 'Workout updated!', description: `"${title}" has been saved.` });
+      navigate('/workouts');
     } catch (error) {
       console.error('Failed to update workout:', error);
       toast({ title: 'Error', description: 'Failed to update workout. Please try again.', variant: 'destructive' });
@@ -254,7 +255,7 @@ const WorkoutDetail = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
 
-      <main className="flex-1 container mx-auto pt-6 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))] px-4 md:px-6 max-w-3xl">
+      <main className="flex-1 container mx-auto pt-6 pb-[max(1.5rem,calc(var(--app-safe-area-bottom)+1rem))] px-4 md:px-6 max-w-3xl">
         <div className="flex items-center gap-2 mb-6">
           <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={() => navigate('/workouts')}>
             <ArrowLeft className="h-4 w-4" />

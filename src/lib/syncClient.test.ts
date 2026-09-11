@@ -178,7 +178,7 @@ describe('private exercise media', () => {
         ok: true,
         status: 200,
         headers: new Headers({ 'content-type': 'image/jpeg' }),
-        blob: async () => new Blob(['jpeg'], { type: 'image/jpeg' }),
+        arrayBuffer: async () => new TextEncoder().encode('jpeg').buffer,
       } as Response;
     });
 

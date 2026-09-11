@@ -42,6 +42,11 @@ const WorkoutPresentationRoute = () => {
   return <WorkoutPresentation key={`${location.pathname}${location.search}`} />;
 };
 
+const ExerciseTrialRoute = () => {
+  const location = useLocation();
+  return <WorkoutPresentation key={location.pathname} trialMode />;
+};
+
 const App = () => (
   <ErrorBoundary>
     <TooltipProvider>
@@ -59,6 +64,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/exercises" element={<ExercisesPage />} />
+              <Route path="/exercises/:id/try" element={<ExerciseTrialRoute />} />
               <Route path="/exercises/:id/progress" element={<ExerciseProgress />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/history" element={<HistoryPage />} />

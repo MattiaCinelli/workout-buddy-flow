@@ -11,6 +11,7 @@ import {
   applyRemoteSettings, clearSettingsSnapshot, collectLocalSettings, getSettingsSnapshot,
   isPristineSettings, serializeSettings, setSettingsSnapshot, type SyncableSettings,
 } from './settingsSync';
+import { prefetchPrivateExerciseImages } from './exerciseMediaClient';
 import {
   getAllExercisesFromDB, saveExerciseToDB, deleteExerciseFromDB,
   getAllWorkoutsFromDB, saveWorkoutToDB, deleteWorkoutFromDB,
@@ -389,6 +390,20 @@ const runSyncAll = async (direction: SyncDirection): Promise<CollectionSyncResul
       await syncSettings(direction);
     } catch (error) {
       console.warn('Settings sync failed (data sync unaffected):', error);
+    }
+
+    // Records carry private-media identifiers, not the binary files. Fetch
+    // those files while the server is reachable so they remain available
+    // offline across app restarts. Missing media is non-fatal and never
+    // removes an older device copy.
+    try {
+      const exercises = await getAllExercisesFromDB();
+      await prefetchPrivateExerciseImages(exercises.flatMap(exercise => [
+        exercise.imageUrl,
+        ...Object.values(exercise.directionImageUrls ?? {}),
+      ]));
+    } catch (error) {
+      console.warn('Exercise image prefetch failed (data sync unaffected):', error);
     }
 
     localStorage.setItem(lastSyncedAtKey, new Date().toISOString());

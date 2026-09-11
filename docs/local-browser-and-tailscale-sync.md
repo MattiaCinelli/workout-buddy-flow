@@ -101,8 +101,12 @@ ignored by Git, so the files do not appear on GitHub. Keep this directory on the
 Mac and include it in your own local backup.
 
 The app downloads these photographs through the authenticated sync connection.
-Consequently, the browser and phone must be connected to the server to display
-them. The exercise data itself and the rest of the app continue to work offline.
+A successful sync prefetches them into persistent storage on each device. After
+an image reaches the browser or phone, it remains available offline and after an
+app restart; disconnecting or signing out of the sync server does not remove it.
+Removing an image in the exercise editor also removes that image's cached device
+copy. Subsequent syncs use conditional requests, so unchanged images are not
+downloaded again, while a file changed on the server replaces the cached copy.
 If you move the server, copy this private directory to the new machine and set
 `EXERCISE_MEDIA_DIR` if you store it somewhere else:
 

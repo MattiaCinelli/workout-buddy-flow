@@ -859,6 +859,35 @@ export const exerciseList: Exercise[] = [
     instructions: 'Lie face-up with knees bent and a foam roller across your mid-upper back. Support your head without pulling it, keep your ribs controlled and gently extend your upper back over the roller, then return to neutral. Reposition the roller slightly between repetitions if desired; avoid rolling onto the neck or low back.',
     videoUrl: 'https://www.youtube.com/watch?v=9Y11Kc0E0og',
     imageUrl: 'private-exercise:mobility-foam-roller-thoracic-extension.jpg'
+  },
+  {
+    id: 'mobility-standing-pancake-stretch',
+    name: 'Standing Pancake Stretch',
+    aliases: ['Wide-Legged Standing Forward Fold'],
+    category: 'flexibility',
+    muscleGroups: ['Hamstrings', 'Inner Thighs', 'Hips', 'Back'],
+    difficulty: 'intermediate',
+    logType: 'time',
+    defaultSets: 2,
+    defaultDuration: 30,
+    instructions: 'Stand with your feet in a wide straddle and point your toes forward or slightly inward. Keep your knees softly unlocked, brace gently and hinge forward from your hips with a long spine. Support your hands on blocks or the floor beneath your shoulders and stop at a comfortable stretch through your inner thighs and hamstrings.',
+    videoUrl: 'https://www.youtube.com/shorts/loOpwF1fkFc?feature=share',
+    imageUrl: 'private-exercise:mobility-standing-pancake-stretch.jpg'
+  },
+  {
+    id: 'mobility-hurdler-stretch',
+    name: 'Hurdler Stretch',
+    aliases: ["Hurdler's Stretch"],
+    category: 'flexibility',
+    muscleGroups: ['Hamstrings', 'Quadriceps', 'Hips'],
+    difficulty: 'intermediate',
+    logType: 'time',
+    defaultSets: 2,
+    defaultDuration: 30,
+    executionDirections: ['left', 'right'],
+    instructions: 'Sit with one leg extended and the other knee bent so the lower leg rests outside and behind that hip. Keep the extended foot gently flexed and your spine long, then hinge toward the straight leg until you feel a comfortable stretch. Keep the bent knee supported and pain-free; if it feels strained, place that foot inside the opposite thigh instead.',
+    videoUrl: 'https://www.youtube.com/shorts/phSQ4UU7xFY',
+    imageUrl: 'private-exercise:mobility-hurdler-stretch.jpg'
   }
 ];
 

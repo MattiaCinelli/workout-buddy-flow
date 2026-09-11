@@ -9,6 +9,29 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-09-11
+
+### Added
+
+- **Selected-exercise thumbnails** — the workout creator now shows each exercise image above its Remove button, making the selected list easier to scan while configuring sets.
+- **Standing Pancake and Hurdler stretches** — added two 30-second, two-set flexibility cards with demonstration links, muscle targets, technique guidance and private studio photographs. Hurdler Stretch provides distinct left- and right-side sets.
+- **One-off exercise trials** — start an exercise directly from its library detail, using its configured sets, repetitions or duration, direction-specific sets, rests and guided cues. Trial completion can restart or return to the library and never creates workout history, personal records or progression data.
+- **Restart active exercise** — the guided player can reset the current exercise set and its timer without leaving or restarting the rest of the workout.
+- **Full-screen exercise images** — tapping an image in an exercise detail card opens an aspect-ratio-preserving phone-safe viewer; Close or Back returns to the exercise card.
+
+### Changed
+
+- **Focused workout targets** — personal-best values are no longer shown during an active workout; they remain available on the Progress screens.
+- **Workout editing flow** — successfully saving an edited workout now closes the editor and returns to the workout library.
+- **Back-button behavior** — browser and Android Back now close the top open detail card, form, menu or confirmation before navigating away from its underlying page.
+
+### Fixed
+
+- **Private exercise images offline** — sync now prefetches private exercise images into persistent device storage. Once downloaded, photographs and GIFs remain visible without the server and across app restarts, update efficiently when the server file changes, and leave the cache only when manually removed.
+- **Dark-theme exercise media** — guided-workout image frames no longer force a white background when an image uses `object-contain` or does not match the frame's aspect ratio.
+- **Phone system-bar spacing** — the top navigation now respects Capacitor and browser safe-area insets, keeping sync, account and menu controls below status-bar indicators; bottom workout controls and toasts use the matching navigation-bar inset.
+- **Exercise detail sizing** — exercise details use the full available phone height with scrollable content and a fixed action area, preventing Progress, Share, Edit or Try exercise from being clipped outside the popup.
+
 ## [1.0.4] - 2026-09-10
 
 ### Added
@@ -103,7 +126,8 @@ First release. The app was usable and offline-capable throughout development; th
 - Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.0...v1.0.2

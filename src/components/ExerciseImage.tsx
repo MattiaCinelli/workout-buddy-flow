@@ -1,5 +1,9 @@
 import { ImgHTMLAttributes, useEffect, useState } from 'react';
-import { fetchPrivateExerciseImage, privateExerciseImageFilename } from '@/lib/exerciseMediaClient';
+import {
+  fetchPrivateExerciseImage,
+  privateExerciseImageFilename,
+  subscribePrivateExerciseImageAvailable,
+} from '@/lib/exerciseMediaClient';
 
 interface ExerciseImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   imageUrl: string;
@@ -20,18 +24,27 @@ const ExerciseImage = ({ imageUrl, fallbackUrl = '/placeholder.svg', ...props }:
 
     const controller = new AbortController();
     let objectUrl: string | undefined;
+    const load = () => {
+      fetchPrivateExerciseImage(privateFilename, controller.signal)
+        .then(blob => {
+          const nextObjectUrl = URL.createObjectURL(blob);
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+          objectUrl = nextObjectUrl;
+          setSrc(nextObjectUrl);
+        })
+        .catch(error => {
+          if (error instanceof Error && error.name === 'AbortError') return;
+          setSrc(fallbackUrl);
+        });
+    };
     setSrc(fallbackUrl);
-    fetchPrivateExerciseImage(privateFilename, controller.signal)
-      .then(blob => {
-        objectUrl = URL.createObjectURL(blob);
-        setSrc(objectUrl);
-      })
-      .catch(error => {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        setSrc(fallbackUrl);
-      });
+    load();
+    const unsubscribe = subscribePrivateExerciseImageAvailable(filename => {
+      if (filename === privateFilename) load();
+    });
 
     return () => {
+      unsubscribe();
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };

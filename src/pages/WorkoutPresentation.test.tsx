@@ -38,7 +38,7 @@ vi.mock('@/lib/accessibilitySettings', () => ({
 }));
 vi.mock('@/contexts/DataContext', () => ({
   useData: () => ({
-    workouts, exercises, sessions: [], workoutsLoading: false,
+    workouts, exercises, sessions: [], workoutsLoading: false, exercisesLoading: false,
     createSession, deleteSession: vi.fn(),
     completeWorkoutInCourse: vi.fn(), uncompleteWorkoutInCourse: vi.fn(),
     courses: [], scheduledWorkouts: [],
@@ -124,6 +124,21 @@ describe('WorkoutPresentation — guided run', () => {
     expect(spoke('Rest')).toBe(true); // auto-advanced into the between-sets rest
   });
 
+  it('restarts only the current timed exercise without leaving the workout', async () => {
+    setExercises([ex({ id: 'plank', name: 'Plank', logType: 'time' })]);
+    setWorkout([{ exerciseId: 'plank', duration: 30 }, { exerciseId: 'plank', duration: 30 }]);
+
+    await startAndSkipPrep();
+    await advance(11_000);
+    expect(screen.getByRole('timer', { name: '19 seconds remaining' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restart exercise' }));
+
+    expect(screen.getByRole('timer', { name: '30 seconds remaining' })).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
   it('the rest before a different exercise is announced as "changing exercise" and names it', async () => {
     setExercises([
       ex({ id: 'plank', name: 'Plank', logType: 'time' }),
@@ -154,6 +169,28 @@ describe('WorkoutPresentation — guided run', () => {
 
     expect(createSession).toHaveBeenCalledOnce();
     expect(navigate).toHaveBeenLastCalledWith('/');
+  });
+
+  it('runs an exercise trial without creating history and returns to the exercise library', async () => {
+    workouts.length = 0;
+    setExercises([ex({
+      id: 'w1', name: 'Trial Stretch', logType: 'reps',
+      defaultSets: 1, defaultReps: 8, secondsPerRep: 3,
+    })]);
+
+    render(<WorkoutPresentation trialMode />);
+    await act(async () => { await Promise.resolve(); });
+    await advance(10_000);
+    expect(screen.getByText(/8 reps/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /finish/i }));
+    expect(screen.getByRole('heading', { name: 'Exercise trial complete' })).toBeInTheDocument();
+    expect(screen.getByText(/not added to your history/i)).toBeInTheDocument();
+    expect(createSession).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /return to exercises/i }));
+    expect(navigate).toHaveBeenLastCalledWith('/exercises');
+    expect(createSession).not.toHaveBeenCalled();
   });
 
   it('excludes paused time from the recorded workout duration', async () => {

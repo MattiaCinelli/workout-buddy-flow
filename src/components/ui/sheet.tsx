@@ -4,8 +4,22 @@ import { X } from "lucide-react"
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { useBackDismiss } from "@/hooks/useBackDismiss"
 
-const Sheet = SheetPrimitive.Root
+const Sheet = ({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) => {
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const setOpen = React.useCallback((nextOpen: boolean) => {
+    if (!isControlled) setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }, [isControlled, onOpenChange])
+
+  useBackDismiss(isOpen, () => setOpen(false))
+
+  return <SheetPrimitive.Root {...props} open={isOpen} onOpenChange={setOpen} />
+}
+Sheet.displayName = SheetPrimitive.Root.displayName
 
 const SheetTrigger = SheetPrimitive.Trigger
 
@@ -128,4 +142,3 @@ export {
   Sheet, SheetClose,
   SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetOverlay, SheetPortal, SheetTitle, SheetTrigger
 }
-

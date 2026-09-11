@@ -31,6 +31,8 @@ const mobilityIds = [
   'mobility-downward-dog-heel-pumps',
   'mobility-thread-the-needle',
   'mobility-foam-roller-thoracic-extension',
+  'mobility-standing-pancake-stretch',
+  'mobility-hurdler-stretch',
 ];
 
 describe('starter mobility exercises', () => {

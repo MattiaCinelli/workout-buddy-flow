@@ -3,8 +3,22 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { useBackDismiss } from "@/hooks/useBackDismiss"
 
-const AlertDialog = AlertDialogPrimitive.Root
+const AlertDialog = ({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) => {
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const setOpen = React.useCallback((nextOpen: boolean) => {
+    if (!isControlled) setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }, [isControlled, onOpenChange])
+
+  useBackDismiss(isOpen, () => setOpen(false))
+
+  return <AlertDialogPrimitive.Root {...props} open={isOpen} onOpenChange={setOpen} />
+}
+AlertDialog.displayName = AlertDialogPrimitive.Root.displayName
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 

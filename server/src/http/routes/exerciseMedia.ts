@@ -19,9 +19,18 @@ export const registerExerciseMediaRoute = (app: FastifyInstance) => {
       const mediaDirectory = getExerciseMediaDirectory();
       const filePath = path.join(mediaDirectory, filename);
       try {
-        const file = await fs.readFile(filePath);
+        const [file, stat] = await Promise.all([fs.readFile(filePath), fs.stat(filePath)]);
+        const etag = `W/"${stat.size}-${Math.trunc(stat.mtimeMs)}"`;
+        if (request.headers['if-none-match'] === etag) {
+          return reply
+            .header('Cache-Control', 'private, max-age=86400')
+            .header('ETag', etag)
+            .code(304)
+            .send();
+        }
         return reply
           .header('Cache-Control', 'private, max-age=86400')
+          .header('ETag', etag)
           .type(filename.endsWith('.gif') ? 'image/gif' : 'image/jpeg')
           .send(file);
       } catch (error) {

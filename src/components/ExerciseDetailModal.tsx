@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Loader2, Pencil, Repeat, Share2, Timer, TrendingUp, Video } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Pencil, Play, Repeat, Share2, Timer, TrendingUp, Video, ZoomIn } from 'lucide-react';
 import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
@@ -44,6 +44,7 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
   const { muscleGroups } = useData();
   const navigate = useNavigate();
   const [sharing, setSharing] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
 
   const handleShare = async () => {
     if (!exercise) return;
@@ -76,7 +77,8 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
 
   return (
     <Dialog open={!!exercise} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:max-h-[90vh] sm:w-[calc(100%-2rem)] sm:max-w-[640px] sm:rounded-lg sm:border [&>button]:right-[max(1rem,var(--app-safe-area-right))] [&>button]:top-[max(1rem,var(--app-safe-area-top))] sm:[&>button]:right-4 sm:[&>button]:top-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 pt-[max(3.5rem,calc(var(--app-safe-area-top)+3rem))] sm:px-6 sm:pb-4 sm:pt-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             {exercise.name}
@@ -98,11 +100,21 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
         )}
 
         {exercise.imageUrl ? (
-          <ExerciseImage
-            imageUrl={exercise.imageUrl}
-            alt={exercise.name}
-            className="w-full max-h-64 object-contain rounded-md bg-muted"
-          />
+          <button
+            type="button"
+            onClick={() => setImageOpen(true)}
+            className="group relative w-full overflow-hidden rounded-md bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`View ${exercise.name} image full screen`}
+          >
+            <ExerciseImage
+              imageUrl={exercise.imageUrl}
+              alt={exercise.name}
+              className="max-h-64 w-full cursor-zoom-in object-contain"
+            />
+            <span className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-md transition-transform group-hover:scale-105" aria-hidden="true">
+              <ZoomIn className="h-4 w-4" />
+            </span>
+          </button>
         ) : (
           <div className="w-full h-32 rounded-md bg-muted flex items-center justify-center">
             <ImageIcon className="h-10 w-10 text-muted-foreground" />
@@ -133,9 +145,10 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
             <p className="text-sm">{exercise.instructions}</p>
           </div>
         )}
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" className="sm:mr-auto" onClick={() => { onClose(); navigate(`/exercises/${exercise.id}/progress`); }}>
+        <DialogFooter data-exercise-actions className="grid shrink-0 grid-cols-2 gap-2 space-x-0 border-t bg-card px-4 py-3 pb-[max(.75rem,var(--app-safe-area-bottom))] [&>button]:min-w-0 [&>button]:w-full [&>button]:px-2 [&>button]:text-sm sm:grid-cols-2 sm:space-x-0 sm:px-6 sm:pb-6 sm:pt-3">
+          <Button variant="outline" onClick={() => { onClose(); navigate(`/exercises/${exercise.id}/progress`); }}>
             <TrendingUp className="h-4 w-4 mr-2" /> Progress
           </Button>
           <Button variant="outline" onClick={handleShare} disabled={sharing}>
@@ -144,8 +157,23 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
           <Button variant="outline" onClick={() => onEdit(exercise)}>
             <Pencil className="h-4 w-4 mr-2" /> Edit
           </Button>
+          <Button onClick={() => { onClose(); navigate(`/exercises/${exercise.id}/try`); }}>
+            <Play className="h-4 w-4 mr-2" /> Try exercise
+          </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+        <DialogContent className="flex h-[100dvh] w-screen max-w-none items-center justify-center overflow-hidden rounded-none border-0 bg-black/95 px-[max(1rem,var(--app-safe-area-left))] pb-[max(1rem,var(--app-safe-area-bottom))] pt-[max(1rem,var(--app-safe-area-top))] shadow-none [&>button]:right-[max(1rem,var(--app-safe-area-right))] [&>button]:top-[max(1rem,var(--app-safe-area-top))] [&>button]:z-10 [&>button]:bg-black/65 [&>button]:p-2 [&>button]:text-white [&>button]:opacity-100">
+          <DialogTitle className="sr-only">{exercise.name} image</DialogTitle>
+          <DialogDescription className="sr-only">Full-screen exercise image. Press Back or Close to return to the exercise details.</DialogDescription>
+          <ExerciseImage
+            imageUrl={exercise.imageUrl}
+            alt={`${exercise.name} — full screen`}
+            className="max-h-full max-w-full object-contain"
+          />
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

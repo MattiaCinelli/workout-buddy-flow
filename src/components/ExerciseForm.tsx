@@ -26,6 +26,7 @@ import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
 import ExerciseImage from '@/components/ExerciseImage';
 import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
+import { removeCachedPrivateExerciseImage } from '@/lib/exerciseMediaClient';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
   if (!value?.trim()) return true;
@@ -219,6 +220,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   };
 
   const handleRemoveImage = () => {
+    const currentImage = form.getValues('imageUrl');
+    if (currentImage) void removeCachedPrivateExerciseImage(currentImage);
     form.setValue('imageUrl', '');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -226,6 +229,8 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   };
 
   const handleRemoveDirectionImage = (direction: ExecutionDirection) => {
+    const currentImage = form.getValues(`directionImageUrls.${direction}`);
+    if (currentImage) void removeCachedPrivateExerciseImage(currentImage);
     form.setValue(`directionImageUrls.${direction}`, '');
     const input = directionFileInputRefs.current[direction];
     if (input) input.value = '';

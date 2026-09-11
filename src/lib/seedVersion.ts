@@ -8,7 +8,7 @@ import { defaultMuscleGroups } from '@/data/muscleGroups';
 // courses, muscle groups). Removing or editing a default is not a reason to
 // bump — the migration is purely additive and never touches a record the
 // user already has (or has deleted).
-export const SEED_VERSION = 5;
+export const SEED_VERSION = 6;
 
 // Every id the app ships as a default. A tombstone for one of these must
 // NOT be compacted away by sync — it is the only record that the user

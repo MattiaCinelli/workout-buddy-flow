@@ -27,6 +27,13 @@ html.reduce-motion *::after {
 
 @layer base {
   :root {
+    /* Capacitor 8 injects --safe-area-inset-* on edge-to-edge Android;
+       browsers expose the equivalent env() values. Use whichever is larger. */
+    --app-safe-area-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+    --app-safe-area-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+    --app-safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+    --app-safe-area-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+
     --background: 216 33% 97%;
     --foreground: 222 47% 11%;
 
@@ -268,7 +275,7 @@ html:not(.starship) nav {
   .interface-preview--starship .interface-preview__nav { border-radius: 999px 3px 3px 999px; background: linear-gradient(90deg, #ff9966 0 45%, #08080f 45% 48%, #cc99cc 48% 72%, #08080f 72% 75%, #ffcc99 75%); }
   .interface-preview--starship .interface-preview__panel { border-color: #72558f; border-radius: 2px 10px 2px 10px; background: #15131e; }
   .lcars-app { overflow-x: hidden; }
-  .lcars-nav { background: var(--lcars-shell); border: 0; padding-top: .6rem; }
+  .lcars-nav { background: var(--lcars-shell); border: 0; padding-top: calc(var(--app-safe-area-top) + .6rem); }
   .lcars-nav > .container { min-height: 68px; }
   .lcars-top-rail, .lcars-bottom-rail, .lcars-footer {
     display: grid; align-items: center; gap: 6px; color: var(--lcars-ink);
@@ -343,7 +350,10 @@ html:not(.starship) nav {
 }
 
 @media (max-width: 767px) {
-  .lcars-nav { padding-inline: .75rem; }
+  .lcars-nav {
+    padding-left: calc(var(--app-safe-area-left) + .75rem);
+    padding-right: calc(var(--app-safe-area-right) + .75rem);
+  }
   .lcars-top-rail { grid-template-columns: 1fr .4fr auto; }
   .lcars-top-rail span:last-child { font-size: .55rem; }
   .lcars-main::before { display: none; }
@@ -366,7 +376,7 @@ html:not(.starship) .lcars-nav {
   color: #cbd5e1;
   background: rgb(10 17 31 / .96);
   border-bottom: 1px solid rgb(148 163 184 / .14);
-  padding-top: .7rem;
+  padding-top: calc(var(--app-safe-area-top) + .7rem);
   padding-bottom: .7rem;
   box-shadow: 0 1px 2px rgb(2 6 23 / .35), 0 18px 36px -28px rgb(2 6 23 / .8);
   backdrop-filter: blur(16px);

@@ -3,8 +3,22 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useBackDismiss } from "@/hooks/useBackDismiss"
 
-const Dialog = DialogPrimitive.Root
+const Dialog = ({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) => {
+  const [internalOpen, setInternalOpen] = React.useState(defaultOpen ?? false)
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const setOpen = React.useCallback((nextOpen: boolean) => {
+    if (!isControlled) setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }, [isControlled, onOpenChange])
+
+  useBackDismiss(isOpen, () => setOpen(false))
+
+  return <DialogPrimitive.Root {...props} open={isOpen} onOpenChange={setOpen} />
+}
+Dialog.displayName = DialogPrimitive.Root.displayName
 
 const DialogTrigger = DialogPrimitive.Trigger
 

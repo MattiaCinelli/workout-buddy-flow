@@ -40,6 +40,15 @@ test('private exercise media requires auth and only serves safe image names', as
   assert.match(response.headers['content-type'] ?? '', /^image\/jpeg/);
   assert.deepEqual(response.rawPayload, jpeg);
   assert.match(response.headers['cache-control'] ?? '', /private/);
+  assert.match(response.headers.etag ?? '', /^W\//);
+
+  const unchanged = await app.inject({
+    method: 'GET',
+    url: '/media/exercises/mobility-test.jpg',
+    headers: { ...headers, 'if-none-match': response.headers.etag! },
+  });
+  assert.equal(unchanged.statusCode, 304);
+  assert.equal(unchanged.rawPayload.length, 0);
 
   const animation = await app.inject({ method: 'GET', url: '/media/exercises/mobility-test.gif', headers });
   assert.equal(animation.statusCode, 200);
