@@ -81,10 +81,22 @@ const setSyncActive = (delta: 1 | -1) => {
 
 const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
-const errorMessageFrom = async (response: Response): Promise<string> => {
+const errorMessageFrom = async (response: Response, requestBytes?: number): Promise<string> => {
   const body = await response.json().catch(() => null) as { error?: string; message?: string } | null;
-  return body?.error || body?.message || `Request failed (${response.status})`;
+  const base = body?.error || body?.message || `Request failed (${response.status})`;
+  if (response.status === 413) {
+    const sent = requestBytes !== undefined ? formatBytes(requestBytes) : 'an unknown size';
+    // Fastify's default bodyLimit is 1 MiB; servers built from this repo
+    // allow 50 MB. Either way the rejection means the running server is
+    // older/smaller than what the client just sent.
+    return `${base} — this device tried to send ${sent}, but the server rejected it. `
+      + 'If you just updated the server code, restart it so the new 50 MB limit takes effect.';
+  }
+  return base;
 };
+
+const formatBytes = (bytes: number): string =>
+  bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 
 export const login = async (serverUrl: string, email: string, password: string): Promise<void> => {
   const url = normalizeUrl(serverUrl);
