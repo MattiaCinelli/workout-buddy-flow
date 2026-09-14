@@ -165,7 +165,8 @@ const authorizedRequest = async <T>(path: string, options: RequestInit = {}): Pr
     ...options,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers ?? {}) },
   });
-  if (!response.ok) throw new Error(await errorMessageFrom(response));
+  const requestBytes = typeof options.body === 'string' ? options.body.length : undefined;
+  if (!response.ok) throw new Error(await errorMessageFrom(response, requestBytes));
   // A 204 (e.g. /account/password) has no body — response.json() throws
   // ("Unexpected end of JSON input") on an empty body rather than
   // returning something falsy, so this has to be checked explicitly.
