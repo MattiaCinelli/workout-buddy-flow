@@ -81,10 +81,22 @@ const setSyncActive = (delta: 1 | -1) => {
 
 const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
 
-const errorMessageFrom = async (response: Response): Promise<string> => {
+const errorMessageFrom = async (response: Response, requestBytes?: number): Promise<string> => {
   const body = await response.json().catch(() => null) as { error?: string; message?: string } | null;
-  return body?.error || body?.message || `Request failed (${response.status})`;
+  const base = body?.error || body?.message || `Request failed (${response.status})`;
+  if (response.status === 413) {
+    const sent = requestBytes !== undefined ? formatBytes(requestBytes) : 'an unknown size';
+    // Fastify's default bodyLimit is 1 MiB; servers built from this repo
+    // allow 50 MB. Either way the rejection means the running server is
+    // older/smaller than what the client just sent.
+    return `${base} — this device tried to send ${sent}, but the server rejected it. `
+      + 'If you just updated the server code, restart it so the new 50 MB limit takes effect.';
+  }
+  return base;
 };
+
+const formatBytes = (bytes: number): string =>
+  bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
 
 export const login = async (serverUrl: string, email: string, password: string): Promise<void> => {
   const url = normalizeUrl(serverUrl);
@@ -153,7 +165,8 @@ const authorizedRequest = async <T>(path: string, options: RequestInit = {}): Pr
     ...options,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers ?? {}) },
   });
-  if (!response.ok) throw new Error(await errorMessageFrom(response));
+  const requestBytes = typeof options.body === 'string' ? options.body.length : undefined;
+  if (!response.ok) throw new Error(await errorMessageFrom(response, requestBytes));
   // A 204 (e.g. /account/password) has no body — response.json() throws
   // ("Unexpected end of JSON input") on an empty body rather than
   // returning something falsy, so this has to be checked explicitly.
@@ -169,19 +182,38 @@ const pull = async <T extends SyncedRecord>(collection: string, since?: string) 
 
 const push = async <T extends SyncedRecord>(collection: string, items: T[]): Promise<T[]> => {
   if (items.length === 0) return [];
-  // The server intentionally caps one transaction at 1,000 records. Keep
-  // some headroom and split large personal histories instead of making a
-  // collection permanently unsyncable once it crosses that threshold.
-  const batchSize = 500;
+  // Chunk by bytes, not record count: the server caps one request body
+  // (Fastify bodyLimit), and 500 records with embedded images can be many
+  // megabytes while 500 plain records are a few KB. A byte budget keeps
+  // every request under the cap regardless of what's in the records.
+  const maxRequestBytes = 512 * 1024;
   const stored: T[] = [];
-  for (let offset = 0; offset < items.length; offset += batchSize) {
-    const batch = items.slice(offset, offset + batchSize);
+  let batch: T[] = [];
+  let batchBytes = 0;
+
+  const sendBatch = async () => {
+    if (batch.length === 0) return;
     const body = await authorizedRequest<Record<string, unknown>>(`/sync/${collection}`, {
       method: 'POST',
       body: JSON.stringify({ [collection]: batch }),
     });
     stored.push(...((body[collection] ?? []) as T[]));
+    batch = [];
+    batchBytes = 0;
+  };
+
+  for (const item of items) {
+    const itemBytes = JSON.stringify(item).length;
+    // A single record larger than the budget still goes out on its own —
+    // the server limit is the only real ceiling, and splitting a record
+    // is impossible.
+    if (batch.length > 0 && batchBytes + itemBytes > maxRequestBytes) {
+      await sendBatch();
+    }
+    batch.push(item);
+    batchBytes += itemBytes;
   }
+  await sendBatch();
   return stored;
 };
 
