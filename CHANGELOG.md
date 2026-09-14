@@ -8,6 +8,10 @@ Versioning covers the app in `src/` and the optional sync server in `server/`
 together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
+## [1.0.6] - 2026-09-14
+
+### Changed
+- Increase max load for sync.
 
 ## [1.0.5] - 2026-09-11
 
@@ -127,6 +131,7 @@ First release. The app was usable and offline-capable throughout development; th
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
 [Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...HEAD
+[1.0.6]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.2...v1.0.3
