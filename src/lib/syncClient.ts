@@ -169,19 +169,38 @@ const pull = async <T extends SyncedRecord>(collection: string, since?: string) 
 
 const push = async <T extends SyncedRecord>(collection: string, items: T[]): Promise<T[]> => {
   if (items.length === 0) return [];
-  // The server intentionally caps one transaction at 1,000 records. Keep
-  // some headroom and split large personal histories instead of making a
-  // collection permanently unsyncable once it crosses that threshold.
-  const batchSize = 500;
+  // Chunk by bytes, not record count: the server caps one request body
+  // (Fastify bodyLimit), and 500 records with embedded images can be many
+  // megabytes while 500 plain records are a few KB. A byte budget keeps
+  // every request under the cap regardless of what's in the records.
+  const maxRequestBytes = 512 * 1024;
   const stored: T[] = [];
-  for (let offset = 0; offset < items.length; offset += batchSize) {
-    const batch = items.slice(offset, offset + batchSize);
+  let batch: T[] = [];
+  let batchBytes = 0;
+
+  const sendBatch = async () => {
+    if (batch.length === 0) return;
     const body = await authorizedRequest<Record<string, unknown>>(`/sync/${collection}`, {
       method: 'POST',
       body: JSON.stringify({ [collection]: batch }),
     });
     stored.push(...((body[collection] ?? []) as T[]));
+    batch = [];
+    batchBytes = 0;
+  };
+
+  for (const item of items) {
+    const itemBytes = JSON.stringify(item).length;
+    // A single record larger than the budget still goes out on its own —
+    // the server limit is the only real ceiling, and splitting a record
+    // is impossible.
+    if (batch.length > 0 && batchBytes + itemBytes > maxRequestBytes) {
+      await sendBatch();
+    }
+    batch.push(item);
+    batchBytes += itemBytes;
   }
+  await sendBatch();
   return stored;
 };
 
