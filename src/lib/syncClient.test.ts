@@ -381,7 +381,7 @@ describe('sync activity signal', () => {
     expect(isSyncing()).toBe(false);
 
     expect(seen[0]).toBe(true);
-    expect(seen.at(-1)).toBe(false);
+    expect(seen[seen.length - 1]).toBe(false);
     unsubscribe();
   });
 });

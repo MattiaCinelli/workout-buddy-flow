@@ -22,7 +22,12 @@ declare module 'fastify' {
 // via app.inject() (no real socket, no port conflicts) — see src/index.ts
 // for the process that actually listens.
 export const buildApp = (db: Db): FastifyInstance => {
-  const app = Fastify({ logger: false });
+  // bodyLimit: Fastify's default is 1 MiB, which a full sync push (exercise
+  // images, workout history, …) easily exceeds — the client then gets a
+  // "413 Payload Too Large" with no useful message. Allow generous batches;
+  // the per-request maxItems caps in the sync routes still bound how many
+  // records a single push can contain.
+  const app = Fastify({ logger: false, bodyLimit: 50 * 1024 * 1024 });
   app.decorate('db', db);
 
   // Reflects whatever Origin the request sends (there's no cookie session
