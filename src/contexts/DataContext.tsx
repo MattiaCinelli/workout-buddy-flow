@@ -101,6 +101,12 @@ interface DataContextType {
   deleteBodyMetric: (id: string) => Promise<BodyMetric | null>;
   refreshBodyMetrics: () => Promise<void>;
 
+  /** Writes a whole record back into a collection and reloads it. Used by the
+   *  sync-conflict banner to restore a local version the server overwrote —
+   *  the regular `update*` calls can't, because the record may no longer be
+   *  in the in-memory view (a deletion arrived from the other device). */
+  restoreRecord: (collection: SyncedCollection, record: Record<string, unknown>) => Promise<void>;
+
   // Combined loading state
   isLoading: boolean;
 }
