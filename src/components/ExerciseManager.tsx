@@ -21,6 +21,8 @@ import ExerciseForm from './ExerciseForm';
 import ImportShareButton from './ImportShareButton';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
+import { ManageEquipmentModal } from './ManageEquipmentModal';
+import { useEquipment } from '@/hooks/useEquipment';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, X, FileImage, Loader2, Settings2, LayoutGrid, List, Library } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
@@ -49,6 +51,7 @@ const ExerciseManager: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<ExerciseCategoryFilter>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<ExerciseDifficultyFilter>('all');
   const [viewMode, setViewMode] = useState<ExerciseViewMode>(initialViewMode);
@@ -57,16 +60,20 @@ const ExerciseManager: React.FC = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isManageMusclesOpen, setIsManageMusclesOpen] = useState(false);
+  const [isManageEquipmentOpen, setIsManageEquipmentOpen] = useState(false);
+  const { equipment: equipmentOptions } = useEquipment();
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
 
   const filteredExercises = useMemo(() => filterExerciseLibrary(exercises, {
     searchQuery,
     muscleGroupIds: selectedMuscles,
+    equipment: selectedEquipment,
     category: categoryFilter,
     difficulty: difficultyFilter,
   }, id => muscleGroups.find(group => group.id === id)?.name ?? id),
-  [exercises, searchQuery, selectedMuscles, categoryFilter, difficultyFilter, muscleGroups]);
+  [exercises, searchQuery, selectedMuscles, selectedEquipment, categoryFilter, difficultyFilter, muscleGroups]);
   const hasActiveFilters = !!searchQuery.trim() || selectedMuscles.length > 0
+    || selectedEquipment.length > 0
     || categoryFilter !== 'all' || difficultyFilter !== 'all';
 
   const changeViewMode = (value: string) => {
@@ -78,6 +85,7 @@ const ExerciseManager: React.FC = () => {
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedMuscles([]);
+    setSelectedEquipment([]);
     setCategoryFilter('all');
     setDifficultyFilter('all');
   };
@@ -276,29 +284,44 @@ const ExerciseManager: React.FC = () => {
           </Select>
         </div>
 
-        <div className="border-t border-border/60 pt-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">Muscle groups</p>
-            <button
-              type="button"
-              onClick={() => setIsManageMusclesOpen(true)}
-              className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+        <div className="grid min-w-0 gap-4 border-t border-border/60 pt-3 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border/60">
+          <div className="min-w-0 md:pr-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Muscle groups</p>
+              <button
+                type="button"
+                onClick={() => setIsManageMusclesOpen(true)}
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                <Settings2 className="h-3 w-3" /> Manage
+              </button>
+            </div>
+            <ToggleGroup
+              type="multiple"
+              value={selectedMuscles}
+              onValueChange={(value) => setSelectedMuscles(value)}
+              className="max-w-full justify-start flex-nowrap overflow-x-auto pb-1"
             >
-              <Settings2 className="h-3 w-3" /> Manage
-            </button>
+              {muscleGroups.map((group) => (
+                <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                  {group.name}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
-          <ToggleGroup
-            type="multiple"
-            value={selectedMuscles}
-            onValueChange={(value) => setSelectedMuscles(value)}
-            className="justify-start flex-nowrap overflow-x-auto pb-1"
-          >
-            {muscleGroups.map((group) => (
-              <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
-                {group.name}
+
+          <div className="min-w-0 md:pl-4">
+          <div className="mb-2 flex items-center justify-between"><p className="text-sm font-medium text-muted-foreground">Equipment</p><button type="button" onClick={() => setIsManageEquipmentOpen(true)} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary"><Settings2 className="h-3 w-3" /> Manage</button></div>
+          <ToggleGroup type="multiple" value={selectedEquipment} onValueChange={setSelectedEquipment}
+            className="max-w-full justify-start flex-nowrap overflow-x-auto pb-1">
+            {equipmentOptions.map(item => (
+              <ToggleGroupItem key={item} value={item} aria-label={`Equipment: ${item}`}
+                className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                {item}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
+          </div>
         </div>
 
         <div className="flex min-h-9 items-center justify-between gap-2 border-t border-border/60 pt-3">
@@ -422,6 +445,7 @@ const ExerciseManager: React.FC = () => {
       </AlertDialog>
 
       <ManageMuscleGroupsModal isOpen={isManageMusclesOpen} onClose={() => setIsManageMusclesOpen(false)} />
+      <ManageEquipmentModal isOpen={isManageEquipmentOpen} onClose={() => setIsManageEquipmentOpen(false)} />
 
       <ExerciseDetailModal exercise={viewingExercise} onClose={() => setViewingExercise(null)} onEdit={handleEdit} />
     </div>

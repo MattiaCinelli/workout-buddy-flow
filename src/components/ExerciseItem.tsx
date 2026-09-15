@@ -104,6 +104,9 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
             <div className="text-sm text-muted-foreground mt-1">
               {muscleGroupNames}
             </div>
+            {!!exercise.equipment?.length && (
+              <div className="text-xs text-muted-foreground mt-1">Equipment: {exercise.equipment.join(', ')}</div>
+            )}
             {exercise.instructions && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                 {exercise.instructions}

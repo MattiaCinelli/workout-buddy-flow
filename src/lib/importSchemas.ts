@@ -13,6 +13,7 @@ export const exerciseImportSchema = z.object({
   aliases: z.array(z.string().min(1).max(100)).max(20).optional(),
   category: z.string(),
   muscleGroups: z.array(z.string()),
+  equipment: z.array(z.string()).optional(),
   difficulty: z.string(),
 }).passthrough();
 

@@ -33,6 +33,7 @@ const exerciseSchema = {
     aliases: { type: 'array', items: { type: 'string', minLength: 1, maxLength: 100 }, maxItems: 20, uniqueItems: true },
     category: { type: 'string' },
     muscleGroups: { type: 'array', items: { type: 'string' } },
+    equipment: { type: 'array', items: { type: 'string' } },
     difficulty: { type: 'string' },
     logType: { type: 'string' },
     defaultSets: { type: 'number' },

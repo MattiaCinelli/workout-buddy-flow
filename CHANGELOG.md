@@ -11,6 +11,7 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Changed
 
+- **Exercise equipment tags** — exercises can now be assigned one or more equipment requirements, display them in list and tile library views, filter or search the library by equipment, and preserve them through backup and self-hosted sync. The Exercise Library presents Muscle Groups and Equipment side by side, each with a manager for adding, renaming and deleting choices; changes safely retag affected exercises.
 - **Shorter workout rest defaults** — new workouts now default to 5 seconds between sets of the same exercise and 15 seconds when transitioning to another exercise.
 - **Visual week-by-week course builder** — course creation and editing now present day cards grouped by week. Each day can reuse a library workout or open the full workout creator in place; newly created workouts are assigned to the chosen week and day automatically, while the detailed schedule remains available for instructions and same-day ordering.
 - **Clearer workout exercise order** — selected exercises now show their numbered workout position in both the workout creator and existing-workout editor. The editor also displays the same compact exercise thumbnail above the Remove button as the creator.

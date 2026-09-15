@@ -51,6 +51,9 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
           <Badge variant="outline" className="h-5 max-w-full px-1.5 text-[10px] capitalize">{exercise.difficulty}</Badge>
         </div>
         <p className="mt-2 w-full truncate text-xs text-muted-foreground">{muscleNames || 'No muscle group'}</p>
+        {!!exercise.equipment?.length && (
+          <p className="mt-1 w-full truncate text-[11px] font-medium text-primary">{exercise.equipment.join(' · ')}</p>
+        )}
         <div className="mt-auto flex items-center gap-1 pt-2 text-xs text-muted-foreground">
           {logType === 'time' ? <Timer className="h-3 w-3" /> : <Repeat className="h-3 w-3" />}
           <span className="truncate">{target}</span>

@@ -1,4 +1,5 @@
 export type ExerciseLogType = 'reps' | 'time';
+export const DEFAULT_EQUIPMENT = ['Bodyweight', 'Dumbbells', 'Barbell', 'Bench', 'Resistance band', 'Cable machine', 'Kettlebell', 'Pull-up bar', 'Mat', 'Foam roller', 'Strap'] as const;
 export const EXECUTION_DIRECTIONS = ['left', 'right', 'forward', 'backward'] as const;
 export type ExecutionDirection = (typeof EXECUTION_DIRECTIONS)[number];
 export const EXECUTION_DIRECTION_LABELS: Record<ExecutionDirection, string> = {
@@ -21,6 +22,7 @@ export interface Exercise {
   aliases?: string[]; // Alternative searchable names, without creating duplicate exercise records
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
   muscleGroups: string[]; // MuscleGroup ids — see src/data/muscleGroups.ts
+  equipment?: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   // Whether a set of this exercise is measured in reps (push-ups) or a
   // duration (a yoga hold) — independent of category: a 'strength'

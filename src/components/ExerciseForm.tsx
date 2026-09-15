@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import ExerciseImage from '@/components/ExerciseImage';
 import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
 import { removeCachedPrivateExerciseImage } from '@/lib/exerciseMediaClient';
+import { useEquipment } from '@/hooks/useEquipment';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
   if (!value?.trim()) return true;
@@ -50,6 +51,7 @@ const formSchema = z.object({
   }, 'Use at most 20 alternative names, each no longer than 100 characters.'),
   category: z.enum(['strength', 'cardio', 'flexibility', 'balance']),
   muscleGroups: z.array(z.string()).default([]),
+  equipment: z.array(z.string()).default([]),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   logType: z.enum(['reps', 'time']),
   executionDirections: z.array(z.enum(EXECUTION_DIRECTIONS)).default([]),
@@ -109,6 +111,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const [processingImage, setProcessingImage] = useState<'default' | ExecutionDirection | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(!!exercise?.secondsPerRep || !!exercise?.progression);
   const { muscleGroups: availableMuscleGroups } = useData();
+  const { equipment: availableEquipment } = useEquipment();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -117,6 +120,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       aliases: exercise?.aliases?.join(', ') || "",
       category: exercise?.category || 'strength',
       muscleGroups: exercise?.muscleGroups || [],
+      equipment: exercise?.equipment || [],
       difficulty: exercise?.difficulty || 'beginner',
       logType: exercise ? getLogType(exercise) : 'reps',
       executionDirections: exercise ? getExecutionDirections(exercise) : [],
@@ -144,6 +148,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       aliases: aliases.length ? aliases : undefined,
       category: values.category,
       muscleGroups: values.muscleGroups,
+      equipment: values.equipment.length ? values.equipment : undefined,
       difficulty: values.difficulty,
       logType: values.logType,
       executionDirections: values.executionDirections.length ? values.executionDirections : undefined,
@@ -312,6 +317,24 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                 </SelectContent>
               </Select>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="equipment"
+          render={({ field }) => (
+            <FormItem className="grid gap-2">
+              <FormLabel>Equipment (optional)</FormLabel>
+              <FormControl>
+                <ToggleGroup type="multiple" value={field.value} onValueChange={field.onChange}
+                  className="justify-start flex-wrap" disabled={isSubmitting}>
+                  {availableEquipment.map(item => (
+                    <ToggleGroupItem key={item} value={item} aria-label={item} className="h-8 px-2.5 text-xs">{item}</ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              </FormControl>
             </FormItem>
           )}
         />
