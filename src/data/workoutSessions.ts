@@ -2,7 +2,6 @@ import { WorkoutEntry, WorkoutSet, WorkoutSetDirection } from './workoutHistory'
 
 export interface WorkoutSetResult {
   exerciseId: string;
-  variationId?: string;
   setIndex: number;
   completed: boolean;
   direction?: WorkoutSetDirection;

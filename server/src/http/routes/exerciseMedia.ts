@@ -4,7 +4,13 @@ import { FastifyInstance } from 'fastify';
 import { getExerciseMediaDirectory } from '../../config';
 import { requireAuth } from '../requireAuth';
 
-const SAFE_IMAGE_NAME = /^[a-z0-9][a-z0-9-]*\.(?:jpg|gif)$/;
+const SAFE_IMAGE_NAME = /^[a-z0-9][a-z0-9-]*\.(?:jpg|gif|svg)$/;
+
+const contentTypeFor = (filename: string): string => {
+  if (filename.endsWith('.gif')) return 'image/gif';
+  if (filename.endsWith('.svg')) return 'image/svg+xml';
+  return 'image/jpeg';
+};
 
 export const registerExerciseMediaRoute = (app: FastifyInstance) => {
   app.get<{ Params: { filename: string } }>(
@@ -31,7 +37,7 @@ export const registerExerciseMediaRoute = (app: FastifyInstance) => {
         return reply
           .header('Cache-Control', 'private, max-age=86400')
           .header('ETag', etag)
-          .type(filename.endsWith('.gif') ? 'image/gif' : 'image/jpeg')
+          .type(contentTypeFor(filename))
           .send(file);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

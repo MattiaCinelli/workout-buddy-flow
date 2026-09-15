@@ -29,7 +29,7 @@ import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
-import { getExerciseImageUrl, getExerciseVariation } from '@/data/exercises';
+import { getExerciseImageUrl } from '@/data/exercises';
 import { buildExerciseTrial } from '@/lib/exerciseTrial';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
@@ -232,7 +232,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
       setTimeLeft(duration);
       setDeadline(duration ? Date.now() + duration * 1000 : null);
     }
-    const plannedResults = workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, variationId: set.variationId, setIndex,
+    const plannedResults = workout.sets.map((set, setIndex) => ({ exerciseId: set.exerciseId, setIndex,
       completed: true, reps: set.reps, weight: set.weight, duration: set.duration, distance: set.distance,
       direction: set.direction, warmup: set.warmup, amrap: set.amrap }));
     setActualSets(saved?.actualSets ?? plannedResults);
@@ -524,7 +524,6 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
   const current = steps[activeStep];
   const upcoming = steps[activeStep + 1];
   const exercise = current?.exerciseId ? exercises.find(item => item.id === current.exerciseId) : undefined;
-  const variation = exercise ? getExerciseVariation(exercise, current?.variationId) : undefined;
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   // Self-paced steps have no live clock (timeLeft stays 0), so fall back to
   // their nominal duration for the "About X remaining" estimate. Rests and
@@ -590,14 +589,14 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
     <main className="flex flex-1 flex-col items-center overflow-y-auto px-3 pb-28 pt-2 sm:justify-center sm:p-6 sm:pb-28">
       {current.type === 'exercise' && exercise ? <div key={activeStep} className="workout-step-enter flex w-full flex-col items-center">
         <div className="relative w-full max-w-lg">
-          {getExerciseImageUrl(exercise, current.direction, current.variationId) ? (
-            <ExerciseImage imageUrl={getExerciseImageUrl(exercise, current.direction, current.variationId)!} alt={`${variation?.name ?? exercise.name}${current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}`} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-transparent object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
+          {getExerciseImageUrl(exercise, current.direction) ? (
+            <ExerciseImage imageUrl={getExerciseImageUrl(exercise, current.direction)!} alt={`${exercise.name}${current.direction ? ` — ${workoutDirectionLabel(current.direction)}` : ''}`} className="h-[min(42dvh,23rem)] w-full rounded-3xl border border-white/10 bg-transparent object-contain p-2 shadow-[0_24px_70px_-30px_rgb(0_0_0/.9)] sm:h-[min(46vh,30rem)] sm:p-4" />
           ) : (
             <div className="flex h-[min(38dvh,20rem)] w-full items-center justify-center rounded-3xl border border-white/10 bg-white/[.04] text-white/25">
               <Dumbbell className="h-20 w-20" aria-hidden="true" />
             </div>
           )}
-          {(exercise.videoUrl || variation?.instructions || exercise.instructions) && (
+          {(exercise.videoUrl || exercise.instructions) && (
             <div className="absolute right-3 top-3 flex gap-2">
               {exercise.videoUrl && (
                 <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer"
@@ -606,7 +605,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
                   <Video className="h-4 w-4" />
                 </a>
               )}
-              {(variation?.instructions || exercise.instructions) && (
+              {exercise.instructions && (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full border border-white/15 bg-slate-950/75 text-white shadow-lg backdrop-blur hover:bg-slate-900 hover:text-white"
@@ -615,8 +614,8 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent align="end" className="max-w-[calc(100vw-2rem)] text-left">
-                    <p className="mb-1 font-semibold">{variation?.name ?? exercise.name}</p>
-                    <p className="instruction-copy text-sm text-muted-foreground">{variation?.instructions ?? exercise.instructions}</p>
+                    <p className="mb-1 font-semibold">{exercise.name}</p>
+                    <p className="instruction-copy text-sm text-muted-foreground">{exercise.instructions}</p>
                   </PopoverContent>
                 </Popover>
               )}
@@ -624,7 +623,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
           )}
         </div>
         <div className="mt-4 text-center sm:mt-6">
-          {(variation || current.direction || current.warmup || current.amrap) && (
+          {(current.direction || current.warmup || current.amrap) && (
             <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
               {current.warmup && (
                 <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-300">Warm-up</span>
@@ -632,7 +631,6 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
               {current.amrap && (
                 <span className="rounded-full bg-workout-green/15 px-3 py-1 text-xs font-semibold text-workout-green">AMRAP</span>
               )}
-              {variation && <span className="rounded-full bg-sky-400/15 px-3 py-1 text-xs font-semibold text-sky-300">{variation.difficulty}</span>}
               {current.direction && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-workout-green/15 px-3 py-1 text-workout-green">
                   {current.direction === 'left' && <ArrowLeft className="h-4 w-4" aria-hidden="true" />}
@@ -644,7 +642,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
               )}
             </div>
           )}
-          <h2 className="text-2xl font-semibold leading-tight sm:text-3xl" aria-live="polite">{variation?.name ?? exercise.name}</h2>
+          <h2 className="text-2xl font-semibold leading-tight sm:text-3xl" aria-live="polite">{exercise.name}</h2>
           {current.amrap && current.reps ? (
             <p className="metric-number mt-2 text-5xl font-black leading-none sm:text-6xl">{current.reps} reps</p>
           ) : current.reps ? (
@@ -692,8 +690,8 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
         {upcoming && (
           <div className="mt-8 w-full max-w-sm rounded-3xl border border-white/10 bg-white/[.04] p-3 text-center">
             <p className="mb-2 text-sm font-medium text-workout-green">Next up</p>
-            {upcomingExercise && getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined, upcoming.variationId) && (
-              <ExerciseImage imageUrl={getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined, upcoming.variationId)!} alt={getExerciseVariation(upcomingExercise, upcoming.variationId)?.name ?? upcomingExercise.name}
+            {upcomingExercise && getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined) && (
+              <ExerciseImage imageUrl={getExerciseImageUrl(upcomingExercise, upcoming.type === 'exercise' ? upcoming.direction : undefined)!} alt={upcomingExercise.name}
                 className="mx-auto mb-3 h-44 w-full rounded-2xl bg-transparent object-contain p-2" />
             )}
             <p className="text-2xl font-semibold">{upcomingLabel}</p>

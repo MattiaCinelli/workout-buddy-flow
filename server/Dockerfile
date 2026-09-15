@@ -24,6 +24,7 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV DATABASE_PATH=/app/data/workout-buddy.sqlite
+ENV EXERCISE_MEDIA_DIR=/app/private/exercise-images
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
@@ -33,7 +34,8 @@ COPY package.json ./
 # its ownership is set before the volume takes it over — Docker copies an
 # image directory's existing content, including ownership, into a named
 # volume the first time it's mounted over that path.
-RUN mkdir -p /app/data && chown -R node:node /app/data
+RUN mkdir -p /app/data /app/private/exercise-images \
+  && chown -R node:node /app/data /app/private
 USER node
 
 EXPOSE 3000

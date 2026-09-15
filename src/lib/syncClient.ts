@@ -187,6 +187,7 @@ const push = async <T extends SyncedRecord>(collection: string, items: T[]): Pro
   // megabytes while 500 plain records are a few KB. A byte budget keeps
   // every request under the cap regardless of what's in the records.
   const maxRequestBytes = 512 * 1024;
+  const maxBatchItems = 1000;
   const stored: T[] = [];
   let batch: T[] = [];
   let batchBytes = 0;
@@ -207,7 +208,7 @@ const push = async <T extends SyncedRecord>(collection: string, items: T[]): Pro
     // A single record larger than the budget still goes out on its own —
     // the server limit is the only real ceiling, and splitting a record
     // is impossible.
-    if (batch.length > 0 && batchBytes + itemBytes > maxRequestBytes) {
+    if (batch.length > 0 && (batch.length >= maxBatchItems || batchBytes + itemBytes > maxRequestBytes)) {
       await sendBatch();
     }
     batch.push(item);

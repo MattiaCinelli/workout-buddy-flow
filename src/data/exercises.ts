@@ -15,19 +15,6 @@ export interface ExerciseProgression {
   repRangeMin?: number;  // 'double' only
   repRangeMax?: number;  // 'double' only
 }
-export interface ExerciseVariation {
-  id: string;
-  name: string;
-  difficulty: Exercise['difficulty'];
-  imageUrl?: string;
-  instructions?: string;
-  equipment?: string[];
-  defaultSets?: number;
-  defaultReps?: number;
-  defaultDuration?: number;
-  defaultWeight?: number;
-}
-
 export interface Exercise {
   id: string;
   name: string;
@@ -35,7 +22,9 @@ export interface Exercise {
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
   muscleGroups: string[]; // MuscleGroup ids — see src/data/muscleGroups.ts
   equipment?: string[];
-  variations?: ExerciseVariation[];
+  collectionId?: string;
+  collectionName?: string;
+  collectionOrder?: number;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   // Whether a set of this exercise is measured in reps (push-ups) or a
   // duration (a yoga hold) — independent of category: a 'strength'
@@ -81,28 +70,10 @@ export interface Exercise {
 }
 
 export const getExerciseImageUrl = (
-  exercise: Pick<Exercise, 'imageUrl' | 'directionImageUrls' | 'variations'>,
+  exercise: Pick<Exercise, 'imageUrl' | 'directionImageUrls'>,
   direction?: ExecutionDirection,
-  variationId?: string,
-): string | undefined => exercise.variations?.find(item => item.id === variationId)?.imageUrl
-  || (direction ? exercise.directionImageUrls?.[direction] : undefined)
+): string | undefined => (direction ? exercise.directionImageUrls?.[direction] : undefined)
   || exercise.imageUrl;
-
-export const getExerciseVariation = (exercise: Pick<Exercise, 'variations'>, id?: string) =>
-  exercise.variations?.find(item => item.id === id);
-
-export const exerciseVariationAsExercise = (exercise: Exercise, variation: ExerciseVariation): Exercise => ({
-  ...exercise,
-  name: variation.name,
-  difficulty: variation.difficulty,
-  imageUrl: variation.imageUrl ?? exercise.imageUrl,
-  instructions: variation.instructions ?? exercise.instructions,
-  equipment: variation.equipment ?? exercise.equipment,
-  defaultSets: variation.defaultSets ?? exercise.defaultSets,
-  defaultReps: variation.defaultReps ?? exercise.defaultReps,
-  defaultDuration: variation.defaultDuration ?? exercise.defaultDuration,
-  defaultWeight: variation.defaultWeight ?? exercise.defaultWeight,
-});
 
 export const getExecutionDirections = (
   exercise: Pick<Exercise, 'executionDirections' | 'unilateral'>,
@@ -133,7 +104,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 50,
     instructions: 'Bar across your upper back, feet shoulder-width apart. Bend knees and hips to lower until thighs are parallel to the floor, keeping your chest up and knees tracking over your toes, then drive back up.',
-    imageUrl: '/exercises/squat.svg',
+    imageUrl: 'private-exercise:squat.svg',
     progression: { mode: 'linear', incrementKg: 2.5 }
   },
   {
@@ -147,7 +118,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 40,
     instructions: 'Lie on the bench, grip the bar slightly wider than shoulder-width. Lower it to your mid-chest with control, then press back up to full arm extension without flaring your elbows too wide.',
-    imageUrl: '/exercises/bench-press.svg',
+    imageUrl: 'private-exercise:bench-press.svg',
     progression: { mode: 'linear', incrementKg: 2.5 }
   },
   {
@@ -161,7 +132,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 5,
     defaultWeight: 60,
     instructions: 'Stand with the bar over mid-foot, hinge at the hips to grip it just outside your knees. Keep your back flat and chest up as you drive through your heels to stand tall, then lower with control.',
-    imageUrl: '/exercises/hinge.svg',
+    imageUrl: 'private-exercise:hinge.svg',
     progression: { mode: 'linear', incrementKg: 5 }
   },
   {
@@ -174,7 +145,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 6,
     instructions: 'Hang from the bar with an overhand grip, hands just outside shoulder width. Pull yourself up until your chin clears the bar, then lower back down under control until arms are fully extended.',
-    imageUrl: '/exercises/pull-up.svg'
+    imageUrl: 'private-exercise:pull-up.svg'
   },
   {
     id: '5',
@@ -186,7 +157,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 15,
     instructions: 'Hands slightly wider than shoulders, body in a straight line from head to heels. Lower your chest to just above the floor, then push back up without letting your hips sag.',
-    imageUrl: '/exercises/push-up.svg'
+    imageUrl: 'private-exercise:push-up.svg'
   },
   {
     id: '6',
@@ -199,7 +170,7 @@ export const exerciseList: Exercise[] = [
     defaultDuration: 1200,
     defaultDistance: 3000,
     instructions: 'Keep a relaxed upright posture with a slight forward lean, land midfoot under your hips rather than reaching out with your heel, and settle into a pace you can sustain while still holding a conversation.',
-    imageUrl: '/exercises/run.svg'
+    imageUrl: 'private-exercise:run.svg'
   },
   {
     id: '7',
@@ -212,7 +183,7 @@ export const exerciseList: Exercise[] = [
     defaultDuration: 1800,
     defaultDistance: 10000,
     instructions: 'Set the seat height so your knee has a slight bend at the bottom of the pedal stroke. Keep a steady cadence and even pressure through the whole pedal circle rather than just stomping down.',
-    imageUrl: '/exercises/cycle.svg'
+    imageUrl: 'private-exercise:cycle.svg'
   },
   {
     id: '8',
@@ -224,7 +195,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultDuration: 60,
     instructions: 'Jump just high enough to clear the rope, landing softly on the balls of your feet. Keep the turns coming from your wrists, not big swings from the shoulders.',
-    imageUrl: '/exercises/jump-rope.svg'
+    imageUrl: 'private-exercise:jump-rope.svg'
   },
   {
     id: '9',
@@ -236,7 +207,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 1,
     defaultDuration: 600,
     instructions: 'Move slowly between poses in time with your breath, holding each one for a few breaths. Never force a stretch into pain — ease back if you feel sharp discomfort.',
-    imageUrl: '/exercises/yoga-flow.svg'
+    imageUrl: 'private-exercise:yoga-flow.svg'
   },
   {
     id: '10',
@@ -262,7 +233,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultDuration: 45,
     instructions: 'Forearms on the ground, elbows under shoulders, body in a straight line from head to heels. Brace your core and squeeze your glutes to keep your hips from sagging or piking up.',
-    imageUrl: '/exercises/plank.svg'
+    imageUrl: 'private-exercise:plank.svg'
   },
   {
     id: '12',
@@ -274,7 +245,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultDuration: 30,
     instructions: 'Step onto the board with feet shoulder-width apart, knees slightly bent, and eyes fixed on a point ahead of you. Make small, quick adjustments rather than big corrections to stay centered.',
-    imageUrl: '/exercises/balance-board.svg'
+    imageUrl: 'private-exercise:balance-board.svg'
   },
   {
     id: '13',
@@ -287,7 +258,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 12,
     instructions: 'Hold one dumbbell or kettlebell against your chest with both hands. Sit down and back between your hips, keeping your chest tall and heels planted, until your thighs reach parallel, then stand.',
-    imageUrl: '/exercises/squat.svg',
+    imageUrl: 'private-exercise:squat.svg',
     progression: { mode: 'double', incrementKg: 2, repRangeMin: 8, repRangeMax: 12 }
   },
   {
@@ -301,7 +272,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 10,
     instructions: 'Lie on a bench with a dumbbell in each hand at chest level, elbows about 45 degrees from your body. Press the weights up until your arms are straight, then lower under control.',
-    imageUrl: '/exercises/bench-press.svg'
+    imageUrl: 'private-exercise:bench-press.svg'
   },
   {
     id: '15',
@@ -314,7 +285,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 12,
     instructions: 'Hinge forward from the hips with a flat back, weight hanging below your shoulders. Pull it toward your lower ribs by driving your elbows back, squeeze the shoulder blades, then lower fully.',
-    imageUrl: '/exercises/row.svg'
+    imageUrl: 'private-exercise:row.svg'
   },
   {
     id: '16',
@@ -327,7 +298,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 7,
     instructions: 'Sit or stand tall with a dumbbell at each shoulder, palms forward. Press straight overhead until your arms are almost locked out without arching your lower back, then lower to ear height.',
-    imageUrl: '/exercises/overhead-press.svg'
+    imageUrl: 'private-exercise:overhead-press.svg'
   },
   {
     id: '17',
@@ -340,7 +311,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 10,
     defaultWeight: 20,
     instructions: 'Stand with a slight knee bend, weight in front of your thighs. Push your hips straight back to lower the weight along your legs until you feel a hamstring stretch, then drive your hips forward to stand.',
-    imageUrl: '/exercises/hinge.svg',
+    imageUrl: 'private-exercise:hinge.svg',
     progression: { mode: 'double', incrementKg: 2.5, repRangeMin: 8, repRangeMax: 12 }
   },
   {
@@ -353,7 +324,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 12,
     instructions: 'Lie on your back, knees bent, feet flat and close to your hips. Squeeze your glutes to lift your hips until your body is straight from knees to shoulders, pause, then lower slowly.',
-    imageUrl: '/exercises/glute-bridge.svg'
+    imageUrl: 'private-exercise:glute-bridge.svg'
   },
   {
     id: '19',
@@ -367,7 +338,7 @@ export const exerciseList: Exercise[] = [
     defaultWeight: 8,
     unilateral: true,
     instructions: 'Hold a dumbbell in each hand and step forward into a lunge, lowering until both knees are near 90 degrees. Push through the front heel to return, then complete all reps before switching legs.',
-    imageUrl: '/exercises/lunge.svg'
+    imageUrl: 'private-exercise:lunge.svg'
   },
   {
     id: '20',
@@ -380,7 +351,7 @@ export const exerciseList: Exercise[] = [
     defaultReps: 12,
     defaultWeight: 8,
     instructions: 'Stand tall with a dumbbell in each hand, palms forward, elbows tucked by your sides. Curl the weights to your shoulders without swinging, then lower all the way down under control.',
-    imageUrl: '/exercises/curl.svg'
+    imageUrl: 'private-exercise:curl.svg'
   },
   {
     id: '21',
@@ -392,7 +363,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 10,
     instructions: 'Hands on the edge of a bench behind you, legs out in front. Bend your elbows straight back to lower your hips toward the floor, then press back up until your arms are straight.',
-    imageUrl: '/exercises/dip.svg'
+    imageUrl: 'private-exercise:dip.svg'
   },
   {
     id: '22',
@@ -404,7 +375,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 15,
     instructions: 'Feet shoulder-width apart, arms reaching forward for balance. Sit down and back until your thighs are parallel to the floor, keeping your heels down and chest up, then stand tall.',
-    imageUrl: '/exercises/squat.svg'
+    imageUrl: 'private-exercise:squat.svg'
   },
   {
     id: '23',
@@ -416,7 +387,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 20,
     instructions: 'Start in a high plank with hands under your shoulders. Drive one knee toward your chest, then switch legs quickly, keeping your hips low and level. Count one rep per knee drive.',
-    imageUrl: '/exercises/core-floor.svg'
+    imageUrl: 'private-exercise:core-floor.svg'
   },
   {
     id: '24',
@@ -428,7 +399,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 10,
     instructions: 'Lie on your back, arms reaching at the ceiling, knees bent over your hips. Press your lower back into the floor as you slowly extend the opposite arm and leg, then return. Count one rep per side.',
-    imageUrl: '/exercises/core-floor.svg'
+    imageUrl: 'private-exercise:core-floor.svg'
   },
   {
     id: '25',
@@ -440,7 +411,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 3,
     defaultReps: 10,
     instructions: 'On hands and knees, back flat. Reach one arm forward and the opposite leg back until both are level with your torso, without twisting your hips, pause, then return. Count one rep per side.',
-    imageUrl: '/exercises/core-floor.svg'
+    imageUrl: 'private-exercise:core-floor.svg'
   },
   {
     id: '26',
@@ -453,7 +424,7 @@ export const exerciseList: Exercise[] = [
     defaultDuration: 30,
     unilateral: true,
     instructions: 'Lie on your side, forearm under your shoulder, feet stacked. Lift your hips so your body is a straight line and hold, breathing steadily. Do the full hold, then switch sides.',
-    imageUrl: '/exercises/plank.svg'
+    imageUrl: 'private-exercise:plank.svg'
   },
   {
     id: '27',
@@ -466,7 +437,7 @@ export const exerciseList: Exercise[] = [
     defaultDuration: 30,
     unilateral: true,
     instructions: 'Standing tall, hold a wall for balance. Bend one knee and hold that ankle behind you, keeping your knees together and hips pushed slightly forward until you feel the front of the thigh stretch.',
-    imageUrl: '/exercises/stretch-quad.svg'
+    imageUrl: 'private-exercise:stretch-quad.svg'
   },
   {
     id: '28',
@@ -546,7 +517,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 2,
     defaultDuration: 25,
     instructions: 'Lie face down, hands under your shoulders. Press gently to lift your chest, keeping your hips on the floor and shoulders down away from your ears, until you feel a light stretch across the front of your torso.',
-    imageUrl: '/exercises/cobra.svg'
+    imageUrl: 'private-exercise:cobra.svg'
   },
   {
     id: '34',
@@ -571,7 +542,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 2,
     defaultDuration: 30,
     instructions: 'Stand in a doorway with your forearms on the frame, elbows at shoulder height. Step one foot through and lean forward gently until you feel a stretch across the front of your chest and shoulders.',
-    imageUrl: '/exercises/stretch-chest.svg'
+    imageUrl: 'private-exercise:stretch-chest.svg'
   },
   {
     id: '36',
@@ -612,7 +583,7 @@ export const exerciseList: Exercise[] = [
     defaultDuration: 20,
     unilateral: true,
     instructions: 'Sitting or standing tall, gently tip one ear toward that shoulder, letting the weight of your hand rest on your head for a light stretch down the side of your neck. Ease off slowly, then switch sides.',
-    imageUrl: '/exercises/stretch-neck.svg'
+    imageUrl: 'private-exercise:stretch-neck.svg'
   },
   {
     id: 'mobility-open-book-rotations',
@@ -920,6 +891,107 @@ export const exerciseList: Exercise[] = [
     instructions: 'Sit with one leg extended and the other knee bent so the lower leg rests outside and behind that hip. Keep the extended foot gently flexed and your spine long, then hinge toward the straight leg until you feel a comfortable stretch. Keep the bent knee supported and pain-free; if it feels strained, place that foot inside the opposite thigh instead.',
     videoUrl: 'https://www.youtube.com/shorts/phSQ4UU7xFY',
     imageUrl: 'private-exercise:mobility-hurdler-stretch.jpg'
+  },
+  {
+    id: 'mobility-half-split-stretch',
+    name: 'Half-Split Stretch',
+    aliases: ['Half Splits', 'Ardha Hanumanasana'],
+    category: 'flexibility',
+    muscleGroups: ['Hamstrings', 'Calves', 'Hips'],
+    difficulty: 'beginner',
+    logType: 'time',
+    defaultSets: 2,
+    defaultDuration: 30,
+    executionDirections: ['left', 'right'],
+    instructions: 'Begin in a half-kneeling position, then shift your hips back over the rear knee as you straighten the front leg. Keep the front heel down, toes pointing up and spine long; hinge forward from the hips only until you feel a comfortable stretch behind the thigh. Place your hands on blocks or a chair for support and keep a slight bend in the front knee if needed.',
+    imageUrl: 'private-exercise:mobility-half-split-stretch.jpg'
+  },
+  {
+    id: 'mobility-adductor-rock-back',
+    name: 'Adductor Rock-Back',
+    aliases: ['Adductor Rockback'],
+    category: 'flexibility',
+    muscleGroups: ['Inner Thighs', 'Groin', 'Hips'],
+    difficulty: 'beginner',
+    logType: 'reps',
+    defaultSets: 2,
+    defaultReps: 10,
+    secondsPerRep: 4,
+    executionDirections: ['left', 'right'],
+    instructions: 'Start on hands and knees, then extend one leg straight out to the side with the whole foot planted. Keep your back neutral and gently send your hips toward your heel until you feel a stretch along the inner thigh, then return to the start. Move slowly through a pain-free range without twisting the extended knee or forcing your hips lower.',
+    imageUrl: 'private-exercise:mobility-adductor-rock-back.jpg'
+  },
+  {
+    id: 'mobility-side-leg-raise',
+    name: 'Side Leg Raise',
+    aliases: ['Standing Hip Abduction'],
+    category: 'strength',
+    muscleGroups: ['Glutes', 'Hips', 'Core'],
+    difficulty: 'beginner',
+    logType: 'reps',
+    defaultSets: 2,
+    defaultReps: 10,
+    secondsPerRep: 4,
+    executionDirections: ['left', 'right'],
+    instructions: 'Stand tall beside a wall or chair and brace your trunk gently. Keeping your working leg mostly straight and your toes facing forward, lift it out to the side without leaning or hiking the hip, pause briefly, then lower with control. Use a smaller range if you cannot keep your pelvis level.',
+    imageUrl: 'private-exercise:mobility-side-leg-raise.jpg'
+  },
+  {
+    id: 'mobility-childs-pose-side-reach',
+    name: "Child's Pose with Side Reach",
+    aliases: ["Child's Pose Side Stretch"],
+    category: 'flexibility',
+    muscleGroups: ['Back', 'Shoulders', 'Hips'],
+    difficulty: 'beginner',
+    logType: 'time',
+    defaultSets: 2,
+    defaultDuration: 30,
+    executionDirections: ['left', 'right'],
+    instructions: "Sit your hips toward your heels in Child's Pose with your arms reaching forward. Walk both hands to one side while keeping your hips heavy and as level as comfortable, then breathe into the lengthened side of your ribs and back. Keep the stretch gentle, support your head if needed and repeat on the other side.",
+    imageUrl: 'private-exercise:mobility-childs-pose-side-reach.jpg'
+  },
+  {
+    id: 'mobility-reverse-lunge',
+    name: 'Reverse Lunge',
+    aliases: ['Backward Lunge'],
+    category: 'strength',
+    muscleGroups: ['Quadriceps', 'Glutes', 'Hamstrings', 'Hips'],
+    difficulty: 'beginner',
+    logType: 'reps',
+    defaultSets: 2,
+    defaultReps: 8,
+    secondsPerRep: 5,
+    executionDirections: ['left', 'right'],
+    instructions: 'Stand tall, brace gently and step one foot back far enough to lower both knees comfortably. Keep most of your weight through the front foot, your front knee tracking in line with its toes and your torso upright. Push through the front foot to return to standing, using a wall or chair for balance if needed.',
+    imageUrl: 'private-exercise:mobility-reverse-lunge.jpg'
+  },
+  {
+    id: 'mobility-full-range-calf-raise',
+    name: 'Full-Range Calf Raise',
+    aliases: ['Full-ROM Calf Raise'],
+    category: 'strength',
+    muscleGroups: ['Calves', 'Ankles'],
+    difficulty: 'beginner',
+    logType: 'reps',
+    defaultSets: 2,
+    defaultReps: 12,
+    secondsPerRep: 4,
+    instructions: 'Stand on a step with the balls of both feet supported and hold a stable rail or wall. Lower your heels slowly to a comfortable stretch, press through the balls of your feet to rise as high as you can, pause, then lower under control. Keep your ankles from rolling outward and use level ground if a step feels unstable.',
+    imageUrl: 'private-exercise:mobility-full-range-calf-raise.jpg'
+  },
+  {
+    id: 'mobility-overhead-reach',
+    name: 'Overhead Reach',
+    aliases: ['Standing Overhead Reach'],
+    category: 'flexibility',
+    muscleGroups: ['Shoulders', 'Back', 'Core'],
+    difficulty: 'beginner',
+    logType: 'reps',
+    defaultSets: 2,
+    defaultReps: 10,
+    secondsPerRep: 4,
+    instructions: 'Stand with your ribs stacked over your pelvis and your chin level. Raise both arms overhead as far as you can while keeping your elbows straight, shoulders relaxed and lower back from arching, then lower them slowly. Stop before you compensate through the ribs or feel pinching in either shoulder.',
+    imageUrl: 'private-exercise:mobility-overhead-reach.jpg'
   }
 ];
 

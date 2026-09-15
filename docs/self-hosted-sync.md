@@ -130,7 +130,10 @@ against. What's running and how it survives things:
   verified to build clean end to end (this is what finally answered the
   earlier "never actually built" caveat).
 - **Container**: `workout-buddy-server`, port 3000 published, data on a
-  named volume (`workout-buddy-data`) so it outlives the container.
+  named volume (`workout-buddy-data`) so it outlives the container. The
+  host's `server/private/exercise-images` directory is mounted read-only at
+  `/app/private/exercise-images`; keep that private directory in your backups
+  and include the same bind mount whenever the container is recreated.
 - **Process supervision**: a plain systemd unit
   (`/etc/systemd/system/workout-buddy-server.service` *inside the Podman
   machine's Linux VM* — reach it via `podman machine ssh`), `Restart=always`,
@@ -260,7 +263,7 @@ Endpoints that exist right now:
 | `DELETE /account` | `Authorization: Bearer <token>` | `{ currentPassword }` — irreversibly deletes the user, all their sessions, and every synced row they own, in one transaction. No tombstone; other devices just start failing auth and keep working offline. `204`, no body. |
 | `GET /settings` | `Authorization: Bearer <token>` | `{ settings, updatedAt }` — the caller's account-level preferences blob; both fields are `null` if it was never set. |
 | `PUT /settings` | `Authorization: Bearer <token>` | `{ settings, updatedAt }` (`settings` an object, `updatedAt` an ISO string) — upserts the blob with last-write-wins on `updatedAt`, returns the winner. `settings` is opaque JSON the server never inspects. |
-| `GET /media/exercises/<filename>` | `Authorization: Bearer <token>` | Returns a JPEG or animated GIF from `EXERCISE_MEDIA_DIR` (default `private/exercise-images`). Only safe filename-only paths are accepted; the directory is Git-ignored. |
+| `GET /media/exercises/<filename>` | `Authorization: Bearer <token>` | Returns a JPEG, animated GIF or SVG from `EXERCISE_MEDIA_DIR` (default `private/exercise-images`). Only safe filename-only paths are accepted; the directory is Git-ignored. |
 | `GET /sync/<collection>?since=<ISO timestamp>` | `Authorization: Bearer <token>` | Rows for the caller changed after `since` (all of them if omitted), plus `serverTime`. Includes soft-deleted rows. |
 | `POST /sync/<collection>` | `Authorization: Bearer <token>` | `{ <collection>: [...] }`, up to 1000 per request, validated by JSON schema. Applies each with last-write-wins in one transaction and returns the post-merge state — a caller whose write lost a conflict gets told what actually won, not an echo of what it sent. |
 

@@ -14,11 +14,13 @@ export const exerciseImportSchema = z.object({
   category: z.string(),
   muscleGroups: z.array(z.string()),
   equipment: z.array(z.string()).optional(),
-  variations: z.array(z.object({ id, name: z.string(), difficulty: z.string() }).passthrough()).optional(),
+  collectionId: z.string().optional(),
+  collectionName: z.string().optional(),
+  collectionOrder: z.number().optional(),
   difficulty: z.string(),
 }).passthrough();
 
-const setImportSchema = z.object({ exerciseId: z.string(), variationId: z.string().optional() }).passthrough();
+const setImportSchema = z.object({ exerciseId: z.string() }).passthrough();
 
 export const workoutImportSchema = z.object({
   id,

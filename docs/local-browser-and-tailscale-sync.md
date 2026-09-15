@@ -93,9 +93,9 @@ PORT=3001 npm run dev
 
 The account command asks for a password without displaying it.
 
-### Private exercise photographs
+### Private exercise images
 
-The generated exercise photographs live in
+Exercise photographs and illustrations live in
 `server/private/exercise-images/`. The whole `server/private/` directory is
 ignored by Git, so the files do not appear on GitHub. Keep this directory on the
 Mac and include it in your own local backup.

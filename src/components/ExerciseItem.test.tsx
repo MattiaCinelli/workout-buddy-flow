@@ -8,20 +8,15 @@ import ExerciseItem from './ExerciseItem';
 
 const exercise = {
   id: 'push-up', name: 'Push-up', category: 'strength' as const, muscleGroups: [], difficulty: 'beginner' as const,
-  variations: [{ id: 'incline', name: 'Incline Push-up', difficulty: 'beginner' as const, imageUrl: '/incline.jpg' }],
 };
 
-describe('ExerciseItem variation stack', () => {
+describe('ExerciseItem', () => {
   afterEach(cleanup);
 
-  it('reveals searchable variations and selects the exact variation', () => {
-    const onSelectVariation = vi.fn();
-    render(<ExerciseItem exercise={exercise} onSelect={vi.fn()} onSelectVariation={onSelectVariation} expandVariations />);
-
-    const stackToggle = screen.getAllByRole('button', { name: /1 variation/i })
-      .find(element => element.tagName === 'BUTTON');
-    expect(stackToggle).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(screen.getByText('Incline Push-up').closest('button')!);
-    expect(onSelectVariation).toHaveBeenCalledWith(exercise, exercise.variations[0]);
+  it('selects the exercise card', () => {
+    const onSelect = vi.fn();
+    render(<ExerciseItem exercise={exercise} onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(onSelect).toHaveBeenCalledWith(exercise);
   });
 });

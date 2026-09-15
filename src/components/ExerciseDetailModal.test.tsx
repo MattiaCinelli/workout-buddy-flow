@@ -52,4 +52,11 @@ describe('ExerciseDetailModal image viewer', () => {
     expect(within(actions as HTMLElement).getByRole('button', { name: 'Edit' })).toBeInTheDocument();
     expect(within(actions as HTMLElement).getByRole('button', { name: 'Try exercise' })).toBeInTheDocument();
   });
+
+  it('offers duplication when the library supplies the action', () => {
+    const onDuplicate = vi.fn();
+    render(<ExerciseDetailModal exercise={exercise} onClose={vi.fn()} onEdit={vi.fn()} onDuplicate={onDuplicate} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+    expect(onDuplicate).toHaveBeenCalledWith(exercise);
+  });
 });

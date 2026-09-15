@@ -7,7 +7,9 @@ export interface SyncedExercise {
   category: string;
   muscleGroups: string[];
   equipment?: string[];
-  variations?: unknown[];
+  collectionId?: string;
+  collectionName?: string;
+  collectionOrder?: number;
   difficulty: string;
   logType?: string;
   defaultSets?: number;
@@ -38,7 +40,9 @@ interface ExerciseRow {
   category: string;
   muscle_groups: string;
   equipment: string | null;
-  variations: string | null;
+  collection_id: string | null;
+  collection_name: string | null;
+  collection_order: number | null;
   difficulty: string;
   log_type: string | null;
   default_sets: number | null;
@@ -64,7 +68,9 @@ const fromRow = (row: ExerciseRow): SyncedExercise => ({
   category: row.category,
   muscleGroups: JSON.parse(row.muscle_groups),
   equipment: row.equipment ? JSON.parse(row.equipment) : undefined,
-  variations: row.variations ? JSON.parse(row.variations) : undefined,
+  collectionId: row.collection_id ?? undefined,
+  collectionName: row.collection_name ?? undefined,
+  collectionOrder: row.collection_order ?? undefined,
   difficulty: row.difficulty,
   logType: row.log_type ?? undefined,
   defaultSets: row.default_sets ?? undefined,
@@ -110,12 +116,12 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
   const syncedAt = new Date().toISOString();
   db.prepare(`
     INSERT INTO exercises (
-      id, user_id, name, aliases, category, muscle_groups, equipment, variations, difficulty,
+      id, user_id, name, aliases, category, muscle_groups, equipment, collection_id, collection_name, collection_order, difficulty,
       log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, execution_directions, progression,
       instructions, video_url, image_url, updated_at, deleted_at, synced_at
     )
     VALUES (
-      @id, @userId, @name, @aliases, @category, @muscleGroups, @equipment, @variations, @difficulty,
+      @id, @userId, @name, @aliases, @category, @muscleGroups, @equipment, @collectionId, @collectionName, @collectionOrder, @difficulty,
       @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @executionDirections, @progression,
       @instructions, @videoUrl, @imageUrl, @updatedAt, @deletedAt, @syncedAt
     )
@@ -125,7 +131,9 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
       category = excluded.category,
       muscle_groups = excluded.muscle_groups,
       equipment = excluded.equipment,
-      variations = excluded.variations,
+      collection_id = excluded.collection_id,
+      collection_name = excluded.collection_name,
+      collection_order = excluded.collection_order,
       difficulty = excluded.difficulty,
       log_type = excluded.log_type,
       default_sets = excluded.default_sets,
@@ -152,7 +160,9 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     category: exercise.category,
     muscleGroups: JSON.stringify(exercise.muscleGroups),
     equipment: exercise.equipment?.length ? JSON.stringify(exercise.equipment) : null,
-    variations: exercise.variations?.length ? JSON.stringify(exercise.variations) : null,
+    collectionId: exercise.collectionId ?? null,
+    collectionName: exercise.collectionName ?? null,
+    collectionOrder: exercise.collectionOrder ?? null,
     difficulty: exercise.difficulty,
     logType: exercise.logType ?? null,
     defaultSets: exercise.defaultSets ?? null,

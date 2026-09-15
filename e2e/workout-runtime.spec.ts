@@ -20,7 +20,7 @@ test('a unilateral exercise expands each set into left, switch pause, right', ()
       logType: 'reps', unilateral: true }],
   );
   expect(steps.map(step => step.type === 'exercise' ? `${step.exerciseId}:${step.direction}` : `${step.kind}:${step.duration}`))
-    .toEqual(['prep:10', 'row:left', 'switch:5', 'row:right', 'rest:10', 'row:left', 'switch:5', 'row:right']);
+    .toEqual(['prep:10', 'row:left', 'switch:5', 'row:right', 'rest:5', 'row:left', 'switch:5', 'row:right']);
 });
 
 test('explicit directional workout sets remain separate runtime sets', () => {

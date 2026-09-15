@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star, Image as ImageIcon } from 'lucide-react';
-import { Exercise, getExerciseImageUrl, getExerciseVariation, getLogType, getExecutionDirections, type ExerciseVariation } from '@/data/exercises';
+import { Exercise, getExerciseImageUrl, getLogType, getExecutionDirections } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
@@ -108,7 +108,6 @@ const WorkoutDetail = () => {
 
   const filteredExercises = exercises.filter(exercise =>
     exerciseMatchesNameQuery(exercise, searchQuery) ||
-    exercise.variations?.some(variation => variation.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
     exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exercise.muscleGroups.some(groupId =>
       muscleGroupName(groupId).toLowerCase().includes(searchQuery.toLowerCase())
@@ -146,26 +145,25 @@ const WorkoutDetail = () => {
     }
   };
 
-  const handleSelectExercise = (exercise: Exercise, variation?: ExerciseVariation) => {
+  const handleSelectExercise = (exercise: Exercise) => {
     if (selectedExercises.some(item => item.exercise.id === exercise.id)) {
       toast({ title: 'Already added', description: `${exercise.name} is already in your workout.` });
       return;
     }
     const isTimeBased = getLogType(exercise) === 'time';
-    const setCount = variation?.defaultSets ?? exercise.defaultSets ?? 1;
+    const setCount = exercise.defaultSets ?? 1;
     const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
-      variationId: variation?.id,
-      reps: isTimeBased ? undefined : (variation?.defaultReps ?? exercise.defaultReps ?? 12),
-      weight: variation?.defaultWeight ?? exercise.defaultWeight,
-      duration: isTimeBased ? (variation?.defaultDuration ?? exercise.defaultDuration ?? 30) : undefined,
+      reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
+      weight: exercise.defaultWeight,
+      duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
       distance: exercise.defaultDistance,
       // Left undefined — the runtime picks between restBetweenSets/
       // restBetweenExercises dynamically based on same/different exercise.
     })).flatMap(set => expandSetForExercise(set, exercise));
     setSelectedExercises([...selectedExercises, { exercise, sets: defaultSets }]);
     setActiveTab('selected');
-    toast({ title: 'Exercise added', description: `${variation?.name ?? exercise.name} added to workout.` });
+    toast({ title: 'Exercise added', description: `${exercise.name} added to workout.` });
   };
 
   const handleRemoveExercise = (exerciseId: string) => {
@@ -213,16 +211,6 @@ const WorkoutDetail = () => {
     const updated = [...selectedExercises];
     updated[exerciseIndex].sets[setIndex] = { ...updated[exerciseIndex].sets[setIndex], ...patch };
     setSelectedExercises(updated);
-  };
-
-  const selectVariation = (exerciseIndex: number, variationId: string) => {
-    const selected = selectedExercises[exerciseIndex];
-    const variation = selected.exercise.variations?.find(item => item.id === variationId);
-    const sets = selected.sets.map(set => ({ ...set, variationId: variation?.id,
-      reps: variation ? variation.defaultReps ?? set.reps : selected.exercise.defaultReps ?? set.reps,
-      duration: variation ? variation.defaultDuration ?? set.duration : selected.exercise.defaultDuration ?? set.duration,
-      weight: variation ? variation.defaultWeight ?? set.weight : selected.exercise.defaultWeight ?? set.weight }));
-    setSelectedExercises(items => items.map((item, index) => index === exerciseIndex ? { ...item, sets } : item));
   };
 
   const handleDuplicateWorkout = async () => {
@@ -403,7 +391,7 @@ const WorkoutDetail = () => {
                   </div>
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {filteredExercises.map(exercise => (
-                      <ExerciseItem key={exercise.id} exercise={exercise} onSelect={handleSelectExercise} onSelectVariation={handleSelectExercise} expandVariations={!!searchQuery.trim() && !!exercise.variations?.some(variation => variation.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))} />
+                      <ExerciseItem key={exercise.id} exercise={exercise} onSelect={handleSelectExercise} />
                     ))}
                     {filteredExercises.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">No exercises found matching your search</div>
@@ -455,10 +443,10 @@ const WorkoutDetail = () => {
                             </div>
                             <div className="flex w-20 shrink-0 flex-col items-end gap-2" data-selected-exercise-actions>
                               <div className="flex h-16 w-20 items-center justify-center overflow-hidden rounded-md bg-muted">
-                                {getExerciseImageUrl(selectedEx.exercise, undefined, selectedEx.sets[0]?.variationId) ? (
+                                {getExerciseImageUrl(selectedEx.exercise) ? (
                                   <ExerciseImage
-                                    imageUrl={getExerciseImageUrl(selectedEx.exercise, undefined, selectedEx.sets[0]?.variationId)!}
-                                    alt={`${getExerciseVariation(selectedEx.exercise, selectedEx.sets[0]?.variationId)?.name ?? selectedEx.exercise.name} thumbnail`}
+                                    imageUrl={getExerciseImageUrl(selectedEx.exercise)!}
+                                    alt={`${selectedEx.exercise.name} thumbnail`}
                                     className="h-full w-full object-cover"
                                   />
                                 ) : (
@@ -475,7 +463,6 @@ const WorkoutDetail = () => {
                             </div>
                           </div>
 
-                          {!!selectedEx.exercise.variations?.length && <div className="mb-3"><Label>Variation</Label><Select value={selectedEx.sets[0]?.variationId ?? 'default'} onValueChange={value => selectVariation(exIndex, value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Standard · {selectedEx.exercise.difficulty}</SelectItem>{selectedEx.exercise.variations.map(item => <SelectItem key={item.id} value={item.id}>{item.name} · {item.difficulty}</SelectItem>)}</SelectContent></Select></div>}
                           <div className="space-y-3 mt-3">
                             {selectedEx.sets.map((set, setIndex) => (
                               <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>

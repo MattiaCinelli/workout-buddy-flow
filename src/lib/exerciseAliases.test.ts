@@ -16,8 +16,8 @@ describe('exercise aliases', () => {
 
   it('allows aliases to match another exercise name', () => {
     expect(exerciseNamesConflict(
-      { name: 'Romanian Deadlift', aliases: ['RDL'] },
-      { name: 'RDL', aliases: [] },
+      { name: 'Romanian Deadlift' },
+      { name: 'RDL' },
     )).toBe(false);
   });
 

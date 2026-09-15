@@ -69,6 +69,47 @@ const buildStarterCourse = (): Course => {
   };
 };
 
+const buildWetNoodleCourse = (): Course => {
+  const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
+  const dayTitles = ['Posterior Chain', 'Hip Opening', 'Upper-Body Mobility', 'Active Flexibility', 'Full-Body Noodle'];
+  const weekInstructions = [
+    'Learn each position at an easy intensity. Stop well before pain and focus on smooth breathing.',
+    'Create space with calm, controlled repetitions and relaxed holds; do not force additional range.',
+    'Own the range with active control. Straight-leg raises and Cossack squats are introduced this week.',
+    'Move deeper only while maintaining control. Friday adds a supported wide-straddle hold.',
+    'Use gentle contract–relax technique on Friday for hamstrings, hip flexors and frog stretch: contract at 20–30% effort for five seconds, then relax.',
+    'Keep the Week 5 structure without increasing intensity. Prioritise normal breathing, relaxation and control.',
+  ];
+  const workouts: CourseWorkout[] = [];
+  let order = 1;
+
+  for (let week = 1; week <= 6; week += 1) {
+    dayNames.forEach((dayName, index) => workouts.push({
+      id: `seed-wet-noodle-course-w${week}d${index + 1}`,
+      type: 'workout',
+      workoutId: `seed-wet-noodle-w${week}-${dayName}`,
+      title: dayTitles[index],
+      instructions: weekInstructions[week - 1],
+      order: order++,
+      week,
+      day: index + 1,
+      completed: false,
+    }));
+  }
+
+  return {
+    id: 'seed-course-wet-noodle',
+    title: 'Zero to Wet Noodle',
+    description: 'A six-week, Monday–Friday beginner flexibility course covering hamstrings, hips, adductors, shoulders, lats, ankles, calves and thoracic mobility. Every hold is 2 × 30 seconds and every active movement is 2 × 13 repetitions.',
+    goal: 'Build comfortable full-body flexibility and active control through a consistent six-week practice.',
+    difficulty: 'beginner',
+    prerequisites: 'None. Warm up with five minutes of light movement before every session and never stretch into pain.',
+    durationWeeks: 6,
+    workouts,
+    createdAt: '2025-02-01T09:00:00.000Z',
+  };
+};
+
 // Seeded on a fresh install (see useCourses) so a new user can see how a
 // multi-week program ties workouts to a calendar.
-export const defaultCourses: Course[] = [buildStarterCourse()];
+export const defaultCourses: Course[] = [buildStarterCourse(), buildWetNoodleCourse()];

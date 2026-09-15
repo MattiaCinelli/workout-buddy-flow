@@ -17,8 +17,10 @@ test('private exercise media requires auth and only serves safe image names', as
 
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
   const gif = Buffer.from('GIF89a', 'ascii');
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>', 'utf8');
   await fs.writeFile(path.join(directory, 'mobility-test.jpg'), jpeg);
   await fs.writeFile(path.join(directory, 'mobility-test.gif'), gif);
+  await fs.writeFile(path.join(directory, 'mobility-test.svg'), svg);
   const { app, aliceToken } = await setupTwoUsers();
   t.after(async () => {
     await app.close();
@@ -54,4 +56,9 @@ test('private exercise media requires auth and only serves safe image names', as
   assert.equal(animation.statusCode, 200);
   assert.match(animation.headers['content-type'] ?? '', /^image\/gif/);
   assert.deepEqual(animation.rawPayload, gif);
+
+  const vector = await app.inject({ method: 'GET', url: '/media/exercises/mobility-test.svg', headers });
+  assert.equal(vector.statusCode, 200);
+  assert.match(vector.headers['content-type'] ?? '', /^image\/svg\+xml/);
+  assert.deepEqual(vector.rawPayload, svg);
 });

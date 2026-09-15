@@ -8,6 +8,7 @@ services:
       - HOST=0.0.0.0
     volumes:
       - workout-buddy-data:/app/data
+      - ./private/exercise-images:/app/private/exercise-images:ro
     restart: unless-stopped
 
 volumes:

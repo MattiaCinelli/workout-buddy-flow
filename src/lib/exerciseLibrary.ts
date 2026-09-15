@@ -21,10 +21,6 @@ export const filterExerciseLibrary = (
   return exercises.filter(exercise => {
     const matchesSearch = !query
       || exerciseMatchesNameQuery(exercise, query)
-      || exercise.variations?.some(variation => variation.name.toLocaleLowerCase().includes(query)
-        || variation.difficulty.toLocaleLowerCase().includes(query)
-        || variation.equipment?.some(item => item.toLocaleLowerCase().includes(query))
-        || variation.instructions?.toLocaleLowerCase().includes(query))
       || exercise.category.toLocaleLowerCase().includes(query)
       || exercise.difficulty.toLocaleLowerCase().includes(query)
       || exercise.equipment?.some(item => item.toLocaleLowerCase().includes(query))
@@ -32,13 +28,11 @@ export const filterExerciseLibrary = (
     const matchesMuscles = filters.muscleGroupIds.length === 0
       || exercise.muscleGroups.some(id => filters.muscleGroupIds.includes(id));
     const matchesEquipment = filters.equipment.length === 0
-      || exercise.equipment?.some(item => filters.equipment.includes(item))
-      || exercise.variations?.some(variation => variation.equipment?.some(item => filters.equipment.includes(item)));
+      || exercise.equipment?.some(item => filters.equipment.includes(item));
     return matchesSearch
       && matchesMuscles
       && matchesEquipment
       && (filters.category === 'all' || exercise.category === filters.category)
-      && (filters.difficulty === 'all' || exercise.difficulty === filters.difficulty
-        || exercise.variations?.some(variation => variation.difficulty === filters.difficulty));
+      && (filters.difficulty === 'all' || exercise.difficulty === filters.difficulty);
   });
 };

@@ -49,12 +49,6 @@ describe('buildWorkoutSteps', () => {
     expect(steps[3]).toMatchObject({ type: 'exercise', amrap: true });
   });
 
-  it('carries the selected exercise variation onto the exercise step', () => {
-    const workout: WorkoutEntry = { ...baseWorkout, sets: [{ exerciseId: 'e-reps', variationId: 'incline', reps: 10 }] };
-    const steps = buildWorkoutSteps(workout, [repsExercise]);
-    expect(steps[1]).toMatchObject({ type: 'exercise', variationId: 'incline' });
-  });
-
   it('leaves a time-based set duration untouched and does not stamp secondsPerRep', () => {
     const workout: WorkoutEntry = { ...baseWorkout, sets: [{ exerciseId: 'e-time', duration: 45 }] };
     const steps = buildWorkoutSteps(workout, [timeExercise]);

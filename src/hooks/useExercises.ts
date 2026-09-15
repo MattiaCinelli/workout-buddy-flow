@@ -20,6 +20,16 @@ const legacySeedImages: Record<string, string> = {
   '37': '/exercises/stretch-calf.svg',
 };
 
+const courseExerciseIds = new Set([
+  'mobility-half-split-stretch',
+  'mobility-adductor-rock-back',
+  'mobility-side-leg-raise',
+  'mobility-childs-pose-side-reach',
+  'mobility-reverse-lunge',
+  'mobility-full-range-calf-raise',
+  'mobility-overhead-reach',
+]);
+
 export const useExercises = () => {
   const { items, isLoading, error, load, create, update, remove, getById } =
     useIndexedDBCollection<Exercise>({
@@ -33,6 +43,9 @@ export const useExercises = () => {
         const defaultsById = new Map(defaults.map(item => [item.id, item]));
         return stored.flatMap(item => {
           const replacement = defaultsById.get(item.id);
+          if (replacement?.imageUrl && courseExerciseIds.has(item.id) && !item.imageUrl && !item.deletedAt) {
+            return [{ ...item, imageUrl: replacement.imageUrl, updatedAt: new Date().toISOString() }];
+          }
           const publicPhoto = replacement?.imageUrl?.startsWith('private-exercise:')
             ? `/exercises/${replacement.imageUrl.slice('private-exercise:'.length)}`
             : undefined;

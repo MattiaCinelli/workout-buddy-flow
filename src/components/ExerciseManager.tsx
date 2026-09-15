@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Exercise, exerciseVariationAsExercise } from '@/data/exercises';
+import { Exercise } from '@/data/exercises';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ExerciseItem from './ExerciseItem';
@@ -27,15 +27,22 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, X, FileImage, Loader2, Settings2, LayoutGrid, List, Library } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { exerciseNamesConflict } from '@/lib/exerciseAliases';
+import CardStack from '@/components/CardStack';
 import {
   ExerciseCategoryFilter, ExerciseDifficultyFilter, filterExerciseLibrary,
 } from '@/lib/exerciseLibrary';
 
 type ExerciseViewMode = 'list' | 'tiles';
+type ExerciseSortOrder = 'name-asc' | 'name-desc';
 const VIEW_MODE_KEY = 'workout-buddy-exercise-view';
+const SORT_ORDER_KEY = 'workout-buddy-exercise-sort';
 const initialViewMode = (): ExerciseViewMode => {
   try { return localStorage.getItem(VIEW_MODE_KEY) === 'list' ? 'list' : 'tiles'; }
   catch { return 'tiles'; }
+};
+const initialSortOrder = (): ExerciseSortOrder => {
+  try { return localStorage.getItem(SORT_ORDER_KEY) === 'name-desc' ? 'name-desc' : 'name-asc'; }
+  catch { return 'name-asc'; }
 };
 
 const ExerciseManager: React.FC = () => {
@@ -55,6 +62,7 @@ const ExerciseManager: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<ExerciseCategoryFilter>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<ExerciseDifficultyFilter>('all');
   const [viewMode, setViewMode] = useState<ExerciseViewMode>(initialViewMode);
+  const [sortOrder, setSortOrder] = useState<ExerciseSortOrder>(initialSortOrder);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -75,11 +83,25 @@ const ExerciseManager: React.FC = () => {
   const hasActiveFilters = !!searchQuery.trim() || selectedMuscles.length > 0
     || selectedEquipment.length > 0
     || categoryFilter !== 'all' || difficultyFilter !== 'all';
+  const sortedExercises = useMemo(() => [...filteredExercises].sort((a, b) => {
+    const comparison = a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
+    return sortOrder === 'name-asc' ? comparison : -comparison;
+  }), [filteredExercises, sortOrder]);
+  const exerciseGroups = Array.from(sortedExercises.reduce((groups, exercise) => {
+    const key = exercise.collectionId ?? `exercise:${exercise.id}`;
+    groups.set(key, [...(groups.get(key) ?? []), exercise]);
+    return groups;
+  }, new Map<string, Exercise[]>()).values());
 
   const changeViewMode = (value: string) => {
     if (value !== 'list' && value !== 'tiles') return;
     setViewMode(value);
     try { localStorage.setItem(VIEW_MODE_KEY, value); } catch { /* preference is non-essential */ }
+  };
+
+  const changeSortOrder = (value: ExerciseSortOrder) => {
+    setSortOrder(value);
+    try { localStorage.setItem(SORT_ORDER_KEY, value); } catch { /* preference is non-essential */ }
   };
 
   const clearFilters = () => {
@@ -168,6 +190,26 @@ const ExerciseManager: React.FC = () => {
     setViewingExercise(null);
     setCurrentExercise(exercise);
     setIsFormOpen(true);
+  };
+
+  const handleDuplicate = async (exercise: Exercise) => {
+    const names = new Set(exercises.map(item => item.name.trim().toLocaleLowerCase()));
+    let name = `${exercise.name} Copy`;
+    let suffix = 2;
+    while (names.has(name.toLocaleLowerCase())) name = `${exercise.name} Copy ${suffix++}`;
+    const copy = Object.fromEntries(
+      Object.entries(exercise).filter(([key]) => !['id', 'updatedAt', 'deletedAt'].includes(key)),
+    ) as Omit<Exercise, 'id'>;
+    try {
+      const created = await createExercise({ ...copy, name, aliases: undefined });
+      setViewingExercise(null);
+      setCurrentExercise(created);
+      setIsFormOpen(true);
+      toast({ title: 'Exercise duplicated', description: `Created “${created.name}”.` });
+    } catch (error) {
+      console.error('Failed to duplicate exercise:', error);
+      toast({ title: 'Error', description: 'Failed to duplicate exercise.', variant: 'destructive' });
+    }
   };
 
   const handleDelete = async () => {
@@ -335,6 +377,16 @@ const ExerciseManager: React.FC = () => {
               </Button>
             )}
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          <Select value={sortOrder} onValueChange={value => changeSortOrder(value as ExerciseSortOrder)}>
+            <SelectTrigger className="h-9 w-[8.5rem]" aria-label="Sort exercises">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">Name: A–Z</SelectItem>
+              <SelectItem value="name-desc">Name: Z–A</SelectItem>
+            </SelectContent>
+          </Select>
           <ToggleGroup
             type="single"
             value={viewMode}
@@ -349,6 +401,7 @@ const ExerciseManager: React.FC = () => {
               <LayoutGrid className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
+          </div>
         </div>
       </div>
 
@@ -356,9 +409,12 @@ const ExerciseManager: React.FC = () => {
         ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
         : 'space-y-3'}>
         {filteredExercises.length > 0 ? (
-          filteredExercises.map((exercise) => viewMode === 'tiles'
-            ? <ExerciseTile key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} expandVariations={!!searchQuery.trim() && !!exercise.variations?.some(variation => variation.name.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()))} onSelectVariation={(base, variation) => setViewingExercise(exerciseVariationAsExercise(base, variation))} />
-            : <ExerciseItem key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} expandVariations={!!searchQuery.trim() && !!exercise.variations?.some(variation => variation.name.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()))} onSelectVariation={(base, variation) => setViewingExercise(exerciseVariationAsExercise(base, variation))} />)
+          exerciseGroups.map(items => {
+            const render = (exercise: Exercise) => viewMode === 'tiles'
+              ? <ExerciseTile key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />
+              : <ExerciseItem key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />;
+            return items.length > 1 ? <CardStack key={items[0].collectionId} front={render(items[0])} count={items.length - 1} label="more exercise" forceExpanded={!!searchQuery.trim()}>{items.slice(1).map(render)}</CardStack> : render(items[0]);
+          })
         ) : (
           <div className={viewMode === 'tiles'
             ? 'col-span-full text-center py-12 bg-muted/50 rounded-lg border border-dashed'
@@ -447,7 +503,7 @@ const ExerciseManager: React.FC = () => {
       <ManageMuscleGroupsModal isOpen={isManageMusclesOpen} onClose={() => setIsManageMusclesOpen(false)} />
       <ManageEquipmentModal isOpen={isManageEquipmentOpen} onClose={() => setIsManageEquipmentOpen(false)} />
 
-      <ExerciseDetailModal exercise={viewingExercise} onClose={() => setViewingExercise(null)} onEdit={handleEdit} />
+      <ExerciseDetailModal exercise={viewingExercise} onClose={() => setViewingExercise(null)} onEdit={handleEdit} onDuplicate={handleDuplicate} />
     </div>
   );
 };

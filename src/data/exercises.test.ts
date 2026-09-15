@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseList, getExerciseImageUrl, getExerciseVariation } from './exercises';
+import { exerciseList, getExerciseImageUrl } from './exercises';
 
 const mobilityIds = [
   '28',
@@ -53,11 +53,21 @@ describe('starter mobility exercises', () => {
   });
 });
 
+describe('starter exercise image privacy', () => {
+  it('never exposes a built-in exercise image through a public URL', () => {
+    for (const exercise of exerciseList) {
+      if (exercise.imageUrl) expect(exercise.imageUrl).toMatch(/^private-exercise:/);
+      for (const imageUrl of Object.values(exercise.directionImageUrls ?? {})) {
+        expect(imageUrl).toMatch(/^private-exercise:/);
+      }
+    }
+  });
+});
+
 describe('getExerciseImageUrl', () => {
   const exercise = {
     imageUrl: '/default.jpg',
     directionImageUrls: { left: '/left.jpg', right: '/right.jpg' },
-    variations: [{ id: 'assisted', name: 'Assisted', difficulty: 'beginner' as const, imageUrl: '/assisted.jpg' }],
   } as const;
 
   it('uses a direction-specific image when one exists', () => {
@@ -68,9 +78,27 @@ describe('getExerciseImageUrl', () => {
     expect(getExerciseImageUrl(exercise, 'forward')).toBe('/default.jpg');
     expect(getExerciseImageUrl(exercise)).toBe('/default.jpg');
   });
+});
 
-  it('prefers the selected variation image and resolves its metadata', () => {
-    expect(getExerciseImageUrl(exercise, 'left', 'assisted')).toBe('/assisted.jpg');
-    expect(getExerciseVariation(exercise, 'assisted')?.name).toBe('Assisted');
+describe('course mobility exercises', () => {
+  const ids = [
+    'mobility-half-split-stretch',
+    'mobility-adductor-rock-back',
+    'mobility-side-leg-raise',
+    'mobility-childs-pose-side-reach',
+    'mobility-reverse-lunge',
+    'mobility-full-range-calf-raise',
+    'mobility-overhead-reach',
+  ];
+
+  it('includes every course movement with complete beginner guidance', () => {
+    for (const id of ids) {
+      const exercise = exerciseList.find(item => item.id === id);
+      expect(exercise, id).toBeDefined();
+      expect(exercise?.difficulty).toBe('beginner');
+      expect(exercise?.muscleGroups.length).toBeGreaterThan(0);
+      expect(exercise?.instructions?.length).toBeGreaterThan(100);
+      expect(exercise?.defaultSets).toBe(2);
+    }
   });
 });

@@ -299,8 +299,8 @@ describe('syncAll — both (bidirectional merge)', () => {
     await syncAll('both');
 
     const pushes = reqsTo('/sync/exercises').filter(request => request.method === 'POST');
-    expect(pushes).toHaveLength(3);
-    expect(pushes.map(request => (request.body as { exercises: unknown[] }).exercises.length)).toEqual([500, 500, 1]);
+    expect(pushes).toHaveLength(2);
+    expect(pushes.map(request => (request.body as { exercises: unknown[] }).exercises.length)).toEqual([1000, 1]);
   });
 });
 

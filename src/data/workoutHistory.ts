@@ -4,7 +4,6 @@ export type WorkoutSetDirection = ExecutionDirection | 'none';
 
 export interface WorkoutSet {
   exerciseId: string;
-  variationId?: string;
   // Explicit per-workout direction. Missing means a legacy workout; `none`
   // records an intentional override of an exercise's directional default.
   direction?: WorkoutSetDirection;
@@ -59,6 +58,110 @@ const strengthSet = (exerciseId: string, reps: number, weight?: number): Workout
   weight === undefined ? { exerciseId, reps } : { exerciseId, reps, weight };
 
 const holdSet = (exerciseId: string, duration: number): WorkoutSet => ({ exerciseId, duration });
+
+type CourseExercise = {
+  exerciseId: string;
+  logType: 'time' | 'reps';
+  directions?: Array<'left' | 'right'>;
+};
+
+const courseExerciseSets = ({ exerciseId, logType, directions }: CourseExercise): WorkoutSet[] =>
+  (directions?.length ? directions : [undefined]).flatMap(direction =>
+    Array.from({ length: 2 }, () => ({
+      exerciseId,
+      ...(direction ? { direction } : {}),
+      ...(logType === 'time' ? { duration: 30 } : { reps: 13 }),
+    })));
+
+const timed = (exerciseId: string, directions?: Array<'left' | 'right'>): CourseExercise =>
+  ({ exerciseId, logType: 'time', directions });
+const reps = (exerciseId: string, directions?: Array<'left' | 'right'>): CourseExercise =>
+  ({ exerciseId, logType: 'reps', directions });
+
+const POSTERIOR_CHAIN: CourseExercise[] = [
+  reps('mobility-knee-to-wall', ['left', 'right']),
+  timed('mobility-reclined-hamstring-strap', ['left', 'right']),
+  timed('mobility-half-split-stretch', ['left', 'right']),
+  timed('37', ['left', 'right']),
+  timed('mobility-bent-knee-soleus-stretch', ['left', 'right']),
+  timed('mobility-deep-squat-hold'),
+  timed('28'),
+];
+
+const HIP_OPENING: CourseExercise[] = [
+  reps('mobility-90-90-hip-switches'),
+  reps('mobility-adductor-rock-back', ['left', 'right']),
+  timed('mobility-butterfly-stretch'),
+  timed('29', ['left', 'right']),
+  timed('30', ['left', 'right']),
+  timed('mobility-frog-stretch'),
+  timed('mobility-deep-squat-hold'),
+];
+
+const UPPER_BODY: CourseExercise[] = [
+  reps('32'),
+  reps('mobility-open-book-rotations', ['left', 'right']),
+  timed('mobility-thread-the-needle', ['left', 'right']),
+  reps('mobility-overhead-reach'),
+  timed('mobility-puppy-pose'),
+  timed('35', ['left', 'right']),
+  timed('mobility-childs-pose-side-reach', ['left', 'right']),
+];
+
+const ACTIVE_FLEXIBILITY: CourseExercise[] = [
+  reps('mobility-90-90-hip-switches'),
+  reps('mobility-cossack-squat'),
+  reps('mobility-straight-leg-raises', ['left', 'right']),
+  reps('mobility-side-leg-raise', ['left', 'right']),
+  reps('22'),
+  reps('mobility-knee-to-wall', ['left', 'right']),
+  timed('10', ['left', 'right']),
+  timed('mobility-frog-stretch'),
+];
+
+const FULL_BODY: CourseExercise[] = [
+  timed('mobility-deep-squat-hold'),
+  timed('30', ['left', 'right']),
+  timed('10', ['left', 'right']),
+  timed('mobility-butterfly-stretch'),
+  timed('29', ['left', 'right']),
+  timed('mobility-frog-stretch'),
+  timed('mobility-puppy-pose'),
+  reps('mobility-open-book-rotations', ['left', 'right']),
+  timed('28'),
+];
+
+const COURSE_DAY_PLANS = [
+  { slug: 'monday', title: 'Posterior Chain', exercises: POSTERIOR_CHAIN },
+  { slug: 'tuesday', title: 'Hip Opening', exercises: HIP_OPENING },
+  { slug: 'wednesday', title: 'Upper-Body Mobility', exercises: UPPER_BODY },
+  { slug: 'thursday', title: 'Active Flexibility', exercises: ACTIVE_FLEXIBILITY },
+  { slug: 'friday', title: 'Full-Body Noodle', exercises: FULL_BODY },
+] as const;
+
+const wetNoodleWorkouts: WorkoutEntry[] = Array.from({ length: 6 }, (_, index) => index + 1)
+  .flatMap(week => COURSE_DAY_PLANS.map((day, dayIndex) => {
+    const additions: CourseExercise[] = [];
+    if (week >= 3 && day.slug === 'monday') additions.push(reps('mobility-straight-leg-raises', ['left', 'right']));
+    if (week >= 3 && day.slug === 'tuesday') additions.push(reps('mobility-cossack-squat'));
+    if (week >= 3 && day.slug === 'thursday') {
+      additions.push(reps('mobility-reverse-lunge', ['left', 'right']));
+      additions.push(reps('mobility-full-range-calf-raise'));
+    }
+    if (week >= 4 && day.slug === 'friday') additions.push(timed('mobility-supported-straddle'));
+
+    return {
+      id: `seed-wet-noodle-w${week}-${day.slug}`,
+      date: `2025-03-${String((week - 1) * 5 + dayIndex + 1).padStart(2, '0')}T09:00:00.000Z`,
+      title: `Wet Noodle W${week}: ${day.title}`,
+      category: 'flexibility',
+      description: `${day.title} session for Week ${week} of the six-week beginner flexibility course. Complete five minutes of light movement before starting.`,
+      duration: 30,
+      restBetweenSets: 5,
+      restBetweenExercises: 10,
+      sets: [...day.exercises, ...additions].flatMap(courseExerciseSets),
+    };
+  }));
 
 // Seed templates written on a fresh install (see useWorkouts). They exist so
 // a new user has something runnable to open, and something to copy and edit
@@ -129,4 +232,5 @@ export const workoutHistory: WorkoutEntry[] = [
       holdSet('11', 40), holdSet('11', 40),
     ],
   },
+  ...wetNoodleWorkouts,
 ];

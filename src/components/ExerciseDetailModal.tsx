@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Loader2, Pencil, Play, Repeat, Share2, Timer, TrendingUp, Video, ZoomIn } from 'lucide-react';
+import { Copy, Image as ImageIcon, Loader2, Pencil, Play, Repeat, Share2, Timer, TrendingUp, Video, ZoomIn } from 'lucide-react';
 import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
 import { useData } from '@/contexts/DataContext';
@@ -16,6 +16,7 @@ interface ExerciseDetailModalProps {
   exercise: Exercise | null;
   onClose: () => void;
   onEdit: (exercise: Exercise) => void;
+  onDuplicate?: (exercise: Exercise) => void;
 }
 
 const getCategoryColor = (category: string) => {
@@ -40,7 +41,7 @@ const getDifficultyColor = (difficulty: string) => {
 // Read-only "what is this exercise" view, distinct from ExerciseForm's edit
 // dialog — clicking an exercise card should let you read it, not
 // immediately drop you into editing it.
-export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetailModalProps) {
+export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: ExerciseDetailModalProps) {
   const { muscleGroups } = useData();
   const navigate = useNavigate();
   const [sharing, setSharing] = useState(false);
@@ -157,6 +158,9 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit }: ExerciseDetai
           <Button variant="outline" onClick={() => onEdit(exercise)}>
             <Pencil className="h-4 w-4 mr-2" /> Edit
           </Button>
+          {onDuplicate && <Button variant="outline" onClick={() => onDuplicate(exercise)}>
+            <Copy className="h-4 w-4 mr-2" /> Duplicate
+          </Button>}
           <Button onClick={() => { onClose(); navigate(`/exercises/${exercise.id}/try`); }}>
             <Play className="h-4 w-4 mr-2" /> Try exercise
           </Button>

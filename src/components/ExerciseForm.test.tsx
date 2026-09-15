@@ -12,7 +12,7 @@ import ExerciseForm from './ExerciseForm';
 describe('ExerciseForm', () => {
   afterEach(cleanup);
 
-  it('renders an existing exercise and its variations without crashing', () => {
+  it('renders an existing exercise without crashing', () => {
     render(<ExerciseForm
       exercise={{
         id: 'hamstring-stretch',
@@ -20,14 +20,12 @@ describe('ExerciseForm', () => {
         category: 'flexibility',
         muscleGroups: ['hamstrings'],
         difficulty: 'beginner',
-        variations: [{ id: 'single-leg', name: 'Single-leg', difficulty: 'intermediate' }],
       }}
       onSubmit={vi.fn()}
       onCancel={vi.fn()}
     />);
 
     expect(screen.getByDisplayValue('Hamstring stretch')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Single-leg')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    expect(screen.queryByText('Variations')).not.toBeInTheDocument();
   });
 });

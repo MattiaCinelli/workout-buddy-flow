@@ -18,7 +18,6 @@ export const DEFAULT_REST_BETWEEN_EXERCISES = 15;
 export const SWITCH_SIDES_DURATION_SECONDS = 5;
 
 export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sourceSetIndex?: number;
-  variationId?: string;
   setIndex?: number; duration?: number; reps?: number; weight?: number; distance?: number;
   // Set only for reps-based exercise steps — lets the presentation layer
   // announce which rep it's on as the (synthesized) countdown ticks past
@@ -54,7 +53,7 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
     const secondsPerRep = isReps ? getSecondsPerRep(exercise ?? {}) : undefined;
     const duration = isReps ? (secondsPerRep! * set.reps!) : set.duration;
     const exerciseStep: WorkoutStep = { type: 'exercise', exerciseId: set.exerciseId, sourceSetIndex,
-      setIndex, variationId: set.variationId, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep,
+      setIndex, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep,
       warmup: set.warmup, amrap: set.amrap };
     if (isDirectional(set.direction)) {
       steps.push({ ...exerciseStep, direction: set.direction });

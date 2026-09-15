@@ -3,7 +3,7 @@ import type { Exercise } from '@/data/exercises';
 import { filterExerciseLibrary } from './exerciseLibrary';
 
 const exercises: Exercise[] = [
-  { id: '1', name: 'Back Squat', aliases: ['Barbell squat'], category: 'strength', muscleGroups: ['quads'], equipment: ['Barbell'], difficulty: 'intermediate', variations: [{ id: 'goblet', name: 'Goblet Squat', difficulty: 'beginner', equipment: ['Dumbbells'] }] },
+  { id: '1', name: 'Back Squat', aliases: ['Barbell squat'], category: 'strength', muscleGroups: ['quads'], equipment: ['Barbell'], difficulty: 'intermediate' },
   { id: '2', name: 'Easy Run', category: 'cardio', muscleGroups: ['legs'], difficulty: 'beginner' },
   { id: '3', name: 'Pistol Squat', category: 'balance', muscleGroups: ['quads'], difficulty: 'advanced' },
 ];
@@ -28,12 +28,7 @@ describe('filterExerciseLibrary', () => {
 
   it('filters and searches by equipment', () => {
     expect(filter({ equipment: ['Barbell'] }).map(item => item.id)).toEqual(['1']);
-    expect(filter({ equipment: ['Dumbbells'] }).map(item => item.id)).toEqual(['1']);
+    expect(filter({ equipment: ['Dumbbells'] })).toEqual([]);
     expect(filter({ searchQuery: 'barbell' }).map(item => item.id)).toEqual(['1']);
-  });
-
-  it('finds a base exercise through a variation name or difficulty', () => {
-    expect(filter({ searchQuery: 'goblet' }).map(item => item.id)).toEqual(['1']);
-    expect(filter({ difficulty: 'beginner' }).map(item => item.id)).toContain('1');
   });
 });
