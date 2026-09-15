@@ -2,17 +2,20 @@ import { Edit, Image, Repeat, Timer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import ExerciseImage from '@/components/ExerciseImage';
-import { Exercise, getLogType } from '@/data/exercises';
+import { Exercise, getLogType, type ExerciseVariation } from '@/data/exercises';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
+import CardStack from '@/components/CardStack';
 
 interface ExerciseTileProps {
   exercise: Exercise;
   onSelect: (exercise: Exercise) => void;
   onEdit: (exercise: Exercise) => void;
+  onSelectVariation?: (exercise: Exercise, variation: ExerciseVariation) => void;
+  expandVariations?: boolean;
 }
 
-const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
+const ExerciseTile = ({ exercise, onSelect, onEdit, onSelectVariation, expandVariations = false }: ExerciseTileProps) => {
   const { muscleGroups } = useData();
   const muscleNames = exercise.muscleGroups
     .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
@@ -30,6 +33,7 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
   }[exercise.category] ?? 'border-t-primary';
 
   return (
+    <CardStack count={exercise.variations?.length ?? 0} label="variation" forceExpanded={expandVariations} front={
     <article className={cn(
       'group relative min-w-0 overflow-hidden rounded-lg border border-t-[3px] bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-x-primary/15 hover:border-b-primary/15 hover:shadow-md',
       categoryAccent,
@@ -69,7 +73,9 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
       >
         <Edit className="h-3.5 w-3.5" />
       </Button>
-    </article>
+    </article>}>
+    {!!exercise.variations?.length && exercise.variations.map((variation, index) => <button key={variation.id} type="button" className="flex w-full items-center gap-2 rounded-md border bg-card p-1.5 text-left hover:border-primary/40" onClick={() => onSelectVariation?.(exercise, variation)}><div className="flex h-9 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">{variation.imageUrl ? <ExerciseImage imageUrl={variation.imageUrl} alt="" className="h-full w-full object-cover" /> : <Image className="h-4 w-4 text-muted-foreground" />}</div><div className="min-w-0"><p className="truncate text-xs font-medium">{variation.name}</p><p className="text-[10px] capitalize text-muted-foreground">Level {index + 1} · {variation.difficulty}</p></div></button>)}
+    </CardStack>
   );
 };
 

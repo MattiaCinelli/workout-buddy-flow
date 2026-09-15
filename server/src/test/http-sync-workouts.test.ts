@@ -57,6 +57,14 @@ test('description round-trips through push and pull', async () => {
   assert.equal(pull.json().workouts[0].description, 'A gentle morning routine to wake up your joints.');
 });
 
+test('a user-managed workout folder round-trips through push and pull', async () => {
+  const { app, aliceToken } = await setupTwoUsers();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+  await app.inject({ method: 'POST', url: '/sync/workouts', headers, payload: { workouts: [workout({ folder: 'Hamstring V2' })] } });
+  const pull = await app.inject({ method: 'GET', url: '/sync/workouts', headers });
+  assert.equal(pull.json().workouts[0].folder, 'Hamstring V2');
+});
+
 test('a stale workout push loses to a newer one already stored', async () => {
   const { app, aliceToken } = await setupTwoUsers();
   const headers = { authorization: `Bearer ${aliceToken}` };

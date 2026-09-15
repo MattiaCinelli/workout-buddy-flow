@@ -15,6 +15,18 @@ export interface ExerciseProgression {
   repRangeMin?: number;  // 'double' only
   repRangeMax?: number;  // 'double' only
 }
+export interface ExerciseVariation {
+  id: string;
+  name: string;
+  difficulty: Exercise['difficulty'];
+  imageUrl?: string;
+  instructions?: string;
+  equipment?: string[];
+  defaultSets?: number;
+  defaultReps?: number;
+  defaultDuration?: number;
+  defaultWeight?: number;
+}
 
 export interface Exercise {
   id: string;
@@ -23,6 +35,7 @@ export interface Exercise {
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
   muscleGroups: string[]; // MuscleGroup ids — see src/data/muscleGroups.ts
   equipment?: string[];
+  variations?: ExerciseVariation[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   // Whether a set of this exercise is measured in reps (push-ups) or a
   // duration (a yoga hold) — independent of category: a 'strength'
@@ -68,11 +81,28 @@ export interface Exercise {
 }
 
 export const getExerciseImageUrl = (
-  exercise: Pick<Exercise, 'imageUrl' | 'directionImageUrls'>,
+  exercise: Pick<Exercise, 'imageUrl' | 'directionImageUrls' | 'variations'>,
   direction?: ExecutionDirection,
-): string | undefined => direction
-  ? exercise.directionImageUrls?.[direction] || exercise.imageUrl
-  : exercise.imageUrl;
+  variationId?: string,
+): string | undefined => exercise.variations?.find(item => item.id === variationId)?.imageUrl
+  || (direction ? exercise.directionImageUrls?.[direction] : undefined)
+  || exercise.imageUrl;
+
+export const getExerciseVariation = (exercise: Pick<Exercise, 'variations'>, id?: string) =>
+  exercise.variations?.find(item => item.id === id);
+
+export const exerciseVariationAsExercise = (exercise: Exercise, variation: ExerciseVariation): Exercise => ({
+  ...exercise,
+  name: variation.name,
+  difficulty: variation.difficulty,
+  imageUrl: variation.imageUrl ?? exercise.imageUrl,
+  instructions: variation.instructions ?? exercise.instructions,
+  equipment: variation.equipment ?? exercise.equipment,
+  defaultSets: variation.defaultSets ?? exercise.defaultSets,
+  defaultReps: variation.defaultReps ?? exercise.defaultReps,
+  defaultDuration: variation.defaultDuration ?? exercise.defaultDuration,
+  defaultWeight: variation.defaultWeight ?? exercise.defaultWeight,
+});
 
 export const getExecutionDirections = (
   exercise: Pick<Exercise, 'executionDirections' | 'unilateral'>,

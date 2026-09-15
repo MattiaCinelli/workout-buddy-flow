@@ -4,6 +4,7 @@ export type WorkoutSetDirection = ExecutionDirection | 'none';
 
 export interface WorkoutSet {
   exerciseId: string;
+  variationId?: string;
   // Explicit per-workout direction. Missing means a legacy workout; `none`
   // records an intentional override of an exercise's directional default.
   direction?: WorkoutSetDirection;
@@ -44,6 +45,7 @@ export interface WorkoutEntry {
   duration: number; // in minutes
   category: WorkoutCategory;
   description?: string; // what this workout is / who it's for — shown in the workout list
+  folder?: string; // optional user-managed library folder; independent from course membership
   favorite?: boolean; // protects against accidental deletion — see checkWorkoutDeletion
   sets: WorkoutSet[];
   restBetweenSets?: number; // in seconds, default rest between sets of the SAME exercise

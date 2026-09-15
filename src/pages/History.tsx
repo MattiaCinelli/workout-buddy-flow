@@ -32,6 +32,7 @@ import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS, WorkoutCategory } from '@/
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { SessionCorrectionDialog } from '@/components/SessionCorrectionDialog';
+import { workoutContainsExerciseQuery } from '@/lib/workoutSearch';
 
 type CategoryFilter = 'all' | WorkoutCategory;
 type SortOption = 'newest' | 'oldest' | 'duration-high' | 'duration-low';
@@ -95,9 +96,8 @@ const HistoryPage: React.FC = () => {
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(w => 
-        w.title.toLowerCase().includes(query)
-      );
+      result = result.filter(w => w.title.toLowerCase().includes(query)
+        || workoutContainsExerciseQuery(w, exercises, query));
     }
 
     // Category filter
@@ -137,7 +137,7 @@ const HistoryPage: React.FC = () => {
     });
 
     return result;
-  }, [workouts, searchQuery, categoryFilter, sortBy, startDate, endDate]);
+  }, [workouts, exercises, searchQuery, categoryFilter, sortBy, startDate, endDate]);
 
   const clearFilters = () => {
     setSearchQuery('');

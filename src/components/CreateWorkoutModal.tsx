@@ -12,7 +12,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Exercise, getLogType, getExecutionDirections } from '@/data/exercises';
+import { Exercise, getExerciseImageUrl, getExerciseVariation, getLogType, getExecutionDirections, type ExerciseVariation } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import ExerciseImage from './ExerciseImage';
 import { UnilateralSetNote } from './UnilateralSetNote';
@@ -22,6 +22,8 @@ import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS }
 import { useData } from '@/contexts/DataContext';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 import { expandSetForExercise, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel } from '@/lib/workoutDirections';
+import { useWorkoutFolders } from '@/hooks/useWorkoutFolders';
+import { exerciseMatchesNameQuery } from '@/lib/exerciseAliases';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -37,6 +39,7 @@ interface SelectedExercise {
 const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose, onCreated }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>('');
+  const [folder, setFolder] = useState('none');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [restBetweenSets, setRestBetweenSets] = useState(DEFAULT_REST_BETWEEN_SETS);
@@ -46,11 +49,13 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const [activeTab, setActiveTab] = useState('exercises');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { exercises, createWorkout, muscleGroups } = useData();
+  const { exercises, workouts, createWorkout, muscleGroups } = useData();
+  const { folders } = useWorkoutFolders((workouts ?? []).map(workout => workout.folder));
   const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
   
   const filteredExercises = exercises.filter(exercise => 
-    exercise.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    exerciseMatchesNameQuery(exercise, searchQuery) ||
+    exercise.variations?.some(variation => variation.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
     exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     exercise.muscleGroups.some(id =>
       muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
@@ -81,6 +86,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       const workoutData: Omit<WorkoutEntry, 'id'> = {
         title,
         category: category as WorkoutEntry['category'],
+        folder: folder === 'none' ? undefined : folder,
         description: description.trim() || undefined,
         date: new Date().toISOString().split('T')[0],
         duration: estimatedDuration,
@@ -100,6 +106,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       // Reset form and close modal
       setTitle('');
       setCategory('');
+      setFolder('none');
       setDescription('');
       setNotes('');
       setRestBetweenSets(DEFAULT_REST_BETWEEN_SETS);
@@ -121,7 +128,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     }
   };
   
-  const handleSelectExercise = (exercise: Exercise) => {
+  const handleSelectExercise = (exercise: Exercise, variation?: ExerciseVariation) => {
     // Check if exercise is already selected
     if (selectedExercises.some(item => item.exercise.id === exercise.id)) {
       toast({
@@ -136,12 +143,13 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     // gets its own configured reps/sets instead of always defaulting to
     // 12 reps at 50kg regardless of what the exercise actually is.
     const isTimeBased = getLogType(exercise) === 'time';
-    const setCount = exercise.defaultSets ?? 1;
+    const setCount = variation?.defaultSets ?? exercise.defaultSets ?? 1;
     const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
-      reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
-      weight: exercise.defaultWeight,
-      duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
+      variationId: variation?.id,
+      reps: isTimeBased ? undefined : (variation?.defaultReps ?? exercise.defaultReps ?? 12),
+      weight: variation?.defaultWeight ?? exercise.defaultWeight,
+      duration: isTimeBased ? (variation?.defaultDuration ?? exercise.defaultDuration ?? 30) : undefined,
       distance: exercise.defaultDistance,
       // Left undefined rather than baked in here — the runtime picks
       // between restBetweenSets/restBetweenExercises dynamically based on
@@ -161,7 +169,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     
     toast({
       title: "Exercise added",
-      description: `${exercise.name} added to workout.`,
+      description: `${variation?.name ?? exercise.name} added to workout.`,
     });
   };
 
@@ -242,10 +250,23 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     setSelectedExercises(updatedExercises);
   };
 
+  const selectVariation = (exerciseIndex: number, variationId: string) => {
+    const selected = selectedExercises[exerciseIndex];
+    const variation = selected.exercise.variations?.find(item => item.id === variationId);
+    const sets = selected.sets.map(set => ({ ...set,
+      variationId: variation?.id,
+      reps: variation ? variation.defaultReps ?? set.reps : selected.exercise.defaultReps ?? set.reps,
+      duration: variation ? variation.defaultDuration ?? set.duration : selected.exercise.defaultDuration ?? set.duration,
+      weight: variation ? variation.defaultWeight ?? set.weight : selected.exercise.defaultWeight ?? set.weight,
+    }));
+    setSelectedExercises(items => items.map((item, index) => index === exerciseIndex ? { ...item, sets } : item));
+  };
+
   const handleClose = () => {
     if (!isSubmitting) {
       setTitle('');
       setCategory('');
+      setFolder('none');
       setDescription('');
       setNotes('');
       setRestBetweenSets(DEFAULT_REST_BETWEEN_SETS);
@@ -301,6 +322,14 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                     <SelectItem key={value} value={value}>{WORKOUT_CATEGORY_LABELS[value]}</SelectItem>
                   ))}
                 </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Folder</Label>
+              <Select value={folder} onValueChange={setFolder} disabled={isSubmitting}>
+                <SelectTrigger className="col-span-3" aria-label="Workout folder"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="none">No folder</SelectItem>{folders.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
@@ -395,6 +424,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                         key={exercise.id}
                         exercise={exercise}
                         onSelect={handleSelectExercise}
+                        onSelectVariation={handleSelectExercise}
+                        expandVariations={!!searchQuery.trim() && !!exercise.variations?.some(variation => variation.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))}
                       />
                     ))}
                     {filteredExercises.length === 0 && (
@@ -449,10 +480,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                             </div>
                             <div className="flex w-20 shrink-0 flex-col items-end gap-2" data-selected-exercise-actions>
                               <div className="flex h-16 w-20 items-center justify-center overflow-hidden rounded-md bg-muted">
-                                {selectedEx.exercise.imageUrl ? (
+                                {getExerciseImageUrl(selectedEx.exercise, undefined, selectedEx.sets[0]?.variationId) ? (
                                   <ExerciseImage
-                                    imageUrl={selectedEx.exercise.imageUrl}
-                                    alt={`${selectedEx.exercise.name} thumbnail`}
+                                    imageUrl={getExerciseImageUrl(selectedEx.exercise, undefined, selectedEx.sets[0]?.variationId)!}
+                                    alt={`${getExerciseVariation(selectedEx.exercise, selectedEx.sets[0]?.variationId)?.name ?? selectedEx.exercise.name} thumbnail`}
                                     className="h-full w-full object-cover"
                                   />
                                 ) : (
@@ -472,6 +503,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                             </div>
                           </div>
                           
+                          {!!selectedEx.exercise.variations?.length && <div className="mb-3"><Label>Variation</Label><Select value={selectedEx.sets[0]?.variationId ?? 'default'} onValueChange={value => selectVariation(exIndex, value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Standard · {selectedEx.exercise.difficulty}</SelectItem>{selectedEx.exercise.variations.map(item => <SelectItem key={item.id} value={item.id}>{item.name} · {item.difficulty}</SelectItem>)}</SelectContent></Select></div>}
                           <div className="space-y-3 mt-3">
                             {selectedEx.sets.map((set, setIndex) => (
                               <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>

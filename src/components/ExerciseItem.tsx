@@ -2,20 +2,23 @@
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
+import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS, type ExerciseVariation } from '@/data/exercises';
 import { Image, Edit, Repeat, Timer } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 import ExerciseImage from '@/components/ExerciseImage';
+import CardStack from '@/components/CardStack';
 
 interface ExerciseItemProps {
   exercise: Exercise;
   onSelect?: (exercise: Exercise) => void;
   onEdit?: (exercise: Exercise) => void;
+  onSelectVariation?: (exercise: Exercise, variation: ExerciseVariation) => void;
+  expandVariations?: boolean;
 }
 
-const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit }) => {
+const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit, onSelectVariation, expandVariations = false }) => {
   const { muscleGroups } = useData();
   const muscleGroupNames = exercise.muscleGroups
     .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
@@ -52,6 +55,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
   };
 
   return (
+    <CardStack count={exercise.variations?.length ?? 0} label="variation" forceExpanded={expandVariations} front={
     <div
       className={cn(
         'exercise-item p-4 border rounded-lg hover:shadow-md transition-shadow',
@@ -135,7 +139,14 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
           )}
         </div>
       </div>
-    </div>
+    </div>}>
+    {!!exercise.variations?.length && <>
+      {exercise.variations.map((variation, index) => <button key={variation.id} type="button" className="flex w-full items-center gap-3 rounded-lg border bg-card p-2 text-left transition-colors hover:border-primary/40 hover:bg-muted/40" onClick={() => onSelectVariation?.(exercise, variation)}>
+        <div className="flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">{variation.imageUrl ? <ExerciseImage imageUrl={variation.imageUrl} alt="" className="h-full w-full object-cover" /> : <Image className="h-5 w-5 text-muted-foreground" />}</div>
+        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{variation.name}</p><p className="text-xs capitalize text-muted-foreground">Level {index + 1} · {variation.difficulty}</p></div>
+      </button>)}
+    </>}
+    </CardStack>
   );
 };
 

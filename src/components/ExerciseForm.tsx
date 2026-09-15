@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Exercise, getLogType, DEFAULT_SECONDS_PER_REP, EXECUTION_DIRECTIONS,
-  EXECUTION_DIRECTION_LABELS, getExecutionDirections, type ExecutionDirection,
+  EXECUTION_DIRECTION_LABELS, getExecutionDirections, type ExecutionDirection, type ExerciseVariation,
 } from '@/data/exercises';
-import { Trash, FileImage, Loader2, Settings2 } from 'lucide-react';
+import { Trash, FileImage, Loader2, Plus, Settings2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -108,8 +108,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const directionFileInputRefs = useRef<Partial<Record<ExecutionDirection, HTMLInputElement | null>>>({});
-  const [processingImage, setProcessingImage] = useState<'default' | ExecutionDirection | null>(null);
+  const variationFileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [processingImage, setProcessingImage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(!!exercise?.secondsPerRep || !!exercise?.progression);
+  const [variations, setVariations] = useState<ExerciseVariation[]>(exercise?.variations ?? []);
   const { muscleGroups: availableMuscleGroups } = useData();
   const { equipment: availableEquipment } = useEquipment();
 
@@ -142,6 +144,10 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   });
 
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    if (variations.some(variation => !variation.name.trim())) {
+      toast.error('Every variation needs a name.');
+      return;
+    }
     const aliases = normalizeExerciseAliases(values.aliases, values.name);
     onSubmit({
       name: values.name,
@@ -149,6 +155,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       category: values.category,
       muscleGroups: values.muscleGroups,
       equipment: values.equipment.length ? values.equipment : undefined,
+      variations: variations.length ? variations.map(variation => ({ ...variation, name: variation.name.trim() })) : undefined,
       difficulty: values.difficulty,
       logType: values.logType,
       executionDirections: values.executionDirections.length ? values.executionDirections : undefined,
@@ -252,6 +259,30 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     form.setValue(`directionImageUrls.${direction}`, '');
     const input = directionFileInputRefs.current[direction];
     if (input) input.value = '';
+  };
+
+  const handleVariationImageChange = async (event: React.ChangeEvent<HTMLInputElement>, variationId: string) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('Image is too large to process (max 25MB).');
+      return;
+    }
+    if (file.type === 'image/gif' && file.size > 5 * 1024 * 1024) {
+      toast.error("GIFs must be under 5MB — they're stored as uploaded, unlike other images.");
+      return;
+    }
+    setProcessingImage(`variation:${variationId}`);
+    try {
+      const imageUrl = file.type === 'image/gif' ? await readFileAsDataUrl(file) : await resizeImageToDataUrl(file);
+      setVariations(items => items.map(item => item.id === variationId ? { ...item, imageUrl } : item));
+    } catch (error) {
+      console.error('Failed to process variation image:', error);
+      toast.error('Could not read that image. Try a different file.');
+    } finally {
+      setProcessingImage(null);
+      event.target.value = '';
+    }
   };
 
   const logType = form.watch('logType');
@@ -392,6 +423,30 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             </FormItem>
           )}
         />
+
+        <div className="space-y-3 rounded-lg border p-3">
+          <div className="flex items-center justify-between gap-2"><div><p className="text-sm font-medium">Variations</p><p className="text-xs text-muted-foreground">Optional easier or harder versions with their own picture and guidance.</p></div><Button type="button" size="sm" variant="outline" onClick={() => setVariations(items => [...items, { id: crypto.randomUUID(), name: '', difficulty: 'beginner' }])}><Plus className="mr-1 h-4 w-4" />Add</Button></div>
+          {variations.map((variation, index) => {
+            const patchVariation = (patch: Partial<ExerciseVariation>) => setVariations(items => items.map(item => item.id === variation.id ? { ...item, ...patch } : item));
+            return <div key={variation.id} className="space-y-2 rounded-md bg-muted/40 p-3">
+              <div className="flex gap-2"><Input value={variation.name} onChange={e => patchVariation({ name: e.target.value })} placeholder="Variation name, e.g. Incline push-up" aria-label={`Variation ${index + 1} name`} /><select className="rounded-md border bg-background px-2 text-sm" value={variation.difficulty} onChange={e => patchVariation({ difficulty: e.target.value as ExerciseVariation['difficulty'] })} aria-label={`Variation ${index + 1} difficulty`}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select><Button type="button" size="icon" variant="ghost" aria-label={`Remove variation ${index + 1}`} onClick={() => setVariations(items => items.filter(item => item.id !== variation.id))}><Trash /></Button></div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                  {variation.imageUrl ? <ExerciseImage imageUrl={variation.imageUrl} alt={`${variation.name || `Variation ${index + 1}`} preview`} className="h-full w-full object-cover" /> : <FileImage className="h-7 w-7 text-muted-foreground" />}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input ref={element => { variationFileInputRefs.current[variation.id] = element; }} type="file" accept="image/*" className="hidden" onChange={event => void handleVariationImageChange(event, variation.id)} />
+                  <Button type="button" size="sm" variant="outline" disabled={processingImage === `variation:${variation.id}`} onClick={() => variationFileInputRefs.current[variation.id]?.click()}>
+                    {processingImage === `variation:${variation.id}` ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileImage className="mr-1 h-4 w-4" />}{variation.imageUrl ? 'Replace picture' : 'Upload picture'}
+                  </Button>
+                  {variation.imageUrl && <Button type="button" size="sm" variant="ghost" onClick={() => patchVariation({ imageUrl: undefined })}>Remove</Button>}
+                </div>
+              </div>
+              <Textarea value={variation.instructions ?? ''} onChange={e => patchVariation({ instructions: e.target.value || undefined })} placeholder="Variation notes or technique guidance" rows={2} />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Input type="number" min={1} value={variation.defaultSets ?? ''} onChange={e => patchVariation({ defaultSets: e.target.value ? Number(e.target.value) : undefined })} placeholder="Sets" /><Input type="number" min={0} value={variation.defaultReps ?? ''} onChange={e => patchVariation({ defaultReps: e.target.value ? Number(e.target.value) : undefined })} placeholder="Reps" /><Input type="number" min={0} value={variation.defaultDuration ?? ''} onChange={e => patchVariation({ defaultDuration: e.target.value ? Number(e.target.value) : undefined })} placeholder="Seconds" /><Input value={variation.equipment?.join(', ') ?? ''} onChange={e => patchVariation({ equipment: e.target.value.split(',').map(value => value.trim()).filter(Boolean) })} placeholder="Equipment" /></div>
+            </div>;
+          })}
+        </div>
 
         <FormField
           control={form.control}

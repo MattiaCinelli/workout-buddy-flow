@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseList, getExerciseImageUrl } from './exercises';
+import { exerciseList, getExerciseImageUrl, getExerciseVariation } from './exercises';
 
 const mobilityIds = [
   '28',
@@ -57,6 +57,7 @@ describe('getExerciseImageUrl', () => {
   const exercise = {
     imageUrl: '/default.jpg',
     directionImageUrls: { left: '/left.jpg', right: '/right.jpg' },
+    variations: [{ id: 'assisted', name: 'Assisted', difficulty: 'beginner' as const, imageUrl: '/assisted.jpg' }],
   } as const;
 
   it('uses a direction-specific image when one exists', () => {
@@ -66,5 +67,10 @@ describe('getExerciseImageUrl', () => {
   it('falls back to the default image for missing or unspecified directions', () => {
     expect(getExerciseImageUrl(exercise, 'forward')).toBe('/default.jpg');
     expect(getExerciseImageUrl(exercise)).toBe('/default.jpg');
+  });
+
+  it('prefers the selected variation image and resolves its metadata', () => {
+    expect(getExerciseImageUrl(exercise, 'left', 'assisted')).toBe('/assisted.jpg');
+    expect(getExerciseVariation(exercise, 'assisted')?.name).toBe('Assisted');
   });
 });

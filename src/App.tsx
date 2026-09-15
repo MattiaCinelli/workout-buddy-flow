@@ -23,6 +23,7 @@ const WorkoutPresentation = lazy(() => import("./pages/WorkoutPresentation"));
 const CalendarPage = lazy(() => import("./pages/Calendar"));
 const HistoryPage = lazy(() => import("./pages/History"));
 const WorkoutsPage = lazy(() => import("./pages/Workouts"));
+const WorkoutFolder = lazy(() => import("./pages/WorkoutFolder"));
 const ProgressPage = lazy(() => import("./pages/Progress"));
 const CoursesPage = lazy(() => import("./pages/Courses"));
 const CourseDetail = lazy(() => import("./pages/CourseDetail"));
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/workouts" element={<WorkoutsPage />} />
+              <Route path="/workouts/folders/:folderName" element={<WorkoutFolder />} />
               <Route path="/progress" element={<ProgressPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/courses" element={<CoursesPage />} />

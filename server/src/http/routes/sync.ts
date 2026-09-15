@@ -13,6 +13,7 @@ const workoutSetSchema = {
   required: ['exerciseId'],
   properties: {
     exerciseId: { type: 'string' },
+    variationId: { type: 'string' },
     direction: { type: 'string', enum: ['none', 'left', 'right', 'forward', 'backward'] },
     reps: { type: 'number' },
     weight: { type: 'number' },
@@ -34,6 +35,7 @@ const exerciseSchema = {
     category: { type: 'string' },
     muscleGroups: { type: 'array', items: { type: 'string' } },
     equipment: { type: 'array', items: { type: 'string' } },
+    variations: { type: 'array', items: { type: 'object', additionalProperties: true, required: ['id', 'name', 'difficulty'], properties: { id: { type: 'string' }, name: { type: 'string' }, difficulty: { type: 'string' } } } },
     difficulty: { type: 'string' },
     logType: { type: 'string' },
     defaultSets: { type: 'number' },
@@ -77,6 +79,7 @@ const workoutSchema = {
     duration: { type: 'number' },
     category: { type: 'string' },
     description: { type: 'string' },
+    folder: { type: 'string', maxLength: 100 },
     sets: { type: 'array', items: workoutSetSchema },
     restBetweenSets: { type: 'number' },
     restBetweenExercises: { type: 'number' },

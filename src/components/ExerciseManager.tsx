@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Exercise } from '@/data/exercises';
+import { Exercise, exerciseVariationAsExercise } from '@/data/exercises';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ExerciseItem from './ExerciseItem';
@@ -357,8 +357,8 @@ const ExerciseManager: React.FC = () => {
         : 'space-y-3'}>
         {filteredExercises.length > 0 ? (
           filteredExercises.map((exercise) => viewMode === 'tiles'
-            ? <ExerciseTile key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />
-            : <ExerciseItem key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} />)
+            ? <ExerciseTile key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} expandVariations={!!searchQuery.trim() && !!exercise.variations?.some(variation => variation.name.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()))} onSelectVariation={(base, variation) => setViewingExercise(exerciseVariationAsExercise(base, variation))} />
+            : <ExerciseItem key={exercise.id} exercise={exercise} onSelect={setViewingExercise} onEdit={handleEdit} expandVariations={!!searchQuery.trim() && !!exercise.variations?.some(variation => variation.name.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()))} onSelectVariation={(base, variation) => setViewingExercise(exerciseVariationAsExercise(base, variation))} />)
         ) : (
           <div className={viewMode === 'tiles'
             ? 'col-span-full text-center py-12 bg-muted/50 rounded-lg border border-dashed'
