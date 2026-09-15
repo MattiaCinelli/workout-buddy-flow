@@ -56,13 +56,13 @@ describe('buildWorkoutSteps', () => {
     expect(steps[1].secondsPerRep).toBeUndefined();
   });
 
-  it('defaults rest between different exercises to 30 seconds when nothing is specified', () => {
+  it('defaults rest between different exercises to 15 seconds when nothing is specified', () => {
     const workout: WorkoutEntry = {
       ...baseWorkout,
       sets: [{ exerciseId: 'e-reps', reps: 5 }, { exerciseId: 'e-time', duration: 30 }],
     };
     const steps = buildWorkoutSteps(workout, [repsExercise, timeExercise]);
-    expect(steps[2]).toMatchObject({ type: 'rest', kind: 'rest', duration: 30, changesExercise: true });
+    expect(steps[2]).toMatchObject({ type: 'rest', kind: 'rest', duration: 15, changesExercise: true });
   });
 
   it('tags a rest as changesExercise only when the next set is a different exercise', () => {
@@ -79,13 +79,13 @@ describe('buildWorkoutSteps', () => {
     expect(steps[4]).toMatchObject({ kind: 'rest', changesExercise: true });
   });
 
-  it('defaults rest between two sets of the SAME exercise to 10 seconds — shorter than between exercises', () => {
+  it('defaults rest between two sets of the SAME exercise to 5 seconds — shorter than between exercises', () => {
     const workout: WorkoutEntry = {
       ...baseWorkout,
       sets: [{ exerciseId: 'e-reps', reps: 5 }, { exerciseId: 'e-reps', reps: 5 }],
     };
     const steps = buildWorkoutSteps(workout, [repsExercise]);
-    expect(steps[2]).toMatchObject({ type: 'rest', duration: 10 });
+    expect(steps[2]).toMatchObject({ type: 'rest', duration: 5 });
   });
 
   it('respects a custom restBetweenSets/restBetweenExercises set on the workout', () => {

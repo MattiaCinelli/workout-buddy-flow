@@ -81,11 +81,11 @@ const CreateCourseModal: React.FC<CreateCourseModalProps> = ({ isOpen, onClose }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Course</DialogTitle>
           <DialogDescription>
-            Build a course by selecting workouts in the order you want to complete them.
+            Plan each week, create workouts in place, or reuse workouts from your library.
           </DialogDescription>
         </DialogHeader>
 

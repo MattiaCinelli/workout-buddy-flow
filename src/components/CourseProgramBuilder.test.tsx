@@ -1,10 +1,23 @@
 /** @vitest-environment jsdom */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { fireEvent, render, screen, within, cleanup } from '@testing-library/react';
 import CourseProgramBuilder from './CourseProgramBuilder';
 import type { CourseWorkout } from '@/data/courses';
 import type { WorkoutEntry } from '@/data/workoutHistory';
+
+vi.mock('./CreateWorkoutModal', () => ({
+  default: ({ isOpen, onCreated, onClose }: {
+    isOpen: boolean;
+    onCreated?: (workout: WorkoutEntry) => void;
+    onClose: () => void;
+  }) => isOpen ? (
+    <button type="button" onClick={() => {
+      onCreated?.({ id: 'inline-workout', title: 'Inline workout' } as WorkoutEntry);
+      onClose();
+    }}>Finish inline workout</button>
+  ) : null,
+}));
 
 const workouts = [
   { id: 'w1', title: 'Push', date: '2026-01-01', duration: 30, category: 'strength', sets: [] },
@@ -31,6 +44,17 @@ const dump = () => JSON.parse(screen.getByTestId('dump').textContent!);
 afterEach(() => cleanup());
 
 describe('CourseProgramBuilder', () => {
+  it('creates a workout inside a chosen week and day and assigns it automatically', () => {
+    render(<Harness initial={[]} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Create new' })[2]);
+    fireEvent.click(screen.getByRole('button', { name: 'Finish inline workout' }));
+
+    expect(dump()).toEqual([expect.objectContaining({
+      workoutId: 'inline-workout', week: 1, day: 3, type: 'workout',
+    })]);
+  });
+
   it('prompts to create a workout first when there are none', () => {
     render(<CourseProgramBuilder items={[]} workouts={[]} onChange={() => {}} />);
     expect(screen.getByText(/Create a workout first/)).toBeInTheDocument();

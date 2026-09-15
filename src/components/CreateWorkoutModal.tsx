@@ -26,6 +26,7 @@ import { expandSetForExercise, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel } f
 interface CreateWorkoutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (workout: WorkoutEntry) => void;
 }
 
 interface SelectedExercise {
@@ -33,7 +34,7 @@ interface SelectedExercise {
   sets: WorkoutSet[];
 }
 
-const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose }) => {
+const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose, onCreated }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -89,7 +90,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
         notes: notes.trim() || undefined
       };
       
-      await createWorkout(workoutData);
+      const createdWorkout = await createWorkout(workoutData);
       
       toast({
         title: "Workout created!",
@@ -106,6 +107,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
+      onCreated?.(createdWorkout);
       onClose();
     } catch (error) {
       console.error('Failed to create workout:', error);

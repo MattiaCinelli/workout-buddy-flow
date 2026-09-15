@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, CalendarPlus, Dumbbell, Plus, Trash2, Bed } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarPlus, Dumbbell, Plus, Trash2, Bed, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CourseWorkout } from '@/data/courses';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { normalizeCourseItemOrder } from '@/lib/courseSchedule';
+import CreateWorkoutModal from './CreateWorkoutModal';
 
 interface Props {
   items: CourseWorkout[];
@@ -28,6 +29,8 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
   const [weekFrom, setWeekFrom] = useState(1);
   const [weekTo, setWeekTo] = useState(1);
   const [days, setDays] = useState<string[]>(['1', '2', '3', '4', '5']);
+  const [minimumWeeks, setMinimumWeeks] = useState(1);
+  const [creatingFor, setCreatingFor] = useState<{ week: number; day: number } | null>(null);
 
   const update = (id: string, patch: Partial<CourseWorkout>) =>
     onChange(normalizeCourseItemOrder(items.map(item => item.id === id ? { ...item, ...patch } : item)));
@@ -63,6 +66,14 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
     id: crypto.randomUUID(), type: 'rest', order: maxOrder() + 1, week: 1, day: 1, title: 'Recovery day', completed: false,
   }]));
 
+  const addWorkoutToDay = (workoutId: string, week: number, day: number) =>
+    onChange(normalizeCourseItemOrder([...items, {
+      id: crypto.randomUUID(), type: 'workout', workoutId,
+      order: maxOrder() + 1, week, day, completed: false,
+    }]));
+
+  const weekCount = Math.max(minimumWeeks, ...items.map(item => item.week), 1);
+
   const move = (index: number, direction: -1 | 1) => {
     const item = items[index];
     const sameDayIndices = items.flatMap((candidate, candidateIndex) =>
@@ -81,6 +92,74 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
   const incompleteSessions = items.some(item => item.type === 'workout' && !item.workoutId);
 
   return <div className="space-y-4">
+    <div className="overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-workout-purple/10 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/15 px-4 py-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <p className="font-semibold">Build your course week by week</p>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Create a new workout inside any day, or reuse one from your library.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={() => setMinimumWeeks(weekCount + 1)}>
+          <Plus className="mr-1 h-4 w-4" /> Add week
+        </Button>
+      </div>
+
+      <div className="space-y-5 p-3 sm:p-4">
+        {Array.from({ length: weekCount }, (_, weekIndex) => weekIndex + 1).map(week => (
+          <section key={week} aria-labelledby={`course-week-${week}`}>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{week}</span>
+              <h3 id={`course-week-${week}`} className="font-semibold">Week {week}</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {DAYS.map(day => {
+                const dayItems = items
+                  .filter(item => item.week === week && item.day === day)
+                  .sort((a, b) => a.order - b.order);
+                return (
+                  <div key={day} className="group rounded-lg border border-border/70 bg-card/80 p-3 transition-colors hover:border-primary/30">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-semibold">Day {day}</p>
+                      <span className="text-[11px] text-muted-foreground">
+                        {dayItems.length ? `${dayItems.length} session${dayItems.length === 1 ? '' : 's'}` : 'Unscheduled'}
+                      </span>
+                    </div>
+                    <div className="mb-3 space-y-1.5">
+                      {dayItems.length === 0 ? (
+                        <div className="rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground">Rest or add a workout</div>
+                      ) : dayItems.map(item => (
+                        <div key={item.id} className="flex items-center gap-2 rounded-md bg-primary/8 px-2 py-1.5 text-xs">
+                          {item.type === 'rest' ? <Bed className="h-3.5 w-3.5 text-muted-foreground" /> : <Dumbbell className="h-3.5 w-3.5 text-primary" />}
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.type === 'rest' ? (item.title || 'Recovery') : (workouts.find(workout => workout.id === item.workoutId)?.title || 'Workout')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button type="button" size="sm" className="h-8 text-xs" onClick={() => setCreatingFor({ week, day })}>
+                        <Sparkles className="mr-1 h-3.5 w-3.5" /> Create new
+                      </Button>
+                      <Select key={`${week}-${day}-${dayItems.length}`} onValueChange={workoutId => addWorkoutToDay(workoutId, week, day)}>
+                        <SelectTrigger className="h-8 text-xs" aria-label={`Use existing workout on week ${week}, day ${day}`}>
+                          <SelectValue placeholder="Use existing" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {workouts.map(workout => <SelectItem key={workout.id} value={workout.id}>{workout.title}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+
     <div className="space-y-3 rounded-md border bg-muted/40 p-3">
       <div className="flex items-center gap-2">
         <CalendarPlus className="h-4 w-4 text-primary" />
@@ -189,6 +268,13 @@ const CourseProgramBuilder = ({ items, workouts, onChange }: Props) => {
       })}
     </div>
 
+    <CreateWorkoutModal
+      isOpen={creatingFor !== null}
+      onClose={() => setCreatingFor(null)}
+      onCreated={workout => {
+        if (creatingFor) addWorkoutToDay(workout.id, creatingFor.week, creatingFor.day);
+      }}
+    />
   </div>;
 };
 
