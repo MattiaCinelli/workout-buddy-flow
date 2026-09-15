@@ -15,6 +15,15 @@ import { BodyMetric } from '@/data/bodyMetrics';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
+import {
+  saveBodyMetricToDB, saveCourseToDB, saveExerciseToDB, saveMuscleGroupToDB,
+  saveScheduledWorkoutToDB, saveWorkoutSessionToDB, saveWorkoutToDB,
+} from '@/lib/db';
+
+/** The seven synced collections, as named by the sync layer. */
+export type SyncedCollection =
+  | 'exercises' | 'workouts' | 'scheduledWorkouts' | 'courses'
+  | 'workoutSessions' | 'muscleGroups' | 'bodyMetrics';
 
 interface DataContextType {
   sessions: WorkoutSession[];
@@ -91,6 +100,12 @@ interface DataContextType {
   updateBodyMetric: (id: string, updates: Partial<BodyMetric>) => Promise<BodyMetric | null>;
   deleteBodyMetric: (id: string) => Promise<BodyMetric | null>;
   refreshBodyMetrics: () => Promise<void>;
+
+  /** Writes a whole record back into a collection and reloads it. Used by the
+   *  sync-conflict banner to restore a local version the server overwrote —
+   *  the regular `update*` calls can't, because the record may no longer be
+   *  in the in-memory view (a deletion arrived from the other device). */
+  restoreRecord: (collection: SyncedCollection, record: Record<string, unknown>) => Promise<void>;
 
   // Combined loading state
   isLoading: boolean;

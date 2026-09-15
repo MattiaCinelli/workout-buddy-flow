@@ -72,6 +72,19 @@ const formSchema = z.object({
     forward: z.string().optional(),
     backward: z.string().optional(),
   }).optional(),
+}).superRefine((values, ctx) => {
+  // Double progression only makes sense when the range reads low-to-high;
+  // without this a rep range of 50–10 saves happily and never progresses.
+  const min = Number(values.progressionRepMin);
+  const max = Number(values.progressionRepMax);
+  if (values.progressionRepMin?.trim() && values.progressionRepMax?.trim()
+    && Number.isFinite(min) && Number.isFinite(max) && min > max) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['progressionRepMax'],
+      message: 'The highest rep must be the same as or above the lowest rep.',
+    });
+  }
 });
 
 const toNumber = (value?: string) => (value && value.trim() ? Number(value) : undefined);
