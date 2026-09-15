@@ -15,6 +15,15 @@ import { BodyMetric } from '@/data/bodyMetrics';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
+import {
+  saveBodyMetricToDB, saveCourseToDB, saveExerciseToDB, saveMuscleGroupToDB,
+  saveScheduledWorkoutToDB, saveWorkoutSessionToDB, saveWorkoutToDB,
+} from '@/lib/db';
+
+/** The seven synced collections, as named by the sync layer. */
+export type SyncedCollection =
+  | 'exercises' | 'workouts' | 'scheduledWorkouts' | 'courses'
+  | 'workoutSessions' | 'muscleGroups' | 'bodyMetrics';
 
 interface DataContextType {
   sessions: WorkoutSession[];
