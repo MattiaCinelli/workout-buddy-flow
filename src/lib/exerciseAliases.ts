@@ -29,15 +29,10 @@ export const exerciseMatchesNameQuery = (
     .some(name => normalizeName(name).includes(normalizedQuery));
 };
 
-export const exerciseNamesOverlap = (
-  first: Pick<Exercise, 'name' | 'aliases'>,
-  second: Pick<Exercise, 'name' | 'aliases'>,
-): boolean => {
-  const firstNames = new Set(
-    [first.name, ...(first.aliases ?? [])].map(normalizeName).filter(Boolean),
-  );
-  return [second.name, ...(second.aliases ?? [])]
-    .map(normalizeName)
-    .filter(Boolean)
-    .some(name => firstNames.has(name));
-};
+// Aliases are search hints, not reserved exercise names. Two exercises may
+// share an alias, and an alias may match another exercise's canonical name;
+// only duplicate canonical names prevent creation or editing.
+export const exerciseNamesConflict = (
+  first: Pick<Exercise, 'name'>,
+  second: Pick<Exercise, 'name'>,
+): boolean => normalizeName(first.name) === normalizeName(second.name);

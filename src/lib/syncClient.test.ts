@@ -352,10 +352,18 @@ describe('syncAll — settings and failures', () => {
     await connect();
     server.failCollection = 'workouts';
 
-    await expect(syncAll('both')).rejects.toThrow('server on fire');
+    await expect(syncAll('both')).rejects.toThrow('Workouts sync failed: server on fire');
     const status = getSyncStatus();
-    expect(status.lastError).toContain('server on fire');
+    expect(status.lastError).toBe('Workouts sync failed: server on fire');
     expect(status.lastErrorAt).not.toBeNull();
+  });
+
+  it('formats camel-cased collection names for a useful persisted error', async () => {
+    await connect();
+    server.failCollection = 'scheduledWorkouts';
+
+    await expect(syncAll('both')).rejects.toThrow('Scheduled Workouts sync failed: server on fire');
+    expect(getSyncStatus().lastError).toBe('Scheduled Workouts sync failed: server on fire');
   });
 
   it('clears lastError after a later successful sync', async () => {

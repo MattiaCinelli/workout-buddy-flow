@@ -8,6 +8,18 @@ Versioning covers the app in `src/` and the optional sync server in `server/`
 together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
+
+### Changed
+
+- **Clearer workout exercise order** — selected exercises now show their numbered workout position in both the workout creator and existing-workout editor. The editor also displays the same compact exercise thumbnail above the Remove button as the creator.
+- **Canonical exercise-name uniqueness** — duplicate primary exercise names are rejected case-insensitively across UI and data-layer creation paths, while aliases remain searchable and may overlap other aliases or primary names. Existing duplicates are reconciled on load: built-in records take precedence, workout and history references are redirected, and redundant records are removed safely.
+
+### Fixed
+
+- **Persistent PWA update reminders** — dismissing the new-version notification now snoozes it instead of permanently hiding it; pending updates are offered again after 30 minutes or when the app returns to the foreground.
+- **Actionable sync failures** — sync errors shown in Settings now identify the collection that failed, such as Exercises, Courses or Scheduled Workouts.
+- **Exercise search clearing** — the Exercise Library search field now provides an accessible clear button whenever it contains text.
+
 ## [1.0.6] - 2026-09-14
 
 ### Changed
@@ -130,7 +142,7 @@ First release. The app was usable and offline-capable throughout development; th
 - Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.6...HEAD
 [1.0.6]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.3...v1.0.4

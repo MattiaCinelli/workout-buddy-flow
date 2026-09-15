@@ -347,6 +347,23 @@ const syncCollection = async <T extends SyncedRecord>(
   return { collection: path, pushed: pushed.length, pulled: pulled.length };
 };
 
+const collectionLabel = (path: string): string => {
+  const spaced = path.replace(/([a-z])([A-Z])/g, '$1 $2');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
+
+const syncNamedCollection = async <T extends SyncedRecord>(
+  config: CollectionSyncConfig<T>,
+  direction: SyncDirection,
+): Promise<CollectionSyncResult> => {
+  try {
+    return await syncCollection(config, direction);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`${collectionLabel(config.path)} sync failed: ${detail}`);
+  }
+};
+
 // Account-level preferences (theme, accessibility, height) as one blob.
 // Mirrors a collection sync's push/pull/both shape:
 //   'push' — this device's settings win outright (updatedAt = now).
@@ -407,13 +424,13 @@ const syncSettings = async (direction: SyncDirection): Promise<void> => {
 const runSyncAll = async (direction: SyncDirection): Promise<CollectionSyncResult[]> => {
   try {
     const results = [
-      await syncCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }, direction),
-      await syncCollection<WorkoutEntry>({ path: 'workouts', getAll: getAllWorkoutsFromDB, save: saveWorkoutToDB, remove: deleteWorkoutFromDB }, direction),
-      await syncCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB, remove: deleteScheduledWorkoutFromDB }, direction),
-      await syncCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB, remove: deleteCourseFromDB }, direction),
-      await syncCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB, remove: deleteWorkoutSessionFromDB }, direction),
-      await syncCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }, direction),
-      await syncCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }, direction),
+      await syncNamedCollection<Exercise>({ path: 'exercises', getAll: getAllExercisesFromDB, save: saveExerciseToDB, remove: deleteExerciseFromDB }, direction),
+      await syncNamedCollection<WorkoutEntry>({ path: 'workouts', getAll: getAllWorkoutsFromDB, save: saveWorkoutToDB, remove: deleteWorkoutFromDB }, direction),
+      await syncNamedCollection<ScheduledWorkout>({ path: 'scheduledWorkouts', getAll: getAllScheduledWorkoutsFromDB, save: saveScheduledWorkoutToDB, remove: deleteScheduledWorkoutFromDB }, direction),
+      await syncNamedCollection<Course>({ path: 'courses', getAll: getAllCoursesFromDB, save: saveCourseToDB, remove: deleteCourseFromDB }, direction),
+      await syncNamedCollection<WorkoutSession>({ path: 'workoutSessions', getAll: getAllWorkoutSessionsFromDB, save: saveWorkoutSessionToDB, remove: deleteWorkoutSessionFromDB }, direction),
+      await syncNamedCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }, direction),
+      await syncNamedCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }, direction),
     ];
     // Best-effort and non-fatal: an older server with no /settings route
     // would 404 here, and that must not break data sync. Settings are the

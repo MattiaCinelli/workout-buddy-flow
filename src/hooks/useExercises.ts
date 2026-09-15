@@ -6,6 +6,7 @@ import {
   bulkSaveExercisesToDB
 } from '@/lib/db';
 import { useIndexedDBCollection } from './useIndexedDBCollection';
+import { exerciseNamesConflict } from '@/lib/exerciseAliases';
 
 const legacySeedImages: Record<string, string> = {
   '10': '/exercises/stretch-forward-fold.svg',
@@ -45,12 +46,30 @@ export const useExercises = () => {
       errorMessage: 'Failed to load exercises'
     });
 
+  const createUniqueExercise = async (data: Omit<Exercise, 'id'>): Promise<Exercise> => {
+    const duplicate = items.find(exercise => exerciseNamesConflict(exercise, data));
+    if (duplicate) throw new Error(`An exercise named "${duplicate.name}" already exists.`);
+    return create(data);
+  };
+
+  const updateUniqueExercise = async (
+    id: string,
+    updates: Partial<Exercise>,
+  ): Promise<Exercise | null> => {
+    const current = items.find(exercise => exercise.id === id);
+    if (!current) return null;
+    const candidate = { ...current, ...updates };
+    const duplicate = items.find(exercise => exercise.id !== id && exerciseNamesConflict(exercise, candidate));
+    if (duplicate) throw new Error(`An exercise named "${duplicate.name}" already exists.`);
+    return update(id, updates);
+  };
+
   return {
     exercises: items,
     isLoading,
     error,
-    createExercise: create,
-    updateExercise: update,
+    createExercise: createUniqueExercise,
+    updateExercise: updateUniqueExercise,
     deleteExercise: remove,
     getExerciseById: getById,
     refreshExercises: load

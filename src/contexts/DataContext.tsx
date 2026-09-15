@@ -1,11 +1,11 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useScheduledWorkouts, ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { useCourses } from '@/hooks/useCourses';
 import { useMuscleGroups } from '@/hooks/useMuscleGroups';
 import { useBodyMetrics } from '@/hooks/useBodyMetrics';
-import { Exercise } from '@/data/exercises';
+import { Exercise, exerciseList } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course, CourseWorkout } from '@/data/courses';
@@ -112,6 +112,8 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
+const BUILT_IN_EXERCISE_IDS = new Set(exerciseList.map(exercise => exercise.id));
+const normalizedExerciseName = (name: string) => name.trim().toLocaleLowerCase();
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { sessions, isLoading: sessionsLoading, error: sessionsError, createSession, updateSession, deleteSession, clearAllSessions, refreshSessions } = useWorkoutSessions();
@@ -187,6 +189,57 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     deleteBodyMetric,
     refreshBodyMetrics
   } = useBodyMetrics();
+
+  const duplicateRepairStarted = useRef(new Set<string>());
+  useEffect(() => {
+    if (exercisesLoading || workoutsLoading || sessionsLoading) return;
+
+    const byName = new Map<string, Exercise[]>();
+    exercises.forEach(exercise => {
+      const key = normalizedExerciseName(exercise.name);
+      if (key) byName.set(key, [...(byName.get(key) ?? []), exercise]);
+    });
+
+    for (const [name, matches] of byName) {
+      if (matches.length < 2 || duplicateRepairStarted.current.has(name)) continue;
+      duplicateRepairStarted.current.add(name);
+      const canonical = matches.find(exercise => BUILT_IN_EXERCISE_IDS.has(exercise.id)) ?? matches[0];
+      const duplicates = matches.filter(exercise => exercise.id !== canonical.id);
+
+      void (async () => {
+        try {
+          for (const duplicate of duplicates) {
+            for (const workout of workouts.filter(item => item.sets.some(set => set.exerciseId === duplicate.id))) {
+              await updateWorkout(workout.id, {
+                sets: workout.sets.map(set => set.exerciseId === duplicate.id
+                  ? { ...set, exerciseId: canonical.id }
+                  : set),
+              });
+            }
+            for (const session of sessions.filter(item =>
+              item.sets.some(set => set.exerciseId === duplicate.id)
+              || item.actualSets?.some(set => set.exerciseId === duplicate.id))) {
+              await updateSession(session.id, {
+                sets: session.sets.map(set => set.exerciseId === duplicate.id
+                  ? { ...set, exerciseId: canonical.id }
+                  : set),
+                actualSets: session.actualSets?.map(set => set.exerciseId === duplicate.id
+                  ? { ...set, exerciseId: canonical.id }
+                  : set),
+              });
+            }
+            await deleteExerciseRaw(duplicate.id);
+          }
+        } catch (error) {
+          duplicateRepairStarted.current.delete(name);
+          console.error(`Could not reconcile duplicate exercise name "${canonical.name}":`, error);
+        }
+      })();
+    }
+  }, [
+    exercises, exercisesLoading, workouts, workoutsLoading, sessions, sessionsLoading,
+    updateWorkout, updateSession, deleteExerciseRaw,
+  ]);
 
   const deleteExercise = async (id: string) => {
     const { blocked, reason } = checkExerciseDeletion(id, workouts, sessions);

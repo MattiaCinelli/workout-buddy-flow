@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exerciseMatchesNameQuery, exerciseNamesOverlap, normalizeExerciseAliases } from './exerciseAliases';
+import { exerciseMatchesNameQuery, exerciseNamesConflict, normalizeExerciseAliases } from './exerciseAliases';
 
 describe('exercise aliases', () => {
   it('trims, deduplicates, and removes the canonical name', () => {
@@ -14,10 +14,17 @@ describe('exercise aliases', () => {
     expect(exerciseMatchesNameQuery(exercise, 'bench')).toBe(false);
   });
 
-  it('detects collisions between a name and another exercise alias', () => {
-    expect(exerciseNamesOverlap(
+  it('allows aliases to match another exercise name', () => {
+    expect(exerciseNamesConflict(
       { name: 'Romanian Deadlift', aliases: ['RDL'] },
       { name: 'RDL', aliases: [] },
+    )).toBe(false);
+  });
+
+  it('detects duplicate canonical names case-insensitively', () => {
+    expect(exerciseNamesConflict(
+      { name: 'Romanian Deadlift' },
+      { name: '  romanian deadlift ' },
     )).toBe(true);
   });
 });

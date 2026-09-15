@@ -7,21 +7,24 @@ import type { ReactNode } from 'react';
 // referential-integrity rules themselves stay real (pure, already tested);
 // these tests check that DataProvider actually wires the guard in.
 const state = {
+  exercises: [] as { id: string; name: string }[],
   workouts: [] as { id: string; favorite?: boolean; title?: string }[],
   sessions: [] as { workoutId?: string; sets?: { exerciseId: string }[] }[],
   scheduledWorkouts: [] as { workoutId: string }[],
   courses: [] as { workouts: { workoutId?: string }[] }[],
 };
-const { deleteExerciseRaw, deleteWorkoutRaw, scheduleWorkoutReminders, cancelWorkoutReminders } = vi.hoisted(() => ({
+const { deleteExerciseRaw, deleteWorkoutRaw, updateWorkoutRaw, updateSessionRaw, scheduleWorkoutReminders, cancelWorkoutReminders } = vi.hoisted(() => ({
   deleteExerciseRaw: vi.fn(async (id: string) => ({ id })),
   deleteWorkoutRaw: vi.fn(async (id: string) => ({ id })),
+  updateWorkoutRaw: vi.fn(async () => ({})),
+  updateSessionRaw: vi.fn(async () => ({})),
   scheduleWorkoutReminders: vi.fn(async (_sw: unknown, _title: string) => {}),
   cancelWorkoutReminders: vi.fn(async (_id: string) => {}),
 }));
 
 vi.mock('@/hooks/useExercises', () => ({
   useExercises: () => ({
-    exercises: [], isLoading: false, error: null,
+    exercises: state.exercises, isLoading: false, error: null,
     createExercise: vi.fn(), updateExercise: vi.fn(),
     deleteExercise: deleteExerciseRaw, getExerciseById: vi.fn(), refreshExercises: vi.fn(),
   }),
@@ -29,7 +32,7 @@ vi.mock('@/hooks/useExercises', () => ({
 vi.mock('@/hooks/useWorkouts', () => ({
   useWorkouts: () => ({
     workouts: state.workouts, isLoading: false, error: null,
-    createWorkout: vi.fn(), updateWorkout: vi.fn(), deleteWorkout: deleteWorkoutRaw,
+    createWorkout: vi.fn(), updateWorkout: updateWorkoutRaw, deleteWorkout: deleteWorkoutRaw,
     clearAllWorkouts: vi.fn(), getWorkoutById: vi.fn(), fetchWorkoutById: vi.fn(), refreshWorkouts: vi.fn(),
   }),
 }));
@@ -66,7 +69,7 @@ vi.mock('@/hooks/useBodyMetrics', () => ({
 vi.mock('@/hooks/useWorkoutSessions', () => ({
   useWorkoutSessions: () => ({
     sessions: state.sessions, isLoading: false, error: null,
-    createSession: vi.fn(), updateSession: vi.fn(), deleteSession: vi.fn(),
+    createSession: vi.fn(), updateSession: updateSessionRaw, deleteSession: vi.fn(),
     clearAllSessions: vi.fn(), refreshSessions: vi.fn(),
   }),
 }));
@@ -77,7 +80,7 @@ import { DataProvider, useData } from './DataContext';
 const wrapper = ({ children }: { children: ReactNode }) => <DataProvider>{children}</DataProvider>;
 
 beforeEach(() => {
-  state.workouts = []; state.sessions = []; state.scheduledWorkouts = []; state.courses = [];
+  state.exercises = []; state.workouts = []; state.sessions = []; state.scheduledWorkouts = []; state.courses = [];
   vi.clearAllMocks();
 });
 afterEach(() => cleanup());
@@ -99,6 +102,30 @@ describe('DataContext', () => {
     const { result } = renderHook(() => useData(), { wrapper });
     await act(async () => { await result.current.deleteExercise('e1'); });
     expect(deleteExerciseRaw).toHaveBeenCalledWith('e1');
+  });
+
+  it('reconciles stored duplicate names and redirects their references to the built-in exercise', async () => {
+    state.exercises = [
+      { id: '10', name: 'Hamstring stretch' },
+      { id: 'custom-copy', name: '  HAMSTRING STRETCH ' },
+    ];
+    state.workouts = [{ id: 'w1', sets: [{ exerciseId: 'custom-copy' }] } as never];
+    state.sessions = [{
+      id: 's1',
+      sets: [{ exerciseId: 'custom-copy' }],
+      actualSets: [{ exerciseId: 'custom-copy', setIndex: 0, completed: true }],
+    } as never];
+
+    renderHook(() => useData(), { wrapper });
+
+    await vi.waitFor(() => expect(deleteExerciseRaw).toHaveBeenCalledWith('custom-copy'));
+    expect(updateWorkoutRaw).toHaveBeenCalledWith('w1', {
+      sets: [{ exerciseId: '10' }],
+    });
+    expect(updateSessionRaw).toHaveBeenCalledWith('s1', expect.objectContaining({
+      sets: [{ exerciseId: '10' }],
+      actualSets: [{ exerciseId: '10', setIndex: 0, completed: true }],
+    }));
   });
 
   it('deleteWorkout is blocked for a favorite workout', async () => {

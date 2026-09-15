@@ -434,7 +434,14 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                 </Button>
                               </div>
                               <div className="min-w-0">
-                                <h3 className="font-medium text-base break-words">{selectedEx.exercise.name}</h3>
+                                <h3 className="flex items-baseline gap-1.5 font-medium text-base break-words">
+                                  <span
+                                    className="shrink-0 font-semibold text-primary"
+                                  >
+                                    {exIndex + 1}.
+                                  </span>
+                                  <span>{selectedEx.exercise.name}</span>
+                                </h3>
                                 {getExecutionDirections(selectedEx.exercise).length > 0 && <UnilateralSetNote exercise={selectedEx.exercise} />}
                               </div>
                             </div>

@@ -22,9 +22,9 @@ import ImportShareButton from './ImportShareButton';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, FileImage, Loader2, Settings2, LayoutGrid, List, Library } from 'lucide-react';
+import { Plus, Search, X, FileImage, Loader2, Settings2, LayoutGrid, List, Library } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
-import { exerciseNamesOverlap } from '@/lib/exerciseAliases';
+import { exerciseNamesConflict } from '@/lib/exerciseAliases';
 import {
   ExerciseCategoryFilter, ExerciseDifficultyFilter, filterExerciseLibrary,
 } from '@/lib/exerciseLibrary';
@@ -84,13 +84,13 @@ const ExerciseManager: React.FC = () => {
   
   const handleCreateExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const existingExercise = exercises.find(
-      ex => exerciseNamesOverlap(ex, exerciseData)
+      ex => exerciseNamesConflict(ex, exerciseData)
     );
     
     if (existingExercise) {
       toast({
         title: "Error",
-        description: `The name or one of the aliases conflicts with "${existingExercise.name}".`,
+        description: `An exercise named "${existingExercise.name}" already exists.`,
         variant: "destructive",
       });
       return;
@@ -120,13 +120,13 @@ const ExerciseManager: React.FC = () => {
     if (currentExercise) {
       const existingExercise = exercises.find(
         ex => ex.id !== currentExercise.id && 
-             exerciseNamesOverlap(ex, exerciseData)
+             exerciseNamesConflict(ex, exerciseData)
       );
       
       if (existingExercise) {
         toast({
           title: "Error",
-          description: `The name or one of the aliases conflicts with "${existingExercise.name}".`,
+          description: `An exercise named "${existingExercise.name}" already exists.`,
           variant: "destructive",
         });
         return;
@@ -235,10 +235,20 @@ const ExerciseManager: React.FC = () => {
             <Input
               placeholder="Search by name, alias, or muscle..."
               aria-label="Search exercises"
-              className="border-border/80 bg-background/70 pl-9"
+              className={`border-border/80 bg-background/70 pl-9 ${searchQuery ? 'pr-9' : ''}`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear exercise search"
+                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           <Select value={categoryFilter} onValueChange={value => setCategoryFilter(value as ExerciseCategoryFilter)}>

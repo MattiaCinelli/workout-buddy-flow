@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // The production VitePWA plugin supplies this virtual module. Tests
+      // mock it, but Vite still needs a resolvable target during import
+      // analysis before Vitest can apply that mock.
+      "virtual:pwa-register/react": path.resolve(__dirname, "./src/test/pwa-register-stub.ts"),
     },
   },
   test: {

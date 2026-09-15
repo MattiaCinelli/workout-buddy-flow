@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star } from 'lucide-react';
+import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star, Image as ImageIcon } from 'lucide-react';
 import { Exercise, getLogType, getExecutionDirections } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
@@ -19,6 +19,7 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import ExerciseItem from '@/components/ExerciseItem';
+import ExerciseImage from '@/components/ExerciseImage';
 import { UnilateralSetNote } from '@/components/UnilateralSetNote';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 import {
@@ -395,8 +396,8 @@ const WorkoutDetail = () => {
                     <div className="space-y-6 py-2">
                       {selectedExercises.map((selectedEx, exIndex) => (
                         <div key={selectedEx.exercise.id} className="border rounded-md p-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <div className="flex items-center gap-1">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-1">
                               <div className="flex flex-col -my-1">
                                 <Button
                                   variant="ghost" size="icon" type="button" className="h-5 w-6"
@@ -415,21 +416,37 @@ const WorkoutDetail = () => {
                                   <ChevronDown className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
-                              <div>
-                                <h3 className="font-medium text-base">{selectedEx.exercise.name}</h3>
+                              <div className="min-w-0">
+                                <h3 className="flex items-baseline gap-1.5 font-medium text-base break-words">
+                                  <span className="shrink-0 font-semibold text-primary">{exIndex + 1}.</span>
+                                  <span>{selectedEx.exercise.name}</span>
+                                </h3>
                                 {getExecutionDirections(selectedEx.exercise).length > 0 && <UnilateralSetNote exercise={selectedEx.exercise} />}
                                 {selectedEx.exercise.instructions && (
                                   <p className="text-xs text-muted-foreground max-w-md">{selectedEx.exercise.instructions}</p>
                                 )}
                               </div>
                             </div>
-                            <Button
-                              variant="outline" size="sm" type="button"
-                              onClick={() => handleRemoveExercise(selectedEx.exercise.id)}
-                              className="h-8 px-2" disabled={isSubmitting}
-                            >
-                              Remove
-                            </Button>
+                            <div className="flex w-20 shrink-0 flex-col items-end gap-2" data-selected-exercise-actions>
+                              <div className="flex h-16 w-20 items-center justify-center overflow-hidden rounded-md bg-muted">
+                                {selectedEx.exercise.imageUrl ? (
+                                  <ExerciseImage
+                                    imageUrl={selectedEx.exercise.imageUrl}
+                                    alt={`${selectedEx.exercise.name} thumbnail`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <ImageIcon className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                                )}
+                              </div>
+                              <Button
+                                variant="outline" size="sm" type="button"
+                                onClick={() => handleRemoveExercise(selectedEx.exercise.id)}
+                                className="h-8 w-full px-2" disabled={isSubmitting}
+                              >
+                                Remove
+                              </Button>
+                            </div>
                           </div>
 
                           <div className="space-y-3 mt-3">

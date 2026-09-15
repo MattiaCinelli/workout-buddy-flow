@@ -55,4 +55,17 @@ describe('CreateWorkoutModal selected exercises', () => {
     expect(actions).toHaveClass('flex-col');
     expect(within(actions as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
+
+  it('shows the exercise position beside its name', () => {
+    render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: `Add ${exercise.name}` }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Selected Exercises (1)' }), {
+      button: 0,
+      ctrlKey: false,
+    });
+
+    expect(screen.getByText('1.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: `1. ${exercise.name}` })).toBeInTheDocument();
+  });
 });
