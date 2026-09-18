@@ -53,6 +53,30 @@ describe('starter mobility exercises', () => {
   });
 });
 
+describe('additional private-image mobility exercises', () => {
+  const ids = [
+    'mobility-elephant-walks',
+    'mobility-lying-cross',
+    'mobility-spine-backbend',
+    'mobility-shoulder-backbend',
+    'mobility-rear-hand-clasp',
+    'mobility-wall-angels',
+    'mobility-towel-shoulder-pass-through',
+  ];
+
+  it('includes every image-backed movement with the standard prescription', () => {
+    for (const id of ids) {
+      const exercise = exerciseList.find(item => item.id === id);
+      expect(exercise, id).toBeDefined();
+      expect(exercise?.defaultSets).toBe(2);
+      expect(exercise?.instructions?.length).toBeGreaterThan(100);
+      expect(exercise?.imageUrl).toMatch(/^private-exercise:/);
+      if (exercise?.logType === 'time') expect(exercise.defaultDuration).toBe(30);
+      else expect(exercise?.defaultReps).toBe(13);
+    }
+  });
+});
+
 describe('starter exercise image privacy', () => {
   it('never exposes a built-in exercise image through a public URL', () => {
     for (const exercise of exerciseList) {

@@ -2,6 +2,7 @@ import {
   ACCESSIBILITY_DEFAULTS, getAccessibilitySettings, setAccessibilitySettings, type AccessibilitySettings,
 } from './accessibilitySettings';
 import { getBodyProfile, setBodyProfile, type BodyProfile } from './bodyProfile';
+import { readWorkoutFolders, writeWorkoutFolders } from './workoutFolders';
 import type { Theme } from '@/hooks/useTheme';
 
 // Account-level preferences that sync across a user's devices, as one blob
@@ -24,6 +25,9 @@ export interface SyncableSettings {
   theme: Theme;
   accessibility: AccessibilitySettings;
   bodyProfile: BodyProfile;
+  // Optional for backward compatibility with settings blobs written by
+  // releases before workout-folder metadata joined account sync.
+  workoutFolders?: string[];
 }
 
 const readTheme = (): Theme => {
@@ -36,6 +40,7 @@ export const collectLocalSettings = (): SyncableSettings => ({
   // Both getters already normalise malformed/missing fields to defaults.
   accessibility: getAccessibilitySettings(),
   bodyProfile: getBodyProfile(),
+  workoutFolders: readWorkoutFolders(),
 });
 
 // Write a settings blob (from the server) into local storage and nudge the
@@ -58,6 +63,10 @@ export const applyRemoteSettings = (settings: SyncableSettings): void => {
   if (settings.bodyProfile && typeof settings.bodyProfile === 'object') {
     const heightCm = settings.bodyProfile.heightCm;
     setBodyProfile({ heightCm: typeof heightCm === 'number' && heightCm > 0 ? heightCm : undefined });
+  }
+
+  if (Array.isArray(settings.workoutFolders)) {
+    writeWorkoutFolders(settings.workoutFolders);
   }
 };
 
@@ -90,6 +99,7 @@ const DEFAULT_SETTINGS: SyncableSettings = {
   theme: 'system',
   accessibility: ACCESSIBILITY_DEFAULTS,
   bodyProfile: {},
+  workoutFolders: [],
 };
 
 export const isPristineSettings = (settings: SyncableSettings): boolean =>

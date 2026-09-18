@@ -23,8 +23,8 @@ beforeEach(() => {
 
 describe('serializeSettings', () => {
   it('is stable regardless of key order', () => {
-    const a = { theme: 'dark', accessibility: { haptics: true, textSize: 'large' }, bodyProfile: { heightCm: 180 } };
-    const b = { bodyProfile: { heightCm: 180 }, accessibility: { textSize: 'large', haptics: true }, theme: 'dark' };
+    const a = { theme: 'dark', accessibility: { haptics: true, textSize: 'large' }, bodyProfile: { heightCm: 180 }, workoutFolders: ['Strength'] };
+    const b = { workoutFolders: ['Strength'], bodyProfile: { heightCm: 180 }, accessibility: { textSize: 'large', haptics: true }, theme: 'dark' };
     expect(serializeSettings(a as unknown as SyncableSettings))
       .toBe(serializeSettings(b as unknown as SyncableSettings));
   });
@@ -70,12 +70,27 @@ describe('collect / apply round-trip', () => {
         backgroundMusic: true, musicVolume: 0.8,
       },
       bodyProfile: { heightCm: 175 },
+      workoutFolders: ['Mobility', 'Strength / Upper Body'],
     };
 
     applyRemoteSettings(remote);
 
     expect(collectLocalSettings()).toEqual(remote);
     expect(localStorage.getItem('theme')).toBe('dark');
+    expect(JSON.parse(localStorage.getItem('workout-buddy-workout-folders') || '[]')).toEqual(remote.workoutFolders);
+  });
+
+  it('keeps local folder metadata when an older remote blob has no folder field', () => {
+    localStorage.setItem('workout-buddy-workout-folders', JSON.stringify(['Existing']));
+    const olderSettings = {
+      theme: 'dark',
+      accessibility: collectLocalSettings().accessibility,
+      bodyProfile: {},
+    } as SyncableSettings;
+
+    applyRemoteSettings(olderSettings);
+
+    expect(collectLocalSettings().workoutFolders).toEqual(['Existing']);
   });
 
   it('drops an invalid height rather than storing it', () => {
