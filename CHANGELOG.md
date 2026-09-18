@@ -9,6 +9,12 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-09-18
+
+### Changed
+
+- Folder containing workouts can be sync.
+
 ## [1.0.7] - 2026-09-15
 
 ### Added
