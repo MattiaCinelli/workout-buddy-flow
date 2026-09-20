@@ -22,7 +22,7 @@ vi.mock('@/components/ExerciseImage', () => ({
 }));
 vi.mock('@/components/UnilateralSetNote', () => ({ UnilateralSetNote: () => null }));
 vi.mock('@/lib/backup', () => ({ shareWorkout: vi.fn() }));
-vi.mock('@/contexts/DataContext', () => ({
+vi.mock('@/contexts/useData', () => ({
   useData: () => ({
     workouts: [{
       id: 'workout-1',

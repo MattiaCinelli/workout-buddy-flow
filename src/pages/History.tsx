@@ -23,7 +23,7 @@ import { CalendarIcon, Download, Search, X, Filter, Dumbbell, Loader2 } from 'lu
 import { format, parseISO, isAfter, isBefore, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import WorkoutCard from '@/components/WorkoutCard';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { useToast } from '@/hooks/use-toast';
 import { sessionsToCsv } from '@/lib/historyCsv';
 import { saveTextFile } from '@/lib/downloadFile';

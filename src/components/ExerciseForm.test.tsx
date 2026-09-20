@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
-vi.mock('@/contexts/DataContext', () => ({
+vi.mock('@/contexts/useData', () => ({
   useData: () => ({ muscleGroups: [{ id: 'hamstrings', name: 'Hamstrings' }] }),
 }));
 

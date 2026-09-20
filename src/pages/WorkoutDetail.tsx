@@ -15,7 +15,7 @@ import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Sha
 import { Exercise, getExerciseImageUrl, getLogType, getExecutionDirections } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import ExerciseItem from '@/components/ExerciseItem';
@@ -26,7 +26,8 @@ import {
   expandSetForExercise, materializeLegacyDirections, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel,
 } from '@/lib/workoutDirections';
 import { useWorkoutFolders } from '@/hooks/useWorkoutFolders';
-import { exerciseMatchesNameQuery } from '@/lib/exerciseAliases';
+import { exerciseMatchesSearchQuery } from '@/lib/exerciseLibrary';
+import { workoutDurationMinutes } from '@/lib/workoutRuntime';
 
 interface SelectedExercise {
   exercise: Exercise;
@@ -107,11 +108,7 @@ const WorkoutDetail = () => {
   }
 
   const filteredExercises = exercises.filter(exercise =>
-    exerciseMatchesNameQuery(exercise, searchQuery) ||
-    exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    exercise.muscleGroups.some(groupId =>
-      muscleGroupName(groupId).toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroupName)
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,18 +120,19 @@ const WorkoutDetail = () => {
     setIsSubmitting(true);
     try {
       const allSets: WorkoutSet[] = selectedExercises.flatMap(se => se.sets);
-      const estimatedDuration = Math.ceil(allSets.length * 2.5);
-      await updateWorkout(workout.id, {
+      const updates: Partial<WorkoutEntry> = {
         title,
         category: category as WorkoutEntry['category'],
         folder: folder === 'none' ? undefined : folder,
         description: description.trim() || undefined,
-        duration: estimatedDuration,
+        duration: 0,
         sets: allSets,
         restBetweenSets,
         restBetweenExercises,
         notes: notes.trim() || undefined,
-      });
+      };
+      updates.duration = workoutDurationMinutes({ ...workout, ...updates } as WorkoutEntry, exercises);
+      await updateWorkout(workout.id, updates);
       toast({ title: 'Workout updated!', description: `"${title}" has been saved.` });
       navigate('/workouts');
     } catch (error) {
@@ -162,7 +160,9 @@ const WorkoutDetail = () => {
       // restBetweenExercises dynamically based on same/different exercise.
     })).flatMap(set => expandSetForExercise(set, exercise));
     setSelectedExercises([...selectedExercises, { exercise, sets: defaultSets }]);
-    setActiveTab('selected');
+    // Keep the picker open while adding several exercises. This intentionally
+    // mirrors CreateWorkoutModal; never auto-switch tabs after a selection.
+    setActiveTab('exercises');
     toast({ title: 'Exercise added', description: `${exercise.name} added to workout.` });
   };
 

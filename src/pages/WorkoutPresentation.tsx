@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { WorkoutSetResult } from '@/data/workoutSessions';
 import { buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds, stepStartAnnouncement } from '@/lib/workoutRuntime';
 import { playCompletionChime } from '@/lib/completionSound';
@@ -74,6 +74,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
     [trialExercise],
   );
   const workout = trialMode ? trialWorkout : workouts.find(item => item.id === id);
+  const emptyWorkout = !trialMode && !!workout && workout.sets.length === 0;
   const occurrenceIdentity = [
     searchParams.get('scheduledWorkoutId'), searchParams.get('scheduledDate'),
     searchParams.get('courseId'), searchParams.get('courseItemId'),
@@ -197,11 +198,18 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
         variant: 'destructive',
       });
       navigate(trialMode ? '/exercises' : '/');
+    } else if (!loading && emptyWorkout && workout) {
+      toast({
+        title: 'Workout has no exercises',
+        description: 'Add at least one exercise before starting this workout.',
+        variant: 'destructive',
+      });
+      navigate(`/workouts/${workout.id}`, { replace: true });
     }
-  }, [workout, workoutsLoading, exercisesLoading, navigate, toast, trialMode]);
+  }, [workout, emptyWorkout, workoutsLoading, exercisesLoading, navigate, toast, trialMode]);
 
   useEffect(() => {
-    if (!workout || !steps.length || restored) return;
+    if (!workout || emptyWorkout || !steps.length || restored) return;
     const raw = localStorage.getItem(activeRuntimeKey);
     let saved: SavedRuntime | null = null;
     try { saved = raw ? JSON.parse(raw) as SavedRuntime : null; } catch { localStorage.removeItem(activeRuntimeKey); }
@@ -239,7 +247,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
     setRpe(saved?.rpe ?? '');
     setCompletionNotes(saved?.completionNotes ?? '');
     setRestored(true);
-  }, [workout, steps, restored, toast, activeRuntimeKey]);
+  }, [workout, emptyWorkout, steps, restored, toast, activeRuntimeKey]);
 
   useEffect(() => {
     if (!workout || !restored) return;
@@ -559,7 +567,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
     (result.distance === undefined || (result.distance >= 0 && result.distance <= 1000000)) &&
     (result.rpe === undefined || (result.rpe >= 0 && result.rpe <= 10))
   );
-  if (!workout || !current) return null;
+  if (!workout || !current || emptyWorkout) return null;
 
   return <div className="flex min-h-[100dvh] flex-col bg-[#070d18] text-white">
     <header className="flex items-center justify-between gap-2 px-2 py-2 pt-[max(.5rem,var(--app-safe-area-top))] sm:px-4 sm:py-3">
@@ -635,6 +643,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-workout-green/15 px-3 py-1 text-workout-green">
                   {current.direction === 'left' && <ArrowLeft className="h-4 w-4" aria-hidden="true" />}
                   {current.direction === 'right' && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+                  {current.direction === 'alternate' && <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />}
                   {current.direction === 'forward' && <ArrowUp className="h-4 w-4" aria-hidden="true" />}
                   {current.direction === 'backward' && <ArrowDown className="h-4 w-4" aria-hidden="true" />}
                   <span className="text-sm font-semibold">{workoutDirectionLabel(current.direction)}</span>

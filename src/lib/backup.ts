@@ -171,7 +171,7 @@ const scrubImportedExerciseUrls = (parsed: Record<string, unknown>): void => {
       } else {
         const directionImageUrls = item.directionImageUrls;
         item.directionImageUrls = Object.fromEntries(
-          ['left', 'right', 'forward', 'backward']
+          ['left', 'right', 'alternate', 'forward', 'backward']
             .map(direction => [direction, sanitizeImageUrl(directionImageUrls[direction])] as const)
             .filter((entry): entry is readonly [string, string] => !!entry[1]),
         );

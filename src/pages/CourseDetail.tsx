@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, ArrowLeft, Play, RotateCcw, CheckCircle2, Pencil, Trash2, Calendar } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

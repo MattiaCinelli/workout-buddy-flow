@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 import { Ban, Calendar, CalendarClock, CheckCircle2, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
 import { weekDays, weekDayLabels, weekdaysPreset, weekendPreset, WeekDay } from '@/data/scheduledWorkouts';

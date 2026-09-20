@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Course } from '@/data/courses';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { Play, RotateCcw, CheckCircle2, BookOpen } from 'lucide-react';
 
 interface CourseCardProps {

@@ -7,7 +7,7 @@ import {
 import type { WorkoutSet, WorkoutSetDirection } from '@/data/workoutHistory';
 
 export const WORKOUT_SET_DIRECTIONS: WorkoutSetDirection[] = [
-  'none', 'left', 'right', 'forward', 'backward',
+  'none', 'left', 'right', 'alternate', 'forward', 'backward',
 ];
 
 export const workoutDirectionLabel = (direction?: WorkoutSetDirection): string =>

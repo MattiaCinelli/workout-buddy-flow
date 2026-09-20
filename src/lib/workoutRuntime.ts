@@ -25,7 +25,7 @@ export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sour
   secondsPerRep?: number;
   // Explicit direction authored on a new workout set, or synthesized for
   // an old unilateral workout that predates separate directional sets.
-  direction?: 'left' | 'right' | 'forward' | 'backward';
+  direction?: 'left' | 'right' | 'alternate' | 'forward' | 'backward';
   // Carried from the authored set for the presentation layer.
   warmup?: boolean;
   amrap?: boolean;
@@ -70,13 +70,36 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
     const next = workout.sets[sourceSetIndex + 1];
     if (next) {
       const changesExercise = next.exerciseId !== set.exerciseId;
-      steps.push({ type: 'rest', kind: 'rest', changesExercise, duration: set.restAfter ??
+      const restDuration = set.restAfter ??
         (changesExercise
           ? (workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES)
-          : (workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS)) });
+          : (workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS));
+      // A zero-second rest means an immediate transition. Keeping it as a
+      // step would create no countdown deadline and leave the player waiting
+      // indefinitely for input on a screen labelled 0:00.
+      if (restDuration > 0) {
+        steps.push({ type: 'rest', kind: 'rest', changesExercise, duration: restDuration });
+      }
     }
   });
   return steps;
+};
+
+// Planned workout length shown in the library. The initial get-ready pause
+// is UI preparation rather than exercise time, so it is excluded. Configured
+// rests are included because they genuinely affect how long the guided
+// workout takes.
+export const workoutDurationSeconds = (workout: WorkoutEntry, exercises: Exercise[] = []): number =>
+  buildWorkoutSteps(workout, exercises)
+    .filter(step => step.kind !== 'prep')
+    .reduce((total, step) => total + (step.duration ?? 0), 0);
+
+// WorkoutEntry.duration is stored as whole minutes for scheduling, history
+// summaries and sync. Derive it from the same runtime used by the player so
+// persisted values never drift from the sets and rests that will actually run.
+export const workoutDurationMinutes = (workout: WorkoutEntry, exercises: Exercise[] = []): number => {
+  const seconds = workoutDurationSeconds(workout, exercises);
+  return seconds === 0 ? 0 : Math.ceil(seconds / 60);
 };
 
 export const remainingSeconds = (deadline: number, now = Date.now()) =>
@@ -115,6 +138,7 @@ export const stepStartAnnouncement = (step: WorkoutStep | undefined, nextExercis
     if (!step.direction) return 'Begin';
     const spokenDirection = step.direction === 'left' || step.direction === 'right'
       ? `${step.direction} side`
+      : step.direction === 'alternate' ? 'alternating sides'
       : step.direction;
     return `Begin ${spokenDirection}`;
   }

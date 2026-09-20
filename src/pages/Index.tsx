@@ -8,7 +8,7 @@ import WorkoutStreak from '@/components/dashboard/WorkoutStreak';
 import WeeklyGoal from '@/components/dashboard/WeeklyGoal';
 import QuickStats from '@/components/dashboard/QuickStats';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
 
 const Index = () => {

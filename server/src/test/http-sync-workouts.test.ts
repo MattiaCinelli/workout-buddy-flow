@@ -11,7 +11,7 @@ const workout = (overrides: Record<string, unknown> = {}) => ({
   sets: [
     { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90, direction: 'left', warmup: true },
     { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90, direction: 'right', amrap: true },
-    { exerciseId: 'lunge', reps: 12 },
+    { exerciseId: 'cossack', reps: 12, direction: 'alternate' },
   ],
   updatedAt: '2026-01-01T00:00:00.000Z',
   ...overrides,
@@ -37,9 +37,10 @@ test('a workout with multiple sets round-trips through push and pull with set or
   // Order matters here: it's how the app tells apart 3 sets of the same
   // exercise from 3 separate exercises with one set each. JSON.stringify
   // preserves array order, but this proves it end to end through SQLite.
-  assert.deepEqual(stored.sets.map((s: { exerciseId: string }) => s.exerciseId), ['squat', 'squat', 'lunge']);
+  assert.deepEqual(stored.sets.map((s: { exerciseId: string }) => s.exerciseId), ['squat', 'squat', 'cossack']);
   assert.equal(stored.sets[0].weight, 100);
   assert.deepEqual(stored.sets.slice(0, 2).map((s: { direction: string }) => s.direction), ['left', 'right']);
+  assert.equal(stored.sets[2].direction, 'alternate');
   assert.equal(stored.sets[0].warmup, true);
   assert.equal(stored.sets[1].amrap, true);
 });

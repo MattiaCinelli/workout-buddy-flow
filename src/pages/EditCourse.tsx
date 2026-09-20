@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

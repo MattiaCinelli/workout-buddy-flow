@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { rescheduleAllReminders } from '@/lib/notifications';
 
 // Native notification APIs have a finite scheduling horizon. Rebuild the

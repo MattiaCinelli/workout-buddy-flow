@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { isConnected, syncAll } from '@/lib/syncClient';
 import { logDiagnostic } from '@/lib/diagnosticLog';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 
 const SYNC_INTERVAL_MS = 30_000;
 

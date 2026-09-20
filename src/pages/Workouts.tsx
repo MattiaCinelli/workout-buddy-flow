@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import CreateWorkoutModal from '@/components/CreateWorkoutModal';
 import ImportShareButton from '@/components/ImportShareButton';
 import WorkoutCard from '@/components/WorkoutCard';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';

@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import NotificationDiagnostics from '@/components/NotificationDiagnostics';
 import { rescheduleAllReminders } from '@/lib/notifications';
 import { getNotificationSettings, setNotificationSettings, LEAD_MINUTE_OPTIONS } from '@/lib/notificationSettings';

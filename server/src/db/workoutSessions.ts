@@ -5,7 +5,7 @@ export interface SyncedWorkoutSetResult {
   exerciseId: string;
   setIndex: number;
   completed: boolean;
-  direction?: 'none' | 'left' | 'right' | 'forward' | 'backward';
+  direction?: 'none' | 'left' | 'right' | 'alternate' | 'forward' | 'backward';
   reps?: number;
   weight?: number;
   duration?: number;

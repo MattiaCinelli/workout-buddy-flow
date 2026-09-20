@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Activity, Clock, Dumbbell, TrendingUp } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { 
   startOfWeek, 
   endOfWeek, 

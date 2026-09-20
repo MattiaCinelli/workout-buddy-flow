@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import {
   RecurrenceType, WeekDay, ScheduledWorkout, weekDays, weekDayShortLabels, weekdaysPreset, weekendPreset, getDayOfWeek,
 } from '@/data/scheduledWorkouts';

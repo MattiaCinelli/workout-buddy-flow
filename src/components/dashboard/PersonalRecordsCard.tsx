@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChevronRight, Trophy } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { computePersonalRecords, PRKind } from '@/lib/personalRecords';
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };

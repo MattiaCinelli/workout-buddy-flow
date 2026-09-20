@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import WorkoutCard from '@/components/WorkoutCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { workoutContainsExerciseQuery } from '@/lib/workoutSearch';
 import { childFolderPath, FOLDER_SEPARATOR, folderName as leafName, isFolderOrDescendant, parentFolder, rebaseFolderPath, useWorkoutFolders } from '@/hooks/useWorkoutFolders';
 

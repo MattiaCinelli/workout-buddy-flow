@@ -51,6 +51,11 @@ describe('starter mobility exercises', () => {
       else expect(exercise?.defaultReps).toBe(13);
     }
   });
+
+  it('marks Cossack squats as alternating within each set', () => {
+    expect(exerciseList.find(item => item.id === 'mobility-cossack-squat')?.executionDirections)
+      .toEqual(['alternate']);
+  });
 });
 
 describe('additional private-image mobility exercises', () => {

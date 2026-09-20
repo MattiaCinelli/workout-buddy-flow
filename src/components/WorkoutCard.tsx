@@ -6,6 +6,8 @@ import { Calendar, Clock, ChevronRight, Activity, Pencil, Trash2, Star } from "l
 import { WorkoutSession } from '@/data/workoutSessions';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { useNavigate } from 'react-router-dom';
+import { useData } from '@/contexts/useData';
+import { workoutDurationSeconds } from '@/lib/workoutRuntime';
 
 interface WorkoutCardProps {
   workout: WorkoutSession | WorkoutEntry;
@@ -21,10 +23,18 @@ interface WorkoutCardProps {
 
 const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, onToggleFavorite }) => {
   const navigate = useNavigate();
+  const { exercises } = useData();
+  const isHistoryEntry = 'workoutId' in workout;
   
   // Get unique exercises
   const uniqueExercises = [...new Set(workout.sets.map(set => set.exerciseId))];
   const exerciseCount = uniqueExercises.length;
+  const plannedSeconds = isHistoryEntry ? 0 : workoutDurationSeconds(workout, exercises);
+  const formattedPlannedDuration = plannedSeconds < 60
+    ? `${plannedSeconds}s`
+    : plannedSeconds % 60 === 0
+      ? `${plannedSeconds / 60} min`
+      : `${Math.floor(plannedSeconds / 60)}m ${plannedSeconds % 60}s`;
   
   // Format date
   const formattedDate = new Date(workout.date).toLocaleDateString('en-US', {
@@ -92,9 +102,9 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, on
       </CardHeader>
       
       <CardContent className="pb-2">
-        <div className="text-muted-foreground text-sm line-clamp-2">
-          {workout.description || `${exerciseCount} exercise${exerciseCount === 1 ? '' : 's'}`}
-        </div>
+        {workout.description && <div className="text-muted-foreground text-sm line-clamp-2">
+          {workout.description}
+        </div>}
         {'actualSets' in workout && workout.actualSets && (
           <div className="mt-2 text-sm">
             {workout.actualSets.filter(set => set.completed).length}/{workout.actualSets.length} sets completed
@@ -110,13 +120,13 @@ const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, onDelete, onEdit, on
       
       <CardFooter className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/20 pt-3 text-xs text-muted-foreground sm:text-sm">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <div className="flex items-center gap-1">
+          {isHistoryEntry && <div className="flex items-center gap-1">
             <Calendar className="h-3.5 w-3.5" />
             <span>{formattedDate}</span>
-          </div>
+          </div>}
           <div className="flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
-            <span>{workout.duration} min</span>
+            <span>{isHistoryEntry ? `${workout.duration} min` : formattedPlannedDuration}</span>
           </div>
           <div className="flex items-center gap-1">
             <Activity className="h-3.5 w-3.5" />

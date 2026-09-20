@@ -21,7 +21,7 @@ import {
   type SyncDirection,
 } from '@/lib/syncClient';
 import { SyncConflicts } from '@/components/SyncConflicts';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { toast } from 'sonner';
 
 interface SyncSettingsPanelProps {

@@ -75,7 +75,8 @@ vi.mock('@/hooks/useWorkoutSessions', () => ({
 }));
 vi.mock('@/lib/notifications', () => ({ scheduleWorkoutReminders, cancelWorkoutReminders }));
 
-import { DataProvider, useData } from './DataContext';
+import { DataProvider } from './DataContext';
+import { useData } from './useData';
 
 const wrapper = ({ children }: { children: ReactNode }) => <DataProvider>{children}</DataProvider>;
 

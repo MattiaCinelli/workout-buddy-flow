@@ -11,7 +11,7 @@ const refreshers = Object.fromEntries(
   ['refreshExercises', 'refreshWorkouts', 'refreshScheduledWorkouts', 'refreshCourses',
     'refreshSessions', 'refreshMuscleGroups', 'refreshBodyMetrics'].map(k => [k, vi.fn(async () => {})]),
 );
-vi.mock('@/contexts/DataContext', () => ({ useData: () => refreshers }));
+vi.mock('@/contexts/useData', () => ({ useData: () => refreshers }));
 
 import { useAutoSync } from './useAutoSync';
 

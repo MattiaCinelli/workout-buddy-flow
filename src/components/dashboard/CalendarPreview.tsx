@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, ChevronRight, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { format, addDays, isSameDay, startOfToday } from 'date-fns';
 import type { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 

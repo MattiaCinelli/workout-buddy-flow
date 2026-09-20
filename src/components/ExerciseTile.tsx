@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import ExerciseImage from '@/components/ExerciseImage';
 import { Exercise, getLogType } from '@/data/exercises';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 

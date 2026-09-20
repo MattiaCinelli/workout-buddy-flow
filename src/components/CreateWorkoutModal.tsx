@@ -19,11 +19,12 @@ import { UnilateralSetNote } from './UnilateralSetNote';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
 import { expandSetForExercise, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel } from '@/lib/workoutDirections';
 import { useWorkoutFolders } from '@/hooks/useWorkoutFolders';
-import { exerciseMatchesNameQuery } from '@/lib/exerciseAliases';
+import { exerciseMatchesSearchQuery } from '@/lib/exerciseLibrary';
+import { workoutDurationMinutes } from '@/lib/workoutRuntime';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -53,12 +54,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const { folders } = useWorkoutFolders((workouts ?? []).map(workout => workout.folder));
   const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
   
-  const filteredExercises = exercises.filter(exercise => 
-    exerciseMatchesNameQuery(exercise, searchQuery) ||
-    exercise.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    exercise.muscleGroups.some(id =>
-      muscleGroupName(id).toLowerCase().includes(searchQuery.toLowerCase())
-    )
+  const filteredExercises = exercises.filter(exercise =>
+    exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroupName)
   );
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,21 +76,19 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       // Flatten all sets from selected exercises
       const allSets: WorkoutSet[] = selectedExercises.flatMap(se => se.sets);
       
-      // Calculate estimated duration (rough estimate: 2min per set + rest)
-      const estimatedDuration = Math.ceil(allSets.length * 2.5);
-      
       const workoutData: Omit<WorkoutEntry, 'id'> = {
         title,
         category: category as WorkoutEntry['category'],
         folder: folder === 'none' ? undefined : folder,
         description: description.trim() || undefined,
         date: new Date().toISOString().split('T')[0],
-        duration: estimatedDuration,
+        duration: 0,
         sets: allSets,
         restBetweenSets,
         restBetweenExercises,
         notes: notes.trim() || undefined
       };
+      workoutData.duration = workoutDurationMinutes(workoutData as WorkoutEntry, exercises);
       
       const createdWorkout = await createWorkout(workoutData);
       
@@ -164,6 +159,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
         sets: defaultSets
       }
     ]);
+    // Preserve the library tab, search text and scroll position while the
+    // user adds several exercises. Do not switch to Selected Exercises here;
+    // that forces them to repeatedly navigate back after every choice.
+    setActiveTab('exercises');
     
     toast({
       title: "Exercise added",

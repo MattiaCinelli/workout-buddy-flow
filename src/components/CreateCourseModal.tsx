@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { CourseWorkout } from '@/data/courses';
 import CourseProgramBuilder from './CourseProgramBuilder';
 import { Plus } from 'lucide-react';

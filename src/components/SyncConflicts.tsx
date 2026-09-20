@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { getConflicts, removeConflict, SyncConflict } from '@/lib/syncConflicts';
 import {
   saveBodyMetricToDB, saveCourseToDB, saveExerciseToDB, saveMuscleGroupToDB,

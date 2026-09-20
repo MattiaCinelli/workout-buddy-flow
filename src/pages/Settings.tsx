@@ -19,7 +19,7 @@ import { saveTextFile } from '@/lib/downloadFile';
 import { replaceAllWorkoutReminders } from '@/lib/notifications';
 import { isConnected } from '@/lib/syncClient';
 import { useTheme, Theme, useInterfaceStyle, InterfaceStyle } from '@/hooks/useTheme';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { AccessibilityPreferences } from '@/components/AccessibilityPreferences';

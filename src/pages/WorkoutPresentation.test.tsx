@@ -4,10 +4,11 @@ import { act, render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 // --- mock the whole environment the page pulls in -------------------------
 
-const { speak, ttsStop, navigate, createSession, workouts, exercises } = vi.hoisted(() => ({
+const { speak, ttsStop, navigate, toast, createSession, workouts, exercises } = vi.hoisted(() => ({
   speak: vi.fn(async (_opts: { text: string }) => {}),
   ttsStop: vi.fn(async () => {}),
   navigate: vi.fn(),
+  toast: vi.fn(),
   createSession: vi.fn(async () => ({ id: 's1' })),
   workouts: [] as Record<string, unknown>[],
   exercises: [] as Record<string, unknown>[],
@@ -25,7 +26,7 @@ vi.mock('@capacitor/haptics', () => ({
   Haptics: { impact: async () => {} },
   ImpactStyle: { Light: 'LIGHT', Medium: 'MEDIUM', Heavy: 'HEAVY' },
 }));
-vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 vi.mock('@/hooks/useWorkoutMusic', () => ({ useWorkoutMusic: vi.fn() }));
 vi.mock('@/lib/completionSound', () => ({ playCompletionChime: vi.fn() }));
 vi.mock('@/lib/diagnosticLog', () => ({ logDiagnostic: vi.fn() }));
@@ -36,7 +37,7 @@ vi.mock('@/lib/accessibilitySettings', () => ({
   }),
   setAccessibilitySettings: vi.fn(),
 }));
-vi.mock('@/contexts/DataContext', () => ({
+vi.mock('@/contexts/useData', () => ({
   useData: () => ({
     workouts, exercises, sessions: [], workoutsLoading: false, exercisesLoading: false,
     createSession, deleteSession: vi.fn(),
@@ -76,6 +77,7 @@ beforeEach(() => {
   speak.mockClear();
   ttsStop.mockClear();
   navigate.mockClear();
+  toast.mockClear();
   createSession.mockClear();
 });
 afterEach(() => {
@@ -85,6 +87,21 @@ afterEach(() => {
 });
 
 describe('WorkoutPresentation — guided run', () => {
+  it('shows a specific error and returns to editing when a workout has no exercises', async () => {
+    setExercises([]);
+    setWorkout([]);
+
+    render(<WorkoutPresentation />);
+    await act(async () => { await Promise.resolve(); });
+
+    expect(toast).toHaveBeenCalledWith({
+      title: 'Workout has no exercises',
+      description: 'Add at least one exercise before starting this workout.',
+      variant: 'destructive',
+    });
+    expect(navigate).toHaveBeenCalledWith('/workouts/w1', { replace: true });
+  });
+
   it('a reps exercise: says "Begin", shows the rep target, no timer, and does not auto-advance', async () => {
     setExercises([ex({ id: 'pushup', name: 'Push-up', logType: 'reps', secondsPerRep: 3 })]);
     setWorkout([{ exerciseId: 'pushup', reps: 10 }, { exerciseId: 'pushup', reps: 10 }]);

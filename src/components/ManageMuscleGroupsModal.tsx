@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Pencil, Trash2, Check, X, Plus } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { toast } from 'sonner';
 

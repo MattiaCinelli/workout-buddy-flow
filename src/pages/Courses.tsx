@@ -3,7 +3,7 @@ import { Plus, BookOpen, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import CreateCourseModal from '@/components/CreateCourseModal';
 import CourseCard from '@/components/CourseCard';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';

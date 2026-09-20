@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { addDays, format, parseISO } from 'date-fns';
 import { CalendarPlus } from 'lucide-react';
 import { Course } from '@/data/courses';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

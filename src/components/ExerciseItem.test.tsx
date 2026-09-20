@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/contexts/DataContext', () => ({ useData: () => ({ muscleGroups: [] }) }));
+vi.mock('@/contexts/useData', () => ({ useData: () => ({ muscleGroups: [] }) }));
 
 import ExerciseItem from './ExerciseItem';
 

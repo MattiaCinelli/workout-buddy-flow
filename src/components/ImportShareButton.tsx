@@ -5,7 +5,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { useToast } from '@/hooks/use-toast';
 import { importShare, parseShare, summarizeShareImport, WorkoutBuddyShare } from '@/lib/backup';
 

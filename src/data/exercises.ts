@@ -1,9 +1,9 @@
 export type ExerciseLogType = 'reps' | 'time';
 export const DEFAULT_EQUIPMENT = ['Bodyweight', 'Dumbbells', 'Barbell', 'Bench', 'Resistance band', 'Cable machine', 'Kettlebell', 'Pull-up bar', 'Mat', 'Foam roller', 'Strap'] as const;
-export const EXECUTION_DIRECTIONS = ['left', 'right', 'forward', 'backward'] as const;
+export const EXECUTION_DIRECTIONS = ['left', 'right', 'alternate', 'forward', 'backward'] as const;
 export type ExecutionDirection = (typeof EXECUTION_DIRECTIONS)[number];
 export const EXECUTION_DIRECTION_LABELS: Record<ExecutionDirection, string> = {
-  left: 'Left', right: 'Right', forward: 'Forward', backward: 'Backward',
+  left: 'Left', right: 'Right', alternate: 'Alternate', forward: 'Forward', backward: 'Backward',
 };
 
 export interface ExerciseProgression {
@@ -47,9 +47,10 @@ export interface Exercise {
   // Applies to reps- and time-based moves alike (single-arm row, single-leg
   // plank, Bulgarian split squat…).
   unilateral?: boolean;
-  // Directions to create as separate, visible sets when this exercise is
-  // added to a workout. `unilateral` remains as a legacy left/right fallback
-  // for exercises created before this field existed.
+  // Direction pattern applied when this exercise is added to a workout.
+  // Left/right/forward/backward create separate visible sets; `alternate`
+  // keeps both sides in one set. `unilateral` remains as a legacy left/right
+  // fallback for exercises created before this field existed.
   executionDirections?: ExecutionDirection[];
   // Opt-in load progression. When set, the app suggests the next target
   // from your logged history (see src/lib/progression.ts) — it never
@@ -675,7 +676,8 @@ export const exerciseList: Exercise[] = [
     defaultSets: 2,
     defaultReps: 13,
     secondsPerRep: 5,
-    instructions: 'Take a wide stance with toes slightly turned out. Shift your weight to one side, bending that knee while keeping the other leg long and its heel grounded; let the straight-leg toes lift if comfortable. Keep your chest tall, push through the bent-leg foot to return, then alternate sides. Count one left-and-right cycle as one repetition.',
+    executionDirections: ['alternate'],
+    instructions: 'Take a wide stance with toes slightly turned out. Shift your weight to one side, bending that knee while keeping the other leg long and its heel grounded; let the straight-leg toes lift if comfortable. Keep your chest tall, push through the bent-leg foot to return, then perform the next repetition on the other side. Count each side as one repetition.',
     videoUrl: 'https://www.youtube.com/watch?v=nLNqEQ4B6XI',
     imageUrl: 'private-exercise:mobility-cossack-squat.jpg'
   },

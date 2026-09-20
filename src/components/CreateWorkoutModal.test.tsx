@@ -17,7 +17,7 @@ const { exercise } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
-vi.mock('@/contexts/DataContext', () => ({
+vi.mock('@/contexts/useData', () => ({
   useData: () => ({
     exercises: [exercise],
     createWorkout: vi.fn(),
@@ -39,6 +39,16 @@ import CreateWorkoutModal from './CreateWorkoutModal';
 
 describe('CreateWorkoutModal selected exercises', () => {
   afterEach(cleanup);
+
+  it('keeps the exercise library open after adding an exercise', () => {
+    render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
+
+    const libraryTab = screen.getByRole('tab', { name: 'Exercise Library' });
+    fireEvent.click(screen.getByRole('button', { name: `Add ${exercise.name}` }));
+
+    expect(libraryTab).toHaveAttribute('data-state', 'active');
+    expect(screen.getByRole('button', { name: `Add ${exercise.name}` })).toBeInTheDocument();
+  });
 
   it('shows the exercise thumbnail above its remove button', () => {
     render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);

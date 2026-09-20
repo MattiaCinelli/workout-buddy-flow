@@ -1,4 +1,5 @@
-import React, { createContext, useContext, ReactNode, useEffect, useRef } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
+import { DataContext } from './useData';
 import { useExercises } from '@/hooks/useExercises';
 import { useWorkouts } from '@/hooks/useWorkouts';
 import { useScheduledWorkouts, ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
@@ -21,7 +22,7 @@ export type SyncedCollection =
   | 'exercises' | 'workouts' | 'scheduledWorkouts' | 'courses'
   | 'workoutSessions' | 'muscleGroups' | 'bodyMetrics';
 
-interface DataContextType {
+export interface DataContextType {
   sessions: WorkoutSession[];
   sessionsLoading: boolean;
   sessionsError: string | null;
@@ -101,7 +102,6 @@ interface DataContextType {
   isLoading: boolean;
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
 const BUILT_IN_EXERCISE_IDS = new Set(exerciseList.map(exercise => exercise.id));
 const normalizedExerciseName = (name: string) => name.trim().toLocaleLowerCase();
 
@@ -129,7 +129,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getWorkoutById,
     fetchWorkoutById,
     refreshWorkouts
-  } = useWorkouts();
+  } = useWorkouts(exercises);
 
   const {
     scheduledWorkouts,
@@ -364,12 +364,4 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       {children}
     </DataContext.Provider>
   );
-};
-
-export const useData = (): DataContextType => {
-  const context = useContext(DataContext);
-  if (context === undefined) {
-    throw new Error('useData must be used within a DataProvider');
-  }
-  return context;
 };

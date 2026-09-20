@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Copy, Image as ImageIcon, Loader2, Pencil, Play, Repeat, Share2, Timer, TrendingUp, Video, ZoomIn } from 'lucide-react';
 import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import ExerciseImage from '@/components/ExerciseImage';
 
 interface ExerciseDetailModalProps {

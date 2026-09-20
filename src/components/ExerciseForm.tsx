@@ -22,7 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { readFileAsDataUrl, resizeImageToDataUrl } from '@/lib/image';
 import { normalizeHttpsUrl } from '@/lib/url';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { toast } from 'sonner';
 import ExerciseImage from '@/components/ExerciseImage';
 import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
@@ -73,6 +73,7 @@ const formSchema = z.object({
   directionImageUrls: z.object({
     left: z.string().optional(),
     right: z.string().optional(),
+    alternate: z.string().optional(),
     forward: z.string().optional(),
     backward: z.string().optional(),
   }).optional(),
@@ -433,16 +434,22 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
           render={({ field }) => (
             <FormItem className="space-y-2 rounded-md border p-3">
               <div className="space-y-0.5">
-                <FormLabel>Separate directional sets</FormLabel>
+                <FormLabel>Direction pattern</FormLabel>
                 <p className="text-xs text-muted-foreground">
-                  Each selected direction becomes its own visible set when this exercise is added to a workout.
+                  Left, right, forward and backward create separate sets. Alternate switches sides after every repetition within one set.
                 </p>
               </div>
               <FormControl>
                 <ToggleGroup
                   type="multiple"
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={directions => {
+                    const selectedAlternate = directions.includes('alternate');
+                    const hadAlternate = field.value.includes('alternate');
+                    field.onChange(selectedAlternate && !hadAlternate
+                      ? ['alternate']
+                      : directions.filter(direction => direction !== 'alternate'));
+                  }}
                   className="justify-start flex-wrap"
                   disabled={isSubmitting}
                 >

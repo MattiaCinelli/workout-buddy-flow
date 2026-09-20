@@ -20,6 +20,17 @@ describe('workout directions', () => {
     ]);
   });
 
+  it('keeps alternating repetitions together in one set', () => {
+    const sets = expandSetForExercise(
+      { exerciseId: 'cossack', reps: 13 },
+      exercise({ id: 'cossack', executionDirections: ['alternate'] }),
+    );
+
+    expect(sets).toEqual([
+      { exerciseId: 'cossack', reps: 13, direction: 'alternate' },
+    ]);
+  });
+
   it('materializes old unilateral sets but preserves explicit workout overrides', () => {
     const oldExercise = exercise({ unilateral: true });
 

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Scale } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parseISO } from 'date-fns';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { toast } from 'sonner';
 import { describeSeries } from '@/lib/chartA11y';
 import {

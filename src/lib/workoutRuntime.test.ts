@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildWorkoutSteps, isSelfPacedStep, remainingSeconds, restKindLabel, stepClockSeconds,
-  stepStartAnnouncement, type WorkoutStep,
+  stepStartAnnouncement, workoutDurationMinutes, workoutDurationSeconds, type WorkoutStep,
 } from './workoutRuntime';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { Exercise } from '@/data/exercises';
@@ -98,6 +98,26 @@ describe('buildWorkoutSteps', () => {
     expect(steps[4]).toMatchObject({ duration: 20 }); // between the two different exercises
   });
 
+  it('moves directly to the next set when same-exercise rest is zero', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout, restBetweenSets: 0,
+      sets: [{ exerciseId: 'e-reps', reps: 5 }, { exerciseId: 'e-reps', reps: 5 }],
+    };
+    const steps = buildWorkoutSteps(workout, [repsExercise]);
+    expect(steps.map(item => item.type)).toEqual(['rest', 'exercise', 'exercise']);
+    expect(steps.some(item => item.kind === 'rest')).toBe(false);
+  });
+
+  it('moves directly to the next exercise when between-exercise rest is zero', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout, restBetweenExercises: 0,
+      sets: [{ exerciseId: 'e-reps', reps: 5 }, { exerciseId: 'e-time', duration: 30 }],
+    };
+    const steps = buildWorkoutSteps(workout, [repsExercise, timeExercise]);
+    expect(steps.map(item => item.type)).toEqual(['rest', 'exercise', 'exercise']);
+    expect(steps.some(item => item.kind === 'rest')).toBe(false);
+  });
+
   it('an explicit restAfter on the set overrides both defaults', () => {
     const workout: WorkoutEntry = {
       ...baseWorkout,
@@ -105,6 +125,49 @@ describe('buildWorkoutSteps', () => {
     };
     const steps = buildWorkoutSteps(workout, [repsExercise, timeExercise]);
     expect(steps[2]).toMatchObject({ type: 'rest', duration: 90 });
+  });
+});
+
+describe('workoutDurationSeconds', () => {
+  it('calculates configured exercise and rest time without the get-ready pause', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout,
+      restBetweenSets: 0,
+      restBetweenExercises: 0,
+      sets: [
+        { exerciseId: 'e-time', duration: 45 },
+        { exerciseId: 'e-time', duration: 30 },
+        { exerciseId: 'e-time', duration: 30 },
+        { exerciseId: 'e-time', duration: 30 },
+        { exerciseId: 'e-time', duration: 30 },
+      ],
+    };
+
+    expect(workoutDurationSeconds(workout, [timeExercise])).toBe(165);
+  });
+
+  it('includes configured non-zero rests and derives rep time from the exercise', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout,
+      restBetweenExercises: 15,
+      sets: [{ exerciseId: 'e-reps', reps: 10 }, { exerciseId: 'e-time', duration: 30 }],
+    };
+
+    expect(workoutDurationSeconds(workout, [repsExercise, timeExercise])).toBe(65);
+  });
+});
+
+describe('workoutDurationMinutes', () => {
+  it('stores the calculated runtime as whole minutes, rounded up', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout, restBetweenSets: 0, restBetweenExercises: 0,
+      sets: [{ exerciseId: 'e-time', duration: 165 }],
+    };
+    expect(workoutDurationMinutes(workout, [timeExercise])).toBe(3);
+  });
+
+  it('keeps an empty workout at zero minutes', () => {
+    expect(workoutDurationMinutes({ ...baseWorkout, sets: [] }, [])).toBe(0);
   });
 });
 
@@ -140,6 +203,7 @@ describe('stepStartAnnouncement', () => {
     expect(stepStartAnnouncement(step({ type: 'exercise' }))).toBe('Begin');
     expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'left' }))).toBe('Begin left side');
     expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'right' }))).toBe('Begin right side');
+    expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'alternate' }))).toBe('Begin alternating sides');
     expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'forward' }))).toBe('Begin forward');
     expect(stepStartAnnouncement(step({ type: 'exercise', direction: 'backward' }))).toBe('Begin backward');
   });

@@ -9,6 +9,27 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+### Added
+
+- **Alternating-side exercise sets** — exercises can use an Alternate direction pattern for movements performed left, right, left, right within one set. Workout creation, editing, guided labels and voice cues, backups and sync all support the new pattern; Cossack Squat now uses it by default.
+
+### Changed
+
+- **Richer workout exercise search** — exercise pickers now search canonical names, aliases, target muscle groups, required equipment, category and difficulty. A search such as “wrist” therefore finds both exercises named for the wrist and exercises assigned to a wrist-related muscle group.
+- **Accurate workout-card summaries** — workout-library cards replace the template date and stale stored duration with the number of unique exercises and a duration calculated from configured sets and rests. Durations retain seconds when needed, such as `2m 45s`.
+
+### Fixed
+
+- **Exercise-library data audit** — completed instructions and muscle targets for every active exercise, corrected classifications, names and prescriptions for the affected mobility and strength movements, restored Bodyweight Squat (without an image for now) for the six Wet Noodle workouts that referenced it, and removed all dangling workout-to-exercise references.
+- **Accurate stored workout durations** — workout creation, editing and sync repair now persist duration from the actual exercise timing, repetition pace, unilateral sides and configured rests instead of the old 2.5-minutes-per-set estimate.
+- **Private exercise-media migration** — moved legacy base64 exercise images out of synchronized records into authenticated private-media files; future inline JPEGs are converted automatically during sync.
+- **Fast Refresh reliability** — removed the seven mixed component/non-component module exports that caused development reload warnings.
+- **Workout exercise-picker continuity** — adding an exercise while creating or editing a workout keeps the Exercise Library tab, current search and browsing position open instead of jumping to Selected Exercises after every choice.
+- **Empty-workout launch error** — starting a workout with no exercises now returns to its editor with a specific instruction to add an exercise instead of entering the player or showing a generic error.
+- **Zero-second workout transitions** — setting rest between sets or exercises to zero now moves directly to the next exercise instead of stopping indefinitely on a `0:00` rest screen.
+- **Five-minute wrist workout data** — corrected Wrist-Biceps Stretch from repetitions to timed holds, repaired the wrist workout’s set prescriptions and replaced its erroneous 18-minute estimate.
+- **Data-context Fast Refresh** — separated the shared `useData` hook from the React provider component so development updates no longer invalidate the entire context module.
+
 ## [1.0.8] - 2026-09-18
 
 ### Changed
@@ -167,7 +188,8 @@ First release. The app was usable and offline-capable throughout development; th
 - Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.4...v1.0.5

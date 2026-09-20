@@ -6,7 +6,7 @@ import MonthlyCalendar from '@/components/calendar/MonthlyCalendar';
 import ScheduleWorkoutModal from '@/components/calendar/ScheduleWorkoutModal';
 import ScheduleDetailModal from '@/components/calendar/ScheduleDetailModal';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { CalendarDays } from 'lucide-react';
 

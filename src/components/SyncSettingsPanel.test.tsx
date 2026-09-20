@@ -28,7 +28,7 @@ vi.mock('@/lib/syncClient', () => ({
   getSyncStatus: () => ({ lastOkAt: state.lastSyncedAt, lastError: null, lastErrorAt: null }),
   login, logout, syncAll, resetSyncState,
 }));
-vi.mock('@/contexts/DataContext', () => ({
+vi.mock('@/contexts/useData', () => ({
   useData: () => Object.fromEntries(
     ['refreshExercises', 'refreshWorkouts', 'refreshScheduledWorkouts', 'refreshCourses',
       'refreshSessions', 'refreshMuscleGroups', 'refreshBodyMetrics'].map(k => [k, vi.fn(async () => {})]),

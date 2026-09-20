@@ -25,7 +25,7 @@ import { ManageEquipmentModal } from './ManageEquipmentModal';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Search, X, FileImage, Loader2, Settings2, LayoutGrid, List, Library } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { exerciseNamesConflict } from '@/lib/exerciseAliases';
 import CardStack from '@/components/CardStack';
 import {

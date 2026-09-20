@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useEquipment } from '@/hooks/useEquipment';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { toast } from 'sonner';
 export const ManageEquipmentModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { equipment, addEquipment, renameEquipment, deleteEquipment } = useEquipment(); const { exercises, updateExercise } = useData();

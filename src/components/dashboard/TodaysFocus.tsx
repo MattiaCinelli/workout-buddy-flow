@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, Clock, Dumbbell, Zap, Calendar, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { startOfToday } from 'date-fns';
 import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
 import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';

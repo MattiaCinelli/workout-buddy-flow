@@ -12,19 +12,30 @@ export interface ExerciseLibraryFilters {
   difficulty: ExerciseDifficultyFilter;
 }
 
+export const exerciseMatchesSearchQuery = (
+  exercise: Exercise,
+  searchQuery: string,
+  muscleGroupName: (id: string) => string,
+): boolean => {
+  const query = searchQuery.trim().toLocaleLowerCase();
+  if (!query) return true;
+
+  return exerciseMatchesNameQuery(exercise, query)
+    || exercise.category.toLocaleLowerCase().includes(query)
+    || exercise.difficulty.toLocaleLowerCase().includes(query)
+    || exercise.equipment?.some(item => item.toLocaleLowerCase().includes(query)) === true
+    || exercise.muscleGroups.some(id =>
+      id.toLocaleLowerCase().includes(query)
+      || muscleGroupName(id).toLocaleLowerCase().includes(query));
+};
+
 export const filterExerciseLibrary = (
   exercises: Exercise[],
   filters: ExerciseLibraryFilters,
   muscleGroupName: (id: string) => string,
 ): Exercise[] => {
-  const query = filters.searchQuery.trim().toLocaleLowerCase();
   return exercises.filter(exercise => {
-    const matchesSearch = !query
-      || exerciseMatchesNameQuery(exercise, query)
-      || exercise.category.toLocaleLowerCase().includes(query)
-      || exercise.difficulty.toLocaleLowerCase().includes(query)
-      || exercise.equipment?.some(item => item.toLocaleLowerCase().includes(query))
-      || exercise.muscleGroups.some(id => muscleGroupName(id).toLocaleLowerCase().includes(query));
+    const matchesSearch = exerciseMatchesSearchQuery(exercise, filters.searchQuery, muscleGroupName);
     const matchesMuscles = filters.muscleGroupIds.length === 0
       || exercise.muscleGroups.some(id => filters.muscleGroupIds.includes(id));
     const matchesEquipment = filters.equipment.length === 0

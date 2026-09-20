@@ -1,4 +1,5 @@
 import { Db } from './index';
+import { storeInlineExerciseImage } from '../exerciseMediaStorage';
 
 export interface SyncedExercise {
   id: string;
@@ -114,6 +115,7 @@ export const listChangedSince = (db: Db, userId: string, since?: string): Synced
 // comparing it to what it sent, rather than trusting its own write blindly.
 export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise): SyncedExercise => {
   const syncedAt = new Date().toISOString();
+  const imageUrl = storeInlineExerciseImage(exercise.imageUrl);
   db.prepare(`
     INSERT INTO exercises (
       id, user_id, name, aliases, category, muscle_groups, equipment, collection_id, collection_name, collection_order, difficulty,
@@ -176,7 +178,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     progression: exercise.progression ? JSON.stringify(exercise.progression) : null,
     instructions: exercise.instructions ?? null,
     videoUrl: exercise.videoUrl ?? null,
-    imageUrl: exercise.imageUrl ?? null,
+    imageUrl: imageUrl ?? null,
     updatedAt: exercise.updatedAt,
     deletedAt: exercise.deletedAt ?? null,
     syncedAt,

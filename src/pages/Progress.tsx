@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Loader2, TrendingUp, Calendar, Dumbbell, Timer, Trash2 } from "lucide-react";
 import Navbar from '@/components/Navbar';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

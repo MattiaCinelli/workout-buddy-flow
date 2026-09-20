@@ -62,7 +62,7 @@ const holdSet = (exerciseId: string, duration: number): WorkoutSet => ({ exercis
 type CourseExercise = {
   exerciseId: string;
   logType: 'time' | 'reps';
-  directions?: Array<'left' | 'right'>;
+  directions?: ExecutionDirection[];
 };
 
 const courseExerciseSets = ({ exerciseId, logType, directions }: CourseExercise): WorkoutSet[] =>
@@ -73,9 +73,9 @@ const courseExerciseSets = ({ exerciseId, logType, directions }: CourseExercise)
       ...(logType === 'time' ? { duration: 30 } : { reps: 13 }),
     })));
 
-const timed = (exerciseId: string, directions?: Array<'left' | 'right'>): CourseExercise =>
+const timed = (exerciseId: string, directions?: ExecutionDirection[]): CourseExercise =>
   ({ exerciseId, logType: 'time', directions });
-const reps = (exerciseId: string, directions?: Array<'left' | 'right'>): CourseExercise =>
+const reps = (exerciseId: string, directions?: ExecutionDirection[]): CourseExercise =>
   ({ exerciseId, logType: 'reps', directions });
 
 const POSTERIOR_CHAIN: CourseExercise[] = [
@@ -110,7 +110,7 @@ const UPPER_BODY: CourseExercise[] = [
 
 const ACTIVE_FLEXIBILITY: CourseExercise[] = [
   reps('mobility-90-90-hip-switches'),
-  reps('mobility-cossack-squat'),
+  reps('mobility-cossack-squat', ['alternate']),
   reps('mobility-straight-leg-raises', ['left', 'right']),
   reps('mobility-side-leg-raise', ['left', 'right']),
   reps('22'),
@@ -143,7 +143,7 @@ const wetNoodleWorkouts: WorkoutEntry[] = Array.from({ length: 6 }, (_, index) =
   .flatMap(week => COURSE_DAY_PLANS.map((day, dayIndex) => {
     const additions: CourseExercise[] = [];
     if (week >= 3 && day.slug === 'monday') additions.push(reps('mobility-straight-leg-raises', ['left', 'right']));
-    if (week >= 3 && day.slug === 'tuesday') additions.push(reps('mobility-cossack-squat'));
+    if (week >= 3 && day.slug === 'tuesday') additions.push(reps('mobility-cossack-squat', ['alternate']));
     if (week >= 3 && day.slug === 'thursday') {
       additions.push(reps('mobility-reverse-lunge', ['left', 'right']));
       additions.push(reps('mobility-full-range-calf-raise'));

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Flame, Trophy, Calendar } from 'lucide-react';
-import { useData } from '@/contexts/DataContext';
+import { useData } from '@/contexts/useData';
 import { format, subDays, parseISO, startOfToday, differenceInDays, differenceInCalendarDays } from 'date-fns';
 
 const WorkoutStreak: React.FC = () => {
