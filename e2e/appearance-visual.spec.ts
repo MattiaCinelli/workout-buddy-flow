@@ -13,6 +13,7 @@ const appearances = [
 // where the baselines originate while allowing only the measured rendering
 // variance in Linux CI; structural layout changes still exceed 3.5%.
 const maxDiffPixelRatio = process.platform === 'linux' ? 0.035 : 0.01;
+const snapshotHeight = (style: typeof appearances[number]['style']) => style === 'classic' ? 2905 : 2937;
 
 for (const appearance of appearances) {
   test(`${appearance.style} ${appearance.mode} appearance`, async ({ page }) => {
@@ -20,11 +21,13 @@ for (const appearance of appearances) {
       localStorage.setItem('interface-style', style);
       localStorage.setItem('theme', mode);
     }, appearance);
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize({ width: 1280, height: snapshotHeight(appearance.style) });
     await page.goto('/settings');
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
     await expect(page).toHaveScreenshot(`${appearance.style}-${appearance.mode}.png`, {
       animations: 'disabled',
+      // A baseline-sized viewport prevents Linux's one-pixel document-height
+      // variance from changing the dimensions of the full-page capture.
       fullPage: true,
       maxDiffPixelRatio,
     });
