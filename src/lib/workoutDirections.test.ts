@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Exercise } from '@/data/exercises';
-import { expandSetForExercise, materializeLegacyDirections } from './workoutDirections';
+import { combineExecutionDirections, expandSetForExercise, materializeLegacyDirections } from './workoutDirections';
 
 const exercise = (overrides: Partial<Exercise> = {}): Exercise => ({
   id: 'row', name: 'Row', category: 'strength', muscleGroups: [], difficulty: 'beginner',
@@ -8,6 +8,13 @@ const exercise = (overrides: Partial<Exercise> = {}): Exercise => ({
 });
 
 describe('workout directions', () => {
+  it('combines selected sides and orientations into unambiguous directions', () => {
+    expect(combineExecutionDirections(['left', 'right', 'forward', 'backward'])).toEqual([
+      'left-forward', 'right-forward', 'left-backward', 'right-backward',
+    ]);
+    expect(combineExecutionDirections(['left', 'right'])).toEqual(['left', 'right']);
+  });
+
   it('creates a separate visible set for each exercise default direction', () => {
     const sets = expandSetForExercise(
       { exerciseId: 'row', reps: 10 },

@@ -60,15 +60,15 @@ test('an exercise keeps its directional settings through push and pull', async (
 
   const push = await app.inject({
     method: 'POST', url: '/sync/exercises', headers,
-    payload: { exercises: [exercise({ unilateral: true, executionDirections: ['left', 'right', 'alternate', 'forward', 'backward'] })] },
+    payload: { exercises: [exercise({ unilateral: true, executionDirections: ['left-forward', 'right-forward', 'left-backward', 'right-backward'] })] },
   });
   assert.equal(push.statusCode, 200);
   assert.equal(push.json().exercises[0].unilateral, true);
-  assert.deepEqual(push.json().exercises[0].executionDirections, ['left', 'right', 'alternate', 'forward', 'backward']);
+  assert.deepEqual(push.json().exercises[0].executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
 
   const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
   assert.equal(pull.json().exercises[0].unilateral, true);
-  assert.deepEqual(pull.json().exercises[0].executionDirections, ['left', 'right', 'alternate', 'forward', 'backward']);
+  assert.deepEqual(pull.json().exercises[0].executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
 });
 
 test('an exercise keeps its progression policy through push and pull', async () => {

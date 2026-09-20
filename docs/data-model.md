@@ -25,7 +25,7 @@ interface Exercise {
                                // sets; defaults to 5 (DEFAULT_SECONDS_PER_REP)
   defaultWeight?: number;      // optional usual working weight
   defaultDistance?: number;    // optional usual distance, meters
-  executionDirections?: Array<'left' | 'right' | 'forward' | 'backward'>;
+  executionDirections?: Array<'left' | 'right' | 'forward' | 'backward' | 'left-forward' | 'right-forward' | 'left-backward' | 'right-backward'>;
                                // defaults used to create separate directional workout sets
   unilateral?: boolean;        // legacy fallback for pre-direction left/right records
   progression?: {              // opt-in; suggests the next target, never edits templates

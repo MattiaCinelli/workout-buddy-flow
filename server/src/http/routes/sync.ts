@@ -14,7 +14,7 @@ const workoutSetSchema = {
   properties: {
     exerciseId: { type: 'string' },
     occurrenceId: { type: 'string' },
-    direction: { type: 'string', enum: ['none', 'left', 'right', 'alternate', 'forward', 'backward'] },
+    direction: { type: 'string', enum: ['none', 'left', 'right', 'alternate', 'forward', 'backward', 'left-forward', 'right-forward', 'left-backward', 'right-backward'] },
     reps: { type: 'number' },
     weight: { type: 'number' },
     duration: { type: 'number' },
@@ -49,7 +49,7 @@ const exerciseSchema = {
     unilateral: { type: 'boolean' },
     executionDirections: {
       type: 'array',
-      items: { type: 'string', enum: ['left', 'right', 'alternate', 'forward', 'backward'] },
+      items: { type: 'string', enum: ['left', 'right', 'alternate', 'forward', 'backward', 'left-forward', 'right-forward', 'left-backward', 'right-backward'] },
       uniqueItems: true,
     },
     progression: {
@@ -158,7 +158,7 @@ const workoutSetResultSchema = {
     exerciseId: { type: 'string' },
     setIndex: { type: 'number' },
     completed: { type: 'boolean' },
-    direction: { type: 'string', enum: ['none', 'left', 'right', 'alternate', 'forward', 'backward'] },
+    direction: { type: 'string', enum: ['none', 'left', 'right', 'alternate', 'forward', 'backward', 'left-forward', 'right-forward', 'left-backward', 'right-backward'] },
     reps: { type: 'number' },
     weight: { type: 'number' },
     duration: { type: 'number' },

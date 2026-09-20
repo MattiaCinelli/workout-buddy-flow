@@ -33,6 +33,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Zero-second workout transitions** — setting rest between sets or exercises to zero now moves directly to the next exercise instead of stopping indefinitely on a `0:00` rest screen.
 - **Five-minute wrist workout data** — corrected Wrist-Biceps Stretch from repetitions to timed holds, repaired the wrist workout’s set prescriptions and replaced its erroneous 18-minute estimate.
 - **Wrist Push-Up exercise** — added a 10-repetition wrist-strengthening exercise with separate palms-down Forward and palms-up Backward variations, detailed safety cues and a private reference image.
+- **Combined direction images** — exercises that vary by both side and orientation now use explicit Left–Forward, Right–Forward, Left–Backward and Right–Backward sets and image slots, so the guided workout always shows the correct demonstration.
 - **Data-context Fast Refresh** — separated the shared `useData` hook from the React provider component so development updates no longer invalidate the entire context module.
 
 ## [1.0.8] - 2026-09-18

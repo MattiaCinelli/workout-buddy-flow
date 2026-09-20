@@ -103,6 +103,13 @@ describe('getExerciseImageUrl', () => {
     expect(getExerciseImageUrl(exercise, 'left')).toBe('/left.jpg');
   });
 
+  it('selects an image for a compound side and orientation', () => {
+    expect(getExerciseImageUrl({
+      imageUrl: '/fallback.jpg',
+      directionImageUrls: { 'left-forward': '/left-forward.jpg' },
+    }, 'left-forward')).toBe('/left-forward.jpg');
+  });
+
   it('falls back to the default image for missing or unspecified directions', () => {
     expect(getExerciseImageUrl(exercise, 'forward')).toBe('/default.jpg');
     expect(getExerciseImageUrl(exercise)).toBe('/default.jpg');

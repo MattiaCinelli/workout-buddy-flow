@@ -1,9 +1,14 @@
 export type ExerciseLogType = 'reps' | 'time';
 export const DEFAULT_EQUIPMENT = ['Bodyweight', 'Dumbbells', 'Barbell', 'Bench', 'Resistance band', 'Cable machine', 'Kettlebell', 'Pull-up bar', 'Mat', 'Foam roller', 'Strap'] as const;
-export const EXECUTION_DIRECTIONS = ['left', 'right', 'alternate', 'forward', 'backward'] as const;
+export const EXECUTION_DIRECTIONS = [
+  'left', 'right', 'alternate', 'forward', 'backward',
+  'left-forward', 'right-forward', 'left-backward', 'right-backward',
+] as const;
 export type ExecutionDirection = (typeof EXECUTION_DIRECTIONS)[number];
 export const EXECUTION_DIRECTION_LABELS: Record<ExecutionDirection, string> = {
   left: 'Left', right: 'Right', alternate: 'Alternate', forward: 'Forward', backward: 'Backward',
+  'left-forward': 'Left–Forward', 'right-forward': 'Right–Forward',
+  'left-backward': 'Left–Backward', 'right-backward': 'Right–Backward',
 };
 
 export interface ExerciseProgression {

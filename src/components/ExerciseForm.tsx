@@ -7,6 +7,7 @@ import {
   Exercise, getLogType, DEFAULT_SECONDS_PER_REP, EXECUTION_DIRECTIONS,
   EXECUTION_DIRECTION_LABELS, getExecutionDirections, type ExecutionDirection,
 } from '@/data/exercises';
+import { combineExecutionDirections } from '@/lib/workoutDirections';
 import { Trash, FileImage, Loader2, Settings2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,6 +77,10 @@ const formSchema = z.object({
     alternate: z.string().optional(),
     forward: z.string().optional(),
     backward: z.string().optional(),
+    'left-forward': z.string().optional(),
+    'right-forward': z.string().optional(),
+    'left-backward': z.string().optional(),
+    'right-backward': z.string().optional(),
   }).optional(),
 }).superRefine((values, ctx) => {
   // Double progression only makes sense when the range reads low-to-high;
@@ -128,7 +133,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       collectionOrder: exercise?.collectionOrder?.toString() ?? '',
       difficulty: exercise?.difficulty || 'beginner',
       logType: exercise ? getLogType(exercise) : 'reps',
-      executionDirections: exercise ? getExecutionDirections(exercise) : [],
+      executionDirections: exercise ? combineExecutionDirections(getExecutionDirections(exercise)) : [],
       defaultSets: exercise?.defaultSets?.toString() ?? '3',
       defaultReps: exercise?.defaultReps?.toString() ?? '',
       defaultDuration: exercise?.defaultDuration?.toString() ?? '',
@@ -436,7 +441,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
               <div className="space-y-0.5">
                 <FormLabel>Direction pattern</FormLabel>
                 <p className="text-xs text-muted-foreground">
-                  Left, right, forward and backward create separate sets. Alternate switches sides after every repetition within one set.
+                  Selecting a side together with an orientation creates explicit sets such as Left–Forward and Right–Backward. Alternate switches sides after every repetition within one set.
                 </p>
               </div>
               <FormControl>
@@ -448,7 +453,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                     const hadAlternate = field.value.includes('alternate');
                     field.onChange(selectedAlternate && !hadAlternate
                       ? ['alternate']
-                      : directions.filter(direction => direction !== 'alternate'));
+                      : combineExecutionDirections(directions.filter(direction => direction !== 'alternate') as ExecutionDirection[]));
                   }}
                   className="justify-start flex-wrap"
                   disabled={isSubmitting}

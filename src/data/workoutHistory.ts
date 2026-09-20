@@ -9,6 +9,8 @@ export interface WorkoutSet {
   occurrenceId?: string;
   // Explicit per-workout direction. Missing means a legacy workout; `none`
   // records an intentional override of an exercise's directional default.
+  // Compound values such as `left-forward` identify both the side and the
+  // orientation, including the matching direction-specific image.
   direction?: WorkoutSetDirection;
   reps?: number;
   weight?: number;

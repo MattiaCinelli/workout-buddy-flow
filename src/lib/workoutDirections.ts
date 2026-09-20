@@ -1,4 +1,5 @@
 import {
+  EXECUTION_DIRECTIONS,
   EXECUTION_DIRECTION_LABELS,
   getExecutionDirections,
   type Exercise,
@@ -7,8 +8,20 @@ import {
 import type { WorkoutSet, WorkoutSetDirection } from '@/data/workoutHistory';
 
 export const WORKOUT_SET_DIRECTIONS: WorkoutSetDirection[] = [
-  'none', 'left', 'right', 'alternate', 'forward', 'backward',
+  'none', ...EXECUTION_DIRECTIONS,
 ];
+
+const SIDES = ['left', 'right'] as const;
+const ORIENTATIONS = ['forward', 'backward'] as const;
+
+/** Converts an ambiguous side + orientation selection into explicit pairs. */
+export const combineExecutionDirections = (directions: ExecutionDirection[]): ExecutionDirection[] => {
+  if (directions.includes('alternate')) return ['alternate'];
+  const sides = SIDES.filter(side => directions.some(direction => direction === side || direction.startsWith(`${side}-`)));
+  const orientations = ORIENTATIONS.filter(orientation => directions.some(direction => direction === orientation || direction.endsWith(`-${orientation}`)));
+  if (!sides.length || !orientations.length) return directions;
+  return orientations.flatMap(orientation => sides.map(side => `${side}-${orientation}` as ExecutionDirection));
+};
 
 export const workoutDirectionLabel = (direction?: WorkoutSetDirection): string =>
   !direction || direction === 'none' ? 'No direction' : EXECUTION_DIRECTION_LABELS[direction];

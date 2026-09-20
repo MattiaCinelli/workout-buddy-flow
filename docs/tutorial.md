@@ -971,7 +971,7 @@ step to have a duration so one countdown mechanism handles all of them.
      sets get a synthesized one**: `secondsPerRep × reps` (default 5 s/rep, overridable
      per exercise) so the runner can show a follow-along countdown instead of an
      open-ended "do 10 reps whenever".
-   - Carry the set's optional `direction` (`left`, `right`, `forward`, `backward`) to
+   - Carry the set's optional `direction` (`left`, `right`, `forward`, `backward`, or a combined value such as `left-forward`) to
      the guided step so it is labelled and announced. New workouts store directional
      work as separate visible sets. For backward compatibility only, an old workout
      set with no direction still expands left → switch → right when its exercise has

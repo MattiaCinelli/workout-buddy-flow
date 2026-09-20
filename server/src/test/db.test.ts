@@ -51,13 +51,13 @@ test('exercises: directional defaults survive a database round trip', () => {
 
   const stored = upsertExercise(db, user.id, exercise({
     unilateral: true,
-    executionDirections: ['left', 'right', 'alternate', 'forward', 'backward'],
+    executionDirections: ['left-forward', 'right-forward', 'left-backward', 'right-backward'],
   }));
 
   assert.equal(stored.unilateral, true);
-  assert.deepEqual(stored.executionDirections, ['left', 'right', 'alternate', 'forward', 'backward']);
+  assert.deepEqual(stored.executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
   assert.equal(listChangedSince(db, user.id)[0].unilateral, true);
-  assert.deepEqual(listChangedSince(db, user.id)[0].executionDirections, ['left', 'right', 'alternate', 'forward', 'backward']);
+  assert.deepEqual(listChangedSince(db, user.id)[0].executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
 });
 
 test('exercises: aliases survive a database round trip', () => {

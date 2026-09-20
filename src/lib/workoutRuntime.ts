@@ -1,5 +1,5 @@
 import { WorkoutEntry } from '@/data/workoutHistory';
-import { Exercise, getSecondsPerRep } from '@/data/exercises';
+import { Exercise, getSecondsPerRep, type ExecutionDirection } from '@/data/exercises';
 import { isDirectional } from './workoutDirections';
 
 // Seconds given at the very start of a workout before the first exercise
@@ -25,7 +25,7 @@ export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sour
   secondsPerRep?: number;
   // Explicit direction authored on a new workout set, or synthesized for
   // an old unilateral workout that predates separate directional sets.
-  direction?: 'left' | 'right' | 'alternate' | 'forward' | 'backward';
+  direction?: ExecutionDirection;
   // Carried from the authored set for the presentation layer.
   warmup?: boolean;
   amrap?: boolean;

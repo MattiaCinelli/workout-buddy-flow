@@ -28,4 +28,21 @@ describe('ExerciseForm', () => {
     expect(screen.getByDisplayValue('Hamstring stretch')).toBeInTheDocument();
     expect(screen.queryByText('Variations')).not.toBeInTheDocument();
   });
+
+  it('shows four explicit image slots when side and orientation are combined', () => {
+    render(<ExerciseForm
+      exercise={{
+        id: 'four-way-stretch', name: 'Four-way stretch', category: 'flexibility',
+        muscleGroups: ['hamstrings'], difficulty: 'beginner',
+        executionDirections: ['left', 'right', 'forward', 'backward'],
+      }}
+      onSubmit={vi.fn()}
+      onCancel={vi.fn()}
+    />);
+
+    for (const label of ['Left–Forward', 'Right–Forward', 'Left–Backward', 'Right–Backward']) {
+      // One label is the direction selector; the other is its image slot.
+      expect(screen.getAllByText(label)).toHaveLength(2);
+    }
+  });
 });
