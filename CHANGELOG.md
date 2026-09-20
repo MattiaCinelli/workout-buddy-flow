@@ -9,6 +9,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stable Linux visual snapshots** — capture the explicitly baseline-sized Settings viewport so Chromium's one-pixel document-height difference cannot fail CI before visual pixel tolerance is evaluated.
+
 ## [1.0.10] - 2026-09-20
 
 ### Added

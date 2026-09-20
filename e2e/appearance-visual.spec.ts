@@ -26,9 +26,11 @@ for (const appearance of appearances) {
     await expect(page.getByRole('heading', { name: 'Appearance' })).toBeVisible();
     await expect(page).toHaveScreenshot(`${appearance.style}-${appearance.mode}.png`, {
       animations: 'disabled',
-      // A baseline-sized viewport prevents Linux's one-pixel document-height
-      // variance from changing the dimensions of the full-page capture.
-      fullPage: true,
+      // Capture the explicitly baseline-sized viewport. Using fullPage here
+      // makes Playwright replace this height with Linux's one-pixel-taller
+      // document height, causing a dimension mismatch before pixel tolerance
+      // can be applied.
+      fullPage: false,
       maxDiffPixelRatio,
     });
   });
