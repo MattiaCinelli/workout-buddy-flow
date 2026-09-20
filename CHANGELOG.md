@@ -24,6 +24,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Accurate stored workout durations** — workout creation, editing and sync repair now persist duration from the actual exercise timing, repetition pace, unilateral sides and configured rests instead of the old 2.5-minutes-per-set estimate.
 - **Private exercise-media migration** — moved legacy base64 exercise images out of synchronized records into authenticated private-media files; future inline JPEGs are converted automatically during sync.
 - **Fast Refresh reliability** — removed the seven mixed component/non-component module exports that caused development reload warnings.
+- **Portable visual-regression checks** — account for Chromium's measured Linux font-rasterization variance while retaining stricter comparison against the macOS-authored baselines.
 - **Workout exercise-picker continuity** — adding an exercise while creating or editing a workout keeps the Exercise Library tab, current search and browsing position open instead of jumping to Selected Exercises after every choice.
 - **Empty-workout launch error** — starting a workout with no exercises now returns to its editor with a specific instruction to add an exercise instead of entering the player or showing a generic error.
 - **Zero-second workout transitions** — setting rest between sets or exercises to zero now moves directly to the next exercise instead of stopping indefinitely on a `0:00` rest screen.
