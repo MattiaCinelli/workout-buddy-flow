@@ -30,6 +30,7 @@ export interface SyncedExercise {
   instructions?: string;
   videoUrl?: string;
   imageUrl?: string;
+  directionImageUrls?: Record<string, string>;
   updatedAt: string;
   deletedAt?: string;
 }
@@ -58,6 +59,7 @@ interface ExerciseRow {
   instructions: string | null;
   video_url: string | null;
   image_url: string | null;
+  direction_image_urls: string | null;
   updated_at: string;
   deleted_at: string | null;
 }
@@ -86,6 +88,7 @@ const fromRow = (row: ExerciseRow): SyncedExercise => ({
   instructions: row.instructions ?? undefined,
   videoUrl: row.video_url ?? undefined,
   imageUrl: row.image_url ?? undefined,
+  directionImageUrls: row.direction_image_urls ? JSON.parse(row.direction_image_urls) : undefined,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at ?? undefined,
 });
@@ -116,16 +119,21 @@ export const listChangedSince = (db: Db, userId: string, since?: string): Synced
 export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise): SyncedExercise => {
   const syncedAt = new Date().toISOString();
   const imageUrl = storeInlineExerciseImage(exercise.imageUrl);
+  const directionImageUrls = exercise.directionImageUrls
+    ? Object.fromEntries(Object.entries(exercise.directionImageUrls)
+        .map(([direction, url]) => [direction, storeInlineExerciseImage(url)] as const)
+        .filter((entry): entry is readonly [string, string] => !!entry[1]))
+    : undefined;
   db.prepare(`
     INSERT INTO exercises (
       id, user_id, name, aliases, category, muscle_groups, equipment, collection_id, collection_name, collection_order, difficulty,
       log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, execution_directions, progression,
-      instructions, video_url, image_url, updated_at, deleted_at, synced_at
+      instructions, video_url, image_url, direction_image_urls, updated_at, deleted_at, synced_at
     )
     VALUES (
       @id, @userId, @name, @aliases, @category, @muscleGroups, @equipment, @collectionId, @collectionName, @collectionOrder, @difficulty,
       @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @executionDirections, @progression,
-      @instructions, @videoUrl, @imageUrl, @updatedAt, @deletedAt, @syncedAt
+      @instructions, @videoUrl, @imageUrl, @directionImageUrls, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
       name = excluded.name,
@@ -150,6 +158,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
       instructions = excluded.instructions,
       video_url = excluded.video_url,
       image_url = excluded.image_url,
+      direction_image_urls = excluded.direction_image_urls,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
       synced_at = excluded.synced_at
@@ -179,6 +188,8 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     instructions: exercise.instructions ?? null,
     videoUrl: exercise.videoUrl ?? null,
     imageUrl: imageUrl ?? null,
+    directionImageUrls: directionImageUrls && Object.keys(directionImageUrls).length
+      ? JSON.stringify(directionImageUrls) : null,
     updatedAt: exercise.updatedAt,
     deletedAt: exercise.deletedAt ?? null,
     syncedAt,

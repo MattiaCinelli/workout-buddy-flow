@@ -71,6 +71,25 @@ test('an exercise keeps its directional settings through push and pull', async (
   assert.deepEqual(pull.json().exercises[0].executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
 });
 
+test('an exercise keeps direction-specific images through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+  const directionImageUrls = {
+    'left-forward': 'private-exercise:left-forward.jpg',
+    'right-forward': 'private-exercise:right-forward.jpg',
+  };
+
+  const push = await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ directionImageUrls })] },
+  });
+  assert.equal(push.statusCode, 200);
+  assert.deepEqual(push.json().exercises[0].directionImageUrls, directionImageUrls);
+
+  const pull = await app.inject({ method: 'GET', url: '/sync/exercises', headers });
+  assert.deepEqual(pull.json().exercises[0].directionImageUrls, directionImageUrls);
+});
+
 test('an exercise keeps its progression policy through push and pull', async () => {
   const { app, aliceToken } = await setup();
   const headers = { authorization: `Bearer ${aliceToken}` };

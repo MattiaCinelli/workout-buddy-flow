@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Versioning covers the app in `src/` and the optional sync server in `server/`
 together — a single tag `vX.Y.Z` releases both.
 
-## [1.0.9] - 2026-09-20
-
 ## [Unreleased]
+
+## [1.0.10] - 2026-09-20
 
 ### Added
 
@@ -34,8 +34,11 @@ together — a single tag `vX.Y.Z` releases both.
 - **Five-minute wrist workout data** — corrected Wrist-Biceps Stretch from repetitions to timed holds, repaired the wrist workout’s set prescriptions and replaced its erroneous 18-minute estimate.
 - **Wrist Push-Up exercise** — added a 10-repetition wrist-strengthening exercise with separate palms-down Forward and palms-up Backward variations, detailed safety cues and a private reference image.
 - **Combined direction images** — exercises that vary by both side and orientation now use explicit Left–Forward, Right–Forward, Left–Backward and Right–Backward sets and image slots, so the guided workout always shows the correct demonstration.
+- **Private direction-image sync** — direction-specific exercise images now round-trip through the sync database and authenticated private-media storage instead of remaining available only on the device where they were added.
 - **Rotational Hinge exercise** — added the two-position kettlebell strength movement with 10-repetition left/right sets, detailed technique cues and a private exercise image.
 - **Data-context Fast Refresh** — separated the shared `useData` hook from the React provider component so development updates no longer invalidate the entire context module.
+
+## [1.0.9] - 2026-09-20
 
 ## [1.0.8] - 2026-09-18
 

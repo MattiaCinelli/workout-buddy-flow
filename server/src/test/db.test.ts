@@ -60,6 +60,20 @@ test('exercises: directional defaults survive a database round trip', () => {
   assert.deepEqual(listChangedSince(db, user.id)[0].executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
 });
 
+test('exercises: direction-specific images survive a database round trip', () => {
+  const db = freshDb();
+  const user = createUser(db, 'you@example.com', 'hash');
+  const directionImageUrls = {
+    'left-forward': 'private-exercise:left-forward.jpg',
+    'right-forward': 'private-exercise:right-forward.jpg',
+  };
+
+  const stored = upsertExercise(db, user.id, exercise({ directionImageUrls }));
+
+  assert.deepEqual(stored.directionImageUrls, directionImageUrls);
+  assert.deepEqual(listChangedSince(db, user.id)[0].directionImageUrls, directionImageUrls);
+});
+
 test('exercises: aliases survive a database round trip', () => {
   const db = freshDb();
   const user = createUser(db, 'you@example.com', 'hash');
