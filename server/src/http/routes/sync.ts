@@ -13,6 +13,7 @@ const workoutSetSchema = {
   required: ['exerciseId'],
   properties: {
     exerciseId: { type: 'string' },
+    occurrenceId: { type: 'string' },
     direction: { type: 'string', enum: ['none', 'left', 'right', 'alternate', 'forward', 'backward'] },
     reps: { type: 'number' },
     weight: { type: 'number' },

@@ -78,4 +78,20 @@ describe('CreateWorkoutModal selected exercises', () => {
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: `1. ${exercise.name}` })).toBeInTheDocument();
   });
+
+  it('allows the same exercise to be added as independently ordered occurrences', () => {
+    render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
+
+    const add = screen.getByRole('button', { name: `Add ${exercise.name}` });
+    fireEvent.click(add);
+    fireEvent.click(add);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Selected Exercises (2)' }), {
+      button: 0,
+      ctrlKey: false,
+    });
+
+    expect(screen.getByRole('heading', { name: `1. ${exercise.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: `2. ${exercise.name}` })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(2);
+  });
 });

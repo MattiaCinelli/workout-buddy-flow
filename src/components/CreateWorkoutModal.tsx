@@ -33,6 +33,7 @@ interface CreateWorkoutModalProps {
 }
 
 interface SelectedExercise {
+  occurrenceId: string;
   exercise: Exercise;
   sets: WorkoutSet[];
 }
@@ -123,15 +124,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   };
   
   const handleSelectExercise = (exercise: Exercise) => {
-    // Check if exercise is already selected
-    if (selectedExercises.some(item => item.exercise.id === exercise.id)) {
-      toast({
-        title: "Already added",
-        description: `${exercise.name} is already in your workout.`,
-      });
-      return;
-    }
-    
+    const occurrenceId = crypto.randomUUID();
     // Pre-fill from the exercise's own defaults rather than a generic
     // category-based guess — e.g. a bodyweight exercise like "Wall Angel"
     // gets its own configured reps/sets instead of always defaulting to
@@ -140,6 +133,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     const setCount = exercise.defaultSets ?? 1;
     const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
+      occurrenceId,
       reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
       weight: exercise.defaultWeight,
       duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
@@ -155,6 +149,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     setSelectedExercises([
       ...selectedExercises, 
       { 
+        occurrenceId,
         exercise, 
         sets: defaultSets
       }
@@ -170,8 +165,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     });
   };
 
-  const handleRemoveExercise = (exerciseId: string) => {
-    setSelectedExercises(selectedExercises.filter(item => item.exercise.id !== exerciseId));
+  const handleRemoveExercise = (occurrenceId: string) => {
+    setSelectedExercises(selectedExercises.filter(item => item.occurrenceId !== occurrenceId));
     
     toast({
       title: "Exercise removed",
@@ -195,6 +190,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     // Copy values from the last set as defaults for the new set
     const newSet: WorkoutSet = {
       exerciseId: currentExercise.exercise.id,
+      occurrenceId: currentExercise.occurrenceId,
       reps: lastSet.reps,
       weight: lastSet.weight,
       duration: lastSet.duration,
@@ -428,7 +424,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                   ) : (
                     <div className="space-y-6 max-h-[300px] overflow-y-auto py-2">
                       {selectedExercises.map((selectedEx, exIndex) => (
-                        <div key={selectedEx.exercise.id} className="border rounded-md p-4">
+                        <div key={selectedEx.occurrenceId} className="border rounded-md p-4">
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex min-w-0 flex-1 items-center gap-1">
                               <div className="flex flex-col -my-1">
@@ -477,7 +473,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                                 variant="outline"
                                 size="sm"
                                 type="button"
-                                onClick={() => handleRemoveExercise(selectedEx.exercise.id)}
+                                onClick={() => handleRemoveExercise(selectedEx.occurrenceId)}
                                 className="h-8 w-full px-2"
                                 disabled={isSubmitting}
                               >

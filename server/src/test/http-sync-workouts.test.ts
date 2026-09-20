@@ -9,8 +9,8 @@ const workout = (overrides: Record<string, unknown> = {}) => ({
   duration: 45,
   category: 'strength',
   sets: [
-    { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90, direction: 'left', warmup: true },
-    { exerciseId: 'squat', reps: 8, weight: 100, restAfter: 90, direction: 'right', amrap: true },
+    { exerciseId: 'squat', occurrenceId: 'squat-block-1', reps: 8, weight: 100, restAfter: 90, direction: 'left', warmup: true },
+    { exerciseId: 'squat', occurrenceId: 'squat-block-1', reps: 8, weight: 100, restAfter: 90, direction: 'right', amrap: true },
     { exerciseId: 'cossack', reps: 12, direction: 'alternate' },
   ],
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -43,6 +43,7 @@ test('a workout with multiple sets round-trips through push and pull with set or
   assert.equal(stored.sets[2].direction, 'alternate');
   assert.equal(stored.sets[0].warmup, true);
   assert.equal(stored.sets[1].amrap, true);
+  assert.deepEqual(stored.sets.slice(0, 2).map((s: { occurrenceId: string }) => s.occurrenceId), ['squat-block-1', 'squat-block-1']);
 });
 
 test('description round-trips through push and pull', async () => {

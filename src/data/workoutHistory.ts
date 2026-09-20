@@ -4,6 +4,9 @@ export type WorkoutSetDirection = ExecutionDirection | 'none';
 
 export interface WorkoutSet {
   exerciseId: string;
+  // Identifies one occurrence of an exercise in the workout. The same
+  // exercise can appear in several independently ordered blocks.
+  occurrenceId?: string;
   // Explicit per-workout direction. Missing means a legacy workout; `none`
   // records an intentional override of an exercise's directional default.
   direction?: WorkoutSetDirection;

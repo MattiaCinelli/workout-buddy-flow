@@ -69,7 +69,8 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
     }
     const next = workout.sets[sourceSetIndex + 1];
     if (next) {
-      const changesExercise = next.exerciseId !== set.exerciseId;
+      const changesExercise = (next.occurrenceId ?? next.exerciseId)
+        !== (set.occurrenceId ?? set.exerciseId);
       const restDuration = set.restAfter ??
         (changesExercise
           ? (workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES)

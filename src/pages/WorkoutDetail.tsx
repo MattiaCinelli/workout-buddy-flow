@@ -30,6 +30,7 @@ import { exerciseMatchesSearchQuery } from '@/lib/exerciseLibrary';
 import { workoutDurationMinutes } from '@/lib/workoutRuntime';
 
 interface SelectedExercise {
+  occurrenceId: string;
   exercise: Exercise;
   sets: WorkoutSet[];
 }
@@ -75,15 +76,23 @@ const WorkoutDetail = () => {
     setRestBetweenSets(workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS);
     setRestBetweenExercises(workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES);
 
-    const exerciseMap = new Map<string, WorkoutSet[]>();
-    workout.sets.forEach(set => {
-      if (!exerciseMap.has(set.exerciseId)) exerciseMap.set(set.exerciseId, []);
-      exerciseMap.get(set.exerciseId)!.push(set);
-    });
     const selected: SelectedExercise[] = [];
-    exerciseMap.forEach((sets, exerciseId) => {
-      const exercise = exercises.find(ex => ex.id === exerciseId);
-      if (exercise) selected.push({ exercise, sets: materializeLegacyDirections(sets, exercise) });
+    workout.sets.forEach((set, index) => {
+      const previous = selected[selected.length - 1];
+      const sameOccurrence = previous && (set.occurrenceId
+        ? previous.occurrenceId === set.occurrenceId
+        : previous.exercise.id === set.exerciseId);
+      if (sameOccurrence) {
+        previous.sets.push({ ...set, occurrenceId: previous.occurrenceId });
+        return;
+      }
+      const exercise = exercises.find(ex => ex.id === set.exerciseId);
+      if (!exercise) return;
+      const occurrenceId = set.occurrenceId ?? `legacy-${index}-${set.exerciseId}`;
+      selected.push({ occurrenceId, exercise, sets: [{ ...set, occurrenceId }] });
+    });
+    selected.forEach(item => {
+      item.sets = materializeLegacyDirections(item.sets, item.exercise);
     });
     setSelectedExercises(selected);
     setLoadedWorkoutId(workout.id);
@@ -144,14 +153,12 @@ const WorkoutDetail = () => {
   };
 
   const handleSelectExercise = (exercise: Exercise) => {
-    if (selectedExercises.some(item => item.exercise.id === exercise.id)) {
-      toast({ title: 'Already added', description: `${exercise.name} is already in your workout.` });
-      return;
-    }
+    const occurrenceId = crypto.randomUUID();
     const isTimeBased = getLogType(exercise) === 'time';
     const setCount = exercise.defaultSets ?? 1;
     const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
+      occurrenceId,
       reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
       weight: exercise.defaultWeight,
       duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
@@ -159,15 +166,15 @@ const WorkoutDetail = () => {
       // Left undefined — the runtime picks between restBetweenSets/
       // restBetweenExercises dynamically based on same/different exercise.
     })).flatMap(set => expandSetForExercise(set, exercise));
-    setSelectedExercises([...selectedExercises, { exercise, sets: defaultSets }]);
+    setSelectedExercises([...selectedExercises, { occurrenceId, exercise, sets: defaultSets }]);
     // Keep the picker open while adding several exercises. This intentionally
     // mirrors CreateWorkoutModal; never auto-switch tabs after a selection.
     setActiveTab('exercises');
     toast({ title: 'Exercise added', description: `${exercise.name} added to workout.` });
   };
 
-  const handleRemoveExercise = (exerciseId: string) => {
-    setSelectedExercises(selectedExercises.filter(item => item.exercise.id !== exerciseId));
+  const handleRemoveExercise = (occurrenceId: string) => {
+    setSelectedExercises(selectedExercises.filter(item => item.occurrenceId !== occurrenceId));
     toast({ title: 'Exercise removed', description: 'Exercise removed from workout.' });
   };
 
@@ -185,6 +192,7 @@ const WorkoutDetail = () => {
     const lastSet = current.sets[current.sets.length - 1];
     updated[exerciseIndex].sets.push({
       exerciseId: current.exercise.id,
+      occurrenceId: current.occurrenceId,
       reps: lastSet.reps, weight: lastSet.weight, duration: lastSet.duration, distance: lastSet.distance,
       direction: lastSet.direction ?? 'none',
     });
@@ -409,7 +417,7 @@ const WorkoutDetail = () => {
                   ) : (
                     <div className="space-y-6 py-2">
                       {selectedExercises.map((selectedEx, exIndex) => (
-                        <div key={selectedEx.exercise.id} className="border rounded-md p-4">
+                        <div key={selectedEx.occurrenceId} className="border rounded-md p-4">
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex min-w-0 flex-1 items-center gap-1">
                               <div className="flex flex-col -my-1">
@@ -455,7 +463,7 @@ const WorkoutDetail = () => {
                               </div>
                               <Button
                                 variant="outline" size="sm" type="button"
-                                onClick={() => handleRemoveExercise(selectedEx.exercise.id)}
+                                onClick={() => handleRemoveExercise(selectedEx.occurrenceId)}
                                 className="h-8 w-full px-2" disabled={isSubmitting}
                               >
                                 Remove

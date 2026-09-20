@@ -28,6 +28,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Fast Refresh reliability** — removed the seven mixed component/non-component module exports that caused development reload warnings.
 - **Portable visual-regression checks** — normalize full-page capture dimensions and account for Chromium's measured Linux font-rasterization variance while retaining stricter comparison against the macOS-authored baselines.
 - **Workout exercise-picker continuity** — adding an exercise while creating or editing a workout keeps the Exercise Library tab, current search and browsing position open instead of jumping to Selected Exercises after every choice.
+- **Repeatable workout exercise blocks** — the same exercise can now be added multiple times, moved and configured independently, and retains its exact block order through save, sync and reload (for example, Wrist Roll between every wrist stretch).
 - **Empty-workout launch error** — starting a workout with no exercises now returns to its editor with a specific instruction to add an exercise instead of entering the player or showing a generic error.
 - **Zero-second workout transitions** — setting rest between sets or exercises to zero now moves directly to the next exercise instead of stopping indefinitely on a `0:00` rest screen.
 - **Five-minute wrist workout data** — corrected Wrist-Biceps Stretch from repetitions to timed holds, repaired the wrist workout’s set prescriptions and replaced its erroneous 18-minute estimate.

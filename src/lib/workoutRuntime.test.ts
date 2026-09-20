@@ -98,6 +98,18 @@ describe('buildWorkoutSteps', () => {
     expect(steps[4]).toMatchObject({ duration: 20 }); // between the two different exercises
   });
 
+  it('treats repeated blocks of the same exercise as separate occurrences', () => {
+    const workout: WorkoutEntry = {
+      ...baseWorkout, restBetweenSets: 8, restBetweenExercises: 20,
+      sets: [
+        { exerciseId: 'e-reps', occurrenceId: 'first', reps: 5 },
+        { exerciseId: 'e-reps', occurrenceId: 'second', reps: 5 },
+      ],
+    };
+    const steps = buildWorkoutSteps(workout, [repsExercise]);
+    expect(steps[2]).toMatchObject({ type: 'rest', changesExercise: true, duration: 20 });
+  });
+
   it('moves directly to the next set when same-exercise rest is zero', () => {
     const workout: WorkoutEntry = {
       ...baseWorkout, restBetweenSets: 0,
