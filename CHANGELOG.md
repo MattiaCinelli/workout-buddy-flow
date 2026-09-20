@@ -32,6 +32,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Empty-workout launch error** — starting a workout with no exercises now returns to its editor with a specific instruction to add an exercise instead of entering the player or showing a generic error.
 - **Zero-second workout transitions** — setting rest between sets or exercises to zero now moves directly to the next exercise instead of stopping indefinitely on a `0:00` rest screen.
 - **Five-minute wrist workout data** — corrected Wrist-Biceps Stretch from repetitions to timed holds, repaired the wrist workout’s set prescriptions and replaced its erroneous 18-minute estimate.
+- **Wrist Push-Up exercise** — added a 10-repetition wrist-strengthening exercise with separate palms-down Forward and palms-up Backward variations, detailed safety cues and a private reference image.
 - **Data-context Fast Refresh** — separated the shared `useData` hook from the React provider component so development updates no longer invalidate the entire context module.
 
 ## [1.0.8] - 2026-09-18
