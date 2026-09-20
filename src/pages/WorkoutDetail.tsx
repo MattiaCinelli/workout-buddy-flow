@@ -178,6 +178,20 @@ const WorkoutDetail = () => {
     toast({ title: 'Exercise removed', description: 'Exercise removed from workout.' });
   };
 
+  const handleDuplicateExercise = (exerciseIndex: number) => {
+    const source = selectedExercises[exerciseIndex];
+    const occurrenceId = crypto.randomUUID();
+    const duplicate: SelectedExercise = {
+      occurrenceId,
+      exercise: source.exercise,
+      sets: source.sets.map(set => ({ ...set, occurrenceId })),
+    };
+    const updated = [...selectedExercises];
+    updated.splice(exerciseIndex + 1, 0, duplicate);
+    setSelectedExercises(updated);
+    toast({ title: 'Exercise duplicated', description: `${source.exercise.name} copied with the same set settings.` });
+  };
+
   const handleMoveExercise = (exerciseIndex: number, direction: -1 | 1) => {
     const target = exerciseIndex + direction;
     if (target < 0 || target >= selectedExercises.length) return;
@@ -449,7 +463,7 @@ const WorkoutDetail = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="flex w-20 shrink-0 flex-col items-end gap-2" data-selected-exercise-actions>
+                            <div className="flex w-40 shrink-0 flex-col items-end gap-2" data-selected-exercise-actions>
                               <div className="flex h-16 w-20 items-center justify-center overflow-hidden rounded-md bg-muted">
                                 {getExerciseImageUrl(selectedEx.exercise) ? (
                                   <ExerciseImage
@@ -461,13 +475,16 @@ const WorkoutDetail = () => {
                                   <ImageIcon className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                                 )}
                               </div>
-                              <Button
-                                variant="outline" size="sm" type="button"
-                                onClick={() => handleRemoveExercise(selectedEx.occurrenceId)}
-                                className="h-8 w-full px-2" disabled={isSubmitting}
-                              >
-                                Remove
-                              </Button>
+                              <div className="flex w-full gap-1.5">
+                                <Button variant="outline" size="sm" type="button"
+                                  onClick={() => handleDuplicateExercise(exIndex)} className="h-8 flex-1 px-2 text-xs"
+                                  disabled={isSubmitting}>
+                                  <Copy className="mr-1 h-3.5 w-3.5" />Duplicate
+                                </Button>
+                                <Button variant="outline" size="sm" type="button"
+                                  onClick={() => handleRemoveExercise(selectedEx.occurrenceId)} className="h-8 flex-1 px-2 text-xs"
+                                  disabled={isSubmitting}>Remove</Button>
+                              </div>
                             </div>
                           </div>
 

@@ -94,4 +94,20 @@ describe('CreateWorkoutModal selected exercises', () => {
     expect(screen.getByRole('heading', { name: `2. ${exercise.name}` })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(2);
   });
+
+  it('duplicates an exercise immediately with all of its set settings', () => {
+    render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: `Add ${exercise.name}` }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Selected Exercises (1)' }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.change(screen.getAllByLabelText('Duration (sec):')[0], { target: { value: '45' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+
+    expect(screen.getByRole('heading', { name: `2. ${exercise.name}` })).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Duration (sec):').map(input => (input as HTMLInputElement).value))
+      .toEqual(['45', '30', '45', '30']);
+  });
 });
