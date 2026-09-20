@@ -9,9 +9,14 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+### Changed
+
+- **App identity** — replaced the old barbell mark across the website favicon and Android launcher icons with the blue athlete inside the green-and-navy circular logo, including adaptive-icon safe padding.
+
 ### Fixed
 
 - **Stable Linux visual snapshots** — capture the explicitly baseline-sized Settings viewport so Chromium's one-pixel document-height difference cannot fail CI before visual pixel tolerance is evaluated.
+- **Directional image uploads on phones** — prevent an exercise from being saved while an uploaded image is still resizing, which previously made direction-specific images such as Forearm Stretch's Left–Backward variation appear to save and then disappear.
 
 ## [1.0.10] - 2026-09-20
 

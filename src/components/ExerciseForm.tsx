@@ -152,6 +152,13 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   });
 
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    // Phone photos can take a noticeable moment to resize. Submitting while
+    // that async work is still running saves the previous form value, then
+    // unmounts the dialog before the processed image can be assigned.
+    if (processingImage !== null) {
+      toast.error('Please wait for the image to finish processing.');
+      return;
+    }
     const aliases = normalizeExerciseAliases(values.aliases, values.name);
     onSubmit({
       name: values.name,
@@ -715,11 +722,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" disabled={isSubmitting || processingImage !== null}>
+              {isSubmitting || processingImage !== null ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {exercise ? 'Updating...' : 'Creating...'}
+                  {processingImage !== null ? 'Processing image...' : exercise ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
                 exercise ? 'Update' : 'Create'

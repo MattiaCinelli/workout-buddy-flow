@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
       // "prompt" — the app shows an Update available banner rather than
       // silently swapping the running code (see PwaUpdatePrompt).
       registerType: "prompt",
-      includeAssets: ["favicon.ico", "icon.svg", "robots.txt"],
+      includeAssets: ["favicon.ico", "icon.png", "robots.txt"],
       manifest: {
         name: "Workout Buddy",
         short_name: "Workout Buddy",
@@ -46,8 +46,7 @@ export default defineConfig(({ mode }) => ({
         background_color: "#f8fafc",
         theme_color: "#f8fafc",
         icons: [
-          { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-          { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+          { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
         ],
       },
       workbox: {
