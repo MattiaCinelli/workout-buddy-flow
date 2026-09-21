@@ -71,7 +71,14 @@ export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, worko
         ? `${workoutTitle} starts in ${settings.leadMinutes} minute${settings.leadMinutes === 1 ? '' : 's'}`
         : `${workoutTitle} starts now`,
       schedule: { at: fireAt, allowWhileIdle: true },
-      extra: { scheduleId: schedule.id, workoutId: schedule.workoutId, occurrence: index }
+      extra: {
+        scheduleId: schedule.id,
+        workoutId: schedule.workoutId,
+        scheduledDate: format(at, 'yyyy-MM-dd'),
+        courseId: schedule.courseId,
+        courseItemId: schedule.courseItemId,
+        occurrence: index,
+      }
     }));
   if (notifications.length) await LocalNotifications.schedule({ notifications });
 };

@@ -451,7 +451,16 @@ const ExerciseManager: React.FC = () => {
       </div>
       
       <Dialog open={isFormOpen} onOpenChange={(open) => !isSubmitting && !open && handleCancel()}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
+          onOpenAutoFocus={(event) => {
+            // Do not let Radix focus/select the first field (the exercise
+            // name) when this dialog opens. On mobile, the resulting text
+            // selection makes an existing name very easy to delete by
+            // accident. Users can still tap the field or Tab to it normally.
+            event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{currentExercise ? 'Edit Exercise' : 'Create Exercise'}</DialogTitle>
             <DialogDescription>

@@ -12,6 +12,7 @@ import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import Index from "./pages/Index";
 import { AppearanceController } from "@/hooks/useTheme";
 import ReminderRefresh from "@/components/ReminderRefresh";
+import NotificationActionHandler from "@/components/NotificationActionHandler";
 
 // Every route past the dashboard is code-split so the initial load only
 // ships the landing screen. The Suspense fallback covers the fetch.
@@ -60,6 +61,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <NotificationActionHandler />
           <div className="lcars-app">
           <Suspense fallback={<RouteFallback />}>
             <Routes>

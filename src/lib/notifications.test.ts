@@ -6,7 +6,7 @@ interface ScheduledNotification {
   title: string;
   body: string;
   schedule: { at: Date; allowWhileIdle: boolean };
-  extra: { scheduleId: string; workoutId: string; occurrence: number };
+  extra: { scheduleId: string; workoutId: string; scheduledDate: string; courseId?: string; courseItemId?: string; occurrence: number };
 }
 
 const { native, notif, settings } = vi.hoisted(() => ({
@@ -74,7 +74,7 @@ describe('scheduleWorkoutReminders', () => {
     expect(notifications[0]).toMatchObject({
       title: 'Workout reminder',
       body: 'Leg Day starts now',
-      extra: { scheduleId: 's1', workoutId: 'w1' },
+      extra: { scheduleId: 's1', workoutId: 'w1', scheduledDate: '2026-06-01' },
     });
   });
 

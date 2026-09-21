@@ -15,6 +15,8 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Fixed
 
+- **Workout reminder taps** — tapping a scheduled-workout notification on a phone now opens that workout directly in the guided player, retaining its calendar and course-completion context.
+- **Safer exercise editing on mobile** — opening an existing exercise no longer automatically focuses and selects its name, preventing accidental deletion while the edit card is loading.
 - **Stable Linux visual snapshots** — capture the explicitly baseline-sized Settings viewport so Chromium's one-pixel document-height difference cannot fail CI before visual pixel tolerance is evaluated.
 - **Directional image uploads on phones** — prevent an exercise from being saved while an uploaded image is still resizing, which previously made direction-specific images such as Forearm Stretch's Left–Backward variation appear to save and then disappear.
 
