@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { exercise } = vi.hoisted(() => ({
   exercise: {
@@ -38,7 +38,17 @@ vi.mock('./ExerciseImage', () => ({
 import CreateWorkoutModal from './CreateWorkoutModal';
 
 describe('CreateWorkoutModal selected exercises', () => {
+  beforeEach(() => localStorage.clear());
   afterEach(cleanup);
+
+  it('asks before discarding an unfinished workout', () => {
+    render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Draft workout' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('heading', { name: 'Discard this workout draft?' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keep editing' })).toBeInTheDocument();
+  });
 
   it('keeps the exercise library open after adding an exercise', () => {
     render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
@@ -48,6 +58,18 @@ describe('CreateWorkoutModal selected exercises', () => {
 
     expect(libraryTab).toHaveAttribute('data-state', 'active');
     expect(screen.getByRole('button', { name: `Add ${exercise.name}` })).toBeInTheDocument();
+  });
+
+  it('keeps the selection total visible and provides a review shortcut', () => {
+    render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: `Add ${exercise.name}` }));
+
+    expect(screen.getByText((_, element) =>
+      element?.tagName === 'SPAN' && element.textContent?.replace(/\s+/g, ' ').trim() === '1 selected · 2 sets'
+    )).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(screen.getByRole('tab', { name: 'Selected Exercises (1)' })).toHaveAttribute('data-state', 'active');
   });
 
   it('shows the exercise thumbnail above its remove button', () => {

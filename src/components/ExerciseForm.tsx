@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import ExerciseImage from '@/components/ExerciseImage';
 import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
 import { removeCachedPrivateExerciseImage } from '@/lib/exerciseMediaClient';
 import { useEquipment } from '@/hooks/useEquipment';
+import { readExerciseFormDraft, saveExerciseFormDraft } from '@/lib/exerciseDraft';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
   if (!value?.trim()) return true;
@@ -105,6 +106,7 @@ interface ExerciseFormProps {
   onCancel: () => void;
   onDelete?: () => void;
   isSubmitting?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 const ExerciseForm: React.FC<ExerciseFormProps> = ({
@@ -112,10 +114,12 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   onSubmit,
   onCancel,
   onDelete,
-  isSubmitting = false
+  isSubmitting = false,
+  onDirtyChange,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const directionFileInputRefs = useRef<Partial<Record<ExecutionDirection, HTMLInputElement | null>>>({});
+  const pickerScroll = useRef<{ element: HTMLElement; top: number } | null>(null);
   const [processingImage, setProcessingImage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(!!exercise?.secondsPerRep || !!exercise?.progression);
   const { muscleGroups: availableMuscleGroups } = useData();
@@ -151,6 +155,37 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     },
   });
 
+  const restoredDraft = useRef(false);
+  useEffect(() => {
+    if (restoredDraft.current) return;
+    restoredDraft.current = true;
+    let cancelled = false;
+    void readExerciseFormDraft(exercise?.id).then(value => {
+      if (!value || cancelled) return;
+      const draft = value as Partial<z.infer<typeof formSchema>>;
+      form.reset({ ...form.getValues(), ...draft }, { keepDefaultValues: true });
+      if (draft.secondsPerRep || draft.progressionMode && draft.progressionMode !== 'none') setShowAdvanced(true);
+      toast.success('Exercise draft restored');
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [exercise?.id, form]);
+
+  useEffect(() => {
+    let timer = 0;
+    const subscription = form.watch(values => {
+      if (!form.formState.isDirty) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void saveExerciseFormDraft(exercise?.id, values).catch(() => undefined);
+      }, 500);
+    });
+    return () => { subscription.unsubscribe(); window.clearTimeout(timer); };
+  }, [exercise?.id, form]);
+
+  useEffect(() => {
+    onDirtyChange?.(form.formState.isDirty);
+  }, [form.formState.isDirty, onDirtyChange]);
+
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
     // Phone photos can take a noticeable moment to resize. Submitting while
     // that async work is still running saves the previous form value, then
@@ -158,6 +193,12 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
     if (processingImage !== null) {
       toast.error('Please wait for the image to finish processing.');
       return;
+    }
+    const fallbackDirections = values.executionDirections.filter(direction => !values.directionImageUrls?.[direction]);
+    if (fallbackDirections.length) {
+      toast('Image coverage warning', { description: values.imageUrl
+        ? `${fallbackDirections.length} configured direction${fallbackDirections.length === 1 ? '' : 's'} will use the default image.`
+        : `${fallbackDirections.length} configured direction${fallbackDirections.length === 1 ? '' : 's'} has no demonstration image. You can still save.` });
     }
     const aliases = normalizeExerciseAliases(values.aliases, values.name);
     onSubmit({
@@ -247,20 +288,30 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
         return;
       }
 
-      if (direction) form.setValue(`directionImageUrls.${direction}`, dataUrl);
-      else form.setValue('imageUrl', dataUrl);
+      if (direction) form.setValue(`directionImageUrls.${direction}`, dataUrl, { shouldDirty: true });
+      else form.setValue('imageUrl', dataUrl, { shouldDirty: true });
     } catch (error) {
       console.error('Failed to process image:', error);
       toast.error('Could not read that image. Try a different file.');
     } finally {
       setProcessingImage(null);
+      const saved = pickerScroll.current;
+      pickerScroll.current = null;
+      if (saved) requestAnimationFrame(() => { saved.element.scrollTop = saved.top; });
     }
+  };
+
+  const openImagePicker = (input?: HTMLInputElement | null) => {
+    if (!input) return;
+    const dialog = input.closest<HTMLElement>('[role="dialog"]');
+    if (dialog) pickerScroll.current = { element: dialog, top: dialog.scrollTop };
+    input.click();
   };
 
   const handleRemoveImage = () => {
     const currentImage = form.getValues('imageUrl');
     if (currentImage) void removeCachedPrivateExerciseImage(currentImage);
-    form.setValue('imageUrl', '');
+    form.setValue('imageUrl', '', { shouldDirty: true });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -269,7 +320,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
   const handleRemoveDirectionImage = (direction: ExecutionDirection) => {
     const currentImage = form.getValues(`directionImageUrls.${direction}`);
     if (currentImage) void removeCachedPrivateExerciseImage(currentImage);
-    form.setValue(`directionImageUrls.${direction}`, '');
+    form.setValue(`directionImageUrls.${direction}`, '', { shouldDirty: true });
     const input = directionFileInputRefs.current[direction];
     if (input) input.value = '';
   };
@@ -279,7 +330,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4"
+        onWheelCapture={event => {
+          const target = event.target as HTMLInputElement;
+          if (target.type === 'number' && document.activeElement === target) target.blur();
+        }}>
         <div className="grid gap-2">
           <label htmlFor="name" className="text-right inline-block w-32 pr-2">
             Exercise Name
@@ -617,7 +672,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => openImagePicker(fileInputRef.current)}
               className="w-full"
               disabled={isSubmitting || processingImage !== null}
             >
@@ -670,8 +725,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                   return (
                     <div key={direction} className="space-y-2 rounded-md border bg-background p-2">
                       <p className="text-sm font-medium">{EXECUTION_DIRECTION_LABELS[direction]}</p>
+                      <p className={`text-xs ${imageUrl ? 'text-workout-green' : form.watch('imageUrl') ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-300'}`}>
+                        {imageUrl ? 'Custom image ready' : form.watch('imageUrl') ? 'Uses default image' : 'Missing image'}
+                      </p>
                       <Button type="button" variant="outline" className="w-full"
-                        onClick={() => directionFileInputRefs.current[direction]?.click()}
+                        onClick={() => openImagePicker(directionFileInputRefs.current[direction])}
                         disabled={isSubmitting || processingImage !== null}>
                         {processingImage === direction ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileImage className="mr-2 h-4 w-4" />}
                         {processingImage === direction ? 'Processing…' : imageUrl ? 'Replace image' : 'Choose image'}

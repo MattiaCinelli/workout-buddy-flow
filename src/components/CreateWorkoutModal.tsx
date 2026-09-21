@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import ExerciseItem from './ExerciseItem';
 import ExerciseImage from './ExerciseImage';
 import { UnilateralSetNote } from './UnilateralSetNote';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown, Copy, Image as ImageIcon } from 'lucide-react';
+import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown, Copy, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { useData } from '@/contexts/useData';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
@@ -25,6 +25,11 @@ import { expandSetForExercise, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel } f
 import { useWorkoutFolders } from '@/hooks/useWorkoutFolders';
 import { exerciseMatchesSearchQuery } from '@/lib/exerciseLibrary';
 import { workoutDurationMinutes } from '@/lib/workoutRuntime';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useTouchReorder } from '@/hooks/useTouchReorder';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -36,6 +41,13 @@ interface SelectedExercise {
   occurrenceId: string;
   exercise: Exercise;
   sets: WorkoutSet[];
+}
+
+const CREATE_WORKOUT_DRAFT_KEY = 'workout-buddy-draft:create-workout';
+interface CreateWorkoutDraft {
+  title: string; category: string; folder: string; description: string; notes: string;
+  restBetweenSets: number; restBetweenExercises: number;
+  selectedExercises: Array<{ occurrenceId: string; exerciseId: string; sets: WorkoutSet[] }>;
 }
 
 const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose, onCreated }) => {
@@ -50,6 +62,10 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [activeTab, setActiveTab] = useState('exercises');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const touchReorder = useTouchReorder(selectedExercises, setSelectedExercises, item => item.occurrenceId);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const restoredForOpen = useRef(false);
   const { toast } = useToast();
   const { exercises, workouts, createWorkout, muscleGroups } = useData();
   const { folders } = useWorkoutFolders((workouts ?? []).map(workout => workout.folder));
@@ -58,6 +74,47 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const filteredExercises = exercises.filter(exercise =>
     exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroupName)
   );
+
+  const isDirty = !!title.trim() || !!category || folder !== 'none' || !!description.trim()
+    || !!notes.trim() || selectedExercises.length > 0
+    || restBetweenSets !== DEFAULT_REST_BETWEEN_SETS
+    || restBetweenExercises !== DEFAULT_REST_BETWEEN_EXERCISES;
+
+  useEffect(() => {
+    if (!isOpen) { restoredForOpen.current = false; return; }
+    if (restoredForOpen.current || exercises.length === 0) return;
+    restoredForOpen.current = true;
+    try {
+      const raw = localStorage.getItem(CREATE_WORKOUT_DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as CreateWorkoutDraft;
+      setTitle(draft.title ?? ''); setCategory(draft.category ?? ''); setFolder(draft.folder ?? 'none');
+      setDescription(draft.description ?? ''); setNotes(draft.notes ?? '');
+      setRestBetweenSets(draft.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS);
+      setRestBetweenExercises(draft.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES);
+      setSelectedExercises((draft.selectedExercises ?? []).flatMap(item => {
+        const exercise = exercises.find(candidate => candidate.id === item.exerciseId);
+        return exercise ? [{ occurrenceId: item.occurrenceId, exercise, sets: item.sets }] : [];
+      }));
+      setDraftSaved(true);
+      toast({ title: 'Workout draft restored', description: 'Your unfinished workout is ready to continue.' });
+    } catch { localStorage.removeItem(CREATE_WORKOUT_DRAFT_KEY); }
+  }, [isOpen, exercises, toast]);
+
+  useEffect(() => {
+    if (!isOpen || !restoredForOpen.current || !isDirty) return;
+    const timer = window.setTimeout(() => {
+      const draft: CreateWorkoutDraft = {
+        title, category, folder, description, notes, restBetweenSets, restBetweenExercises,
+        selectedExercises: selectedExercises.map(item => ({
+          occurrenceId: item.occurrenceId, exerciseId: item.exercise.id, sets: item.sets,
+        })),
+      };
+      localStorage.setItem(CREATE_WORKOUT_DRAFT_KEY, JSON.stringify(draft));
+      setDraftSaved(true);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, isDirty, title, category, folder, description, notes, restBetweenSets, restBetweenExercises, selectedExercises]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +166,8 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
+      localStorage.removeItem(CREATE_WORKOUT_DRAFT_KEY);
+      setDraftSaved(false);
       onCreated?.(createdWorkout);
       onClose();
     } catch (error) {
@@ -257,7 +316,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     setSelectedExercises(updatedExercises);
   };
 
-  const handleClose = () => {
+  const resetAndClose = () => {
     if (!isSubmitting) {
       setTitle('');
       setCategory('');
@@ -269,12 +328,22 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
       setSearchQuery('');
       setSelectedExercises([]);
       setActiveTab('exercises');
+      localStorage.removeItem(CREATE_WORKOUT_DRAFT_KEY);
+      setDraftSaved(false);
+      setDiscardOpen(false);
       onClose();
     }
   };
 
+  const handleClose = () => {
+    if (isSubmitting) return;
+    if (isDirty) { setDiscardOpen(true); return; }
+    resetAndClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <>
+    <Dialog open={isOpen} onOpenChange={open => { if (!open) handleClose(); }}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Workout</DialogTitle>
@@ -283,7 +352,11 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onWheelCapture={event => {
+          const target = event.target as HTMLInputElement;
+          if (target.type === 'number' && document.activeElement === target) target.blur();
+        }}>
+          {isDirty && <p className="mb-2 text-xs text-muted-foreground" role="status">{draftSaved ? 'Draft saved on this device' : 'Saving draft…'}</p>}
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="workout-title" className="text-right">
@@ -413,6 +486,17 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                       disabled={isSubmitting}
                     />
                   </div>
+                  {selectedExercises.length > 0 && (
+                    <div className="mb-4 flex items-center justify-between gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">
+                        <strong className="text-foreground">{selectedExercises.length}</strong> selected ·{' '}
+                        {selectedExercises.reduce((total, item) => total + item.sets.length, 0)} sets
+                      </span>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setActiveTab('selected')}>
+                        Review
+                      </Button>
+                    </div>
+                  )}
                   <div className="space-y-3 max-h-[300px] overflow-y-auto">
                     {filteredExercises.map((exercise) => (
                       <ExerciseItem
@@ -438,9 +522,14 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                   ) : (
                     <div className="space-y-6 max-h-[300px] overflow-y-auto py-2">
                       {selectedExercises.map((selectedEx, exIndex) => (
-                        <div key={selectedEx.occurrenceId} className="border rounded-md p-4">
+                        <div key={selectedEx.occurrenceId} data-reorder-id={selectedEx.occurrenceId}
+                          className={`border rounded-md p-4 ${touchReorder.draggingId === selectedEx.occurrenceId ? 'border-primary bg-primary/5 shadow-lg' : ''}`}>
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex min-w-0 flex-1 items-center gap-1">
+                              <button type="button" aria-label={`Hold and drag ${selectedEx.exercise.name}`}
+                                className="touch-none rounded p-1 text-muted-foreground md:hidden" {...touchReorder.bind(selectedEx.occurrenceId)}>
+                                <GripVertical className="h-5 w-5" />
+                              </button>
                               <div className="flex flex-col -my-1">
                                 <Button
                                   variant="ghost" size="icon" type="button" className="h-5 w-6"
@@ -703,6 +792,19 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
         </form>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard this workout draft?</AlertDialogTitle>
+          <AlertDialogDescription>Your unfinished workout is saved on this device. Discarding removes that draft.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction onClick={resetAndClose}>Discard draft</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };
 

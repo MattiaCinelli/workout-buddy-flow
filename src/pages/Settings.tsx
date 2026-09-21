@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Accessibility, Bell, Cloud, Database, Download, ExternalLink, Info, Laptop, Moon, Settings as SettingsIcon,
-  Sun, Upload, UserRound,
+  RotateCcw, Sun, Upload, UserRound,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { AccountProfileTab } from '@/components/AccountProfileTab';
@@ -9,11 +9,18 @@ import { SyncSettingsPanel } from '@/components/SyncSettingsPanel';
 import { ReminderPreferences, RemindersDialog } from '@/components/RemindersButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { downloadBackup, parseBackup, restoreBackup, WorkoutBuddyBackup } from '@/lib/backup';
+import {
+  AUTOMATIC_BACKUP_UPDATED_EVENT, downloadBackup, getLastAutomaticBackupAt,
+  getLastExportedBackupAt, parseBackup, readAutomaticBackup, restoreBackup, WorkoutBuddyBackup,
+  decryptBackup, isEncryptedBackupText, parseEncryptedBackupEnvelope,
+} from '@/lib/backup';
 import { clearDiagnostics, formatDiagnostics } from '@/lib/diagnosticLog';
 import { saveTextFile } from '@/lib/downloadFile';
 import { replaceAllWorkoutReminders } from '@/lib/notifications';
@@ -44,19 +51,80 @@ const SettingsPage = () => {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<WorkoutBuddyBackup | null>(null);
   const [backupWarnings, setBackupWarnings] = useState<string[]>([]);
+  const [backupPassword, setBackupPassword] = useState('');
+  const [encryptedBackupText, setEncryptedBackupText] = useState('');
+  const [restorePassword, setRestorePassword] = useState('');
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [detailedRpe, setDetailedRpe] = useState(() => localStorage.getItem('workout-buddy-detailed-rpe') === 'true');
+  const [lastAutomaticBackupAt, setLastAutomaticBackupAt] = useState(getLastAutomaticBackupAt());
+  const [lastExportedBackupAt, setLastExportedBackupAt] = useState(getLastExportedBackupAt());
   const backupInput = useRef<HTMLInputElement>(null);
   const recordCount = data.exercises.length + data.workouts.length + data.sessions.length
     + data.scheduledWorkouts.length + data.courses.length + data.muscleGroups.length + data.bodyMetrics.length;
 
+  useEffect(() => {
+    const refresh = () => setLastAutomaticBackupAt(getLastAutomaticBackupAt());
+    window.addEventListener(AUTOMATIC_BACKUP_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(AUTOMATIC_BACKUP_UPDATED_EVENT, refresh);
+  }, []);
+
   const selectBackup = async (file?: File) => {
     if (!file) return;
     try {
-      const { data, warnings } = parseBackup(await file.text());
+      const text = await file.text();
+      if (isEncryptedBackupText(text)) {
+        setEncryptedBackupText(text);
+        setPendingBackup(null);
+        setBackupWarnings([]);
+        setRestorePassword('');
+        setRestoreOpen(true);
+        return;
+      }
+      const { data, warnings } = parseBackup(text);
+      setEncryptedBackupText('');
       setPendingBackup(data);
       setBackupWarnings(warnings);
       setRestoreOpen(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Invalid backup file');
+    }
+  };
+
+  const unlockBackup = async () => {
+    try {
+      setBackupBusy(true);
+      const result = await decryptBackup(parseEncryptedBackupEnvelope(encryptedBackupText), restorePassword);
+      setPendingBackup(result.data);
+      setBackupWarnings(result.warnings);
+      setEncryptedBackupText('');
+      setRestorePassword('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not unlock backup');
+    } finally { setBackupBusy(false); }
+  };
+
+  const pendingCounts = pendingBackup ? [
+    ['Exercises', pendingBackup.data.exercises.length],
+    ['Workouts', pendingBackup.data.workouts.length],
+    ['Sessions', pendingBackup.data.workoutSessions.length],
+    ['Schedules', pendingBackup.data.scheduledWorkouts.length],
+    ['Courses', pendingBackup.data.courses.length],
+    ...(pendingBackup.version !== 1 ? [
+      ['Muscle groups', pendingBackup.data.muscleGroups.length],
+      ['Body measurements', pendingBackup.data.bodyMetrics.length],
+    ] as Array<[string, number]> : []),
+    ...(pendingBackup.version === 4 ? [['Images', Object.keys(pendingBackup.media ?? {}).length] as [string, number]] : []),
+  ] as Array<[string, number]> : [];
+
+  const selectAutomaticBackup = async () => {
+    try {
+      const { data, warnings } = await readAutomaticBackup();
+      setEncryptedBackupText('');
+      setPendingBackup(data);
+      setBackupWarnings(warnings);
+      setRestoreOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Automatic snapshot could not be read');
     }
   };
 
@@ -188,7 +256,16 @@ const SettingsPage = () => {
               <CardTitle className="flex items-center gap-2"><Accessibility className="h-5 w-5" />Accessibility</CardTitle>
               <CardDescription>Adjust readability, motion, and guided-workout cues on this device.</CardDescription>
             </CardHeader>
-            <CardContent><AccessibilityPreferences /></CardContent>
+            <CardContent className="space-y-6">
+              <AccessibilityPreferences />
+              <div className="flex items-center justify-between gap-4 border-t pt-5">
+                <div><Label htmlFor="detailed-rpe">Detailed set-by-set RPE</Label>
+                  <p className="text-sm text-muted-foreground">Ask for effort on every working set as well as the overall workout rating.</p></div>
+                <Switch id="detailed-rpe" checked={detailedRpe} onCheckedChange={checked => {
+                  setDetailedRpe(checked); localStorage.setItem('workout-buddy-detailed-rpe', String(checked));
+                }} />
+              </div>
+            </CardContent>
           </Card>
 
           <Card id="data">
@@ -205,16 +282,48 @@ const SettingsPage = () => {
                   {data.muscleGroups.length} muscle groups · {data.bodyMetrics.length} body measurements
                 </p>
               </div>
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                <p className="font-medium">
+                  {lastAutomaticBackupAt
+                    ? `Phone snapshot saved ${new Date(lastAutomaticBackupAt).toLocaleString()}`
+                    : 'No automatic phone snapshot yet'}
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  The installed app keeps a private recovery snapshot after your data changes. It protects against local database damage, but not an uninstall or a lost phone.
+                </p>
+                {lastAutomaticBackupAt && (
+                  <Button className="mt-3" size="sm" variant="outline" onClick={() => void selectAutomaticBackup()}>
+                    <RotateCcw className="mr-2 h-4 w-4" />Restore phone snapshot
+                  </Button>
+                )}
+              </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button onClick={async () => {
-                  try { await downloadBackup(); toast.success('Backup exported'); }
-                  catch { toast.error('Could not create backup'); }
-                }}><Download className="mr-2 h-4 w-4" />Export backup</Button>
+                  try {
+                    setBackupBusy(true);
+                    await downloadBackup(backupPassword);
+                    setLastExportedBackupAt(getLastExportedBackupAt());
+                    toast.success(backupPassword ? 'Encrypted backup exported' : 'Backup exported');
+                  }
+                  catch (error) { toast.error(error instanceof Error ? error.message : 'Could not create backup'); }
+                  finally { setBackupBusy(false); }
+                }} disabled={backupBusy}><Download className="mr-2 h-4 w-4" />Export backup</Button>
                 <Button variant="outline" onClick={() => backupInput.current?.click()}>
                   <Upload className="mr-2 h-4 w-4" />Restore backup
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Export regularly and save the JSON file somewhere outside this device.</p>
+              <div className="space-y-1">
+                <label htmlFor="backup-password" className="text-sm font-medium">Encryption key (optional)</label>
+                <Input id="backup-password" type="password" autoComplete="new-password" value={backupPassword}
+                  onChange={event => setBackupPassword(event.target.value)} placeholder="At least 8 characters to encrypt" />
+                <p className="text-xs text-muted-foreground">If set, records and embedded exercise images are protected with AES-256 encryption. The password cannot be recovered.</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {lastExportedBackupAt
+                  ? `Last portable export: ${new Date(lastExportedBackupAt).toLocaleString()}. `
+                  : 'No portable export recorded. '}
+                Export regularly and save the JSON file somewhere outside this device. Available private exercise pictures are embedded in new exports; any unavailable picture is identified in the restore preview.
+              </p>
               <input ref={backupInput} type="file" accept="application/json,.json" className="hidden"
                 onChange={event => {
                   const file = event.target.files?.[0];
@@ -255,15 +364,27 @@ const SettingsPage = () => {
       </main>
 
       <RemindersDialog open={remindersOpen} onOpenChange={setRemindersOpen} />
-      <AlertDialog open={restoreOpen} onOpenChange={setRestoreOpen}>
+      <AlertDialog open={restoreOpen} onOpenChange={open => {
+        setRestoreOpen(open);
+        if (!open) { setEncryptedBackupText(''); setRestorePassword(''); setPendingBackup(null); setBackupWarnings([]); }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Replace all local data?</AlertDialogTitle>
+            <AlertDialogTitle>{encryptedBackupText ? 'Unlock encrypted backup' : 'Replace all local data?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              This replaces exercises, workouts, sessions, schedules, courses{pendingBackup?.version === 3 ? ', and device preferences' : ''} on
-              this device with the selected backup. Export the current data first if you may need it later.
+              {encryptedBackupText
+                ? 'Enter the password used when this backup was exported. It will only be used on this device to decrypt the file.'
+                : `Review the backup contents below. Restoring replaces the matching local collections${pendingBackup && pendingBackup.version >= 3 ? ' and device preferences' : ''}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {encryptedBackupText ? (
+            <Input aria-label="Encrypted backup password" type="password" autoComplete="current-password"
+              value={restorePassword} onChange={event => setRestorePassword(event.target.value)} />
+          ) : (
+            <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-3">
+              {pendingCounts.map(([label, count]) => <div key={label}><p className="text-muted-foreground">{label}</p><p className="font-semibold">{count}</p></div>)}
+            </div>
+          )}
           {backupWarnings.length > 0 && (
             <ul className="list-disc space-y-0.5 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 pl-6 text-xs text-amber-700 dark:text-amber-300">
               {backupWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
@@ -271,7 +392,9 @@ const SettingsPage = () => {
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRestore}>Restore and replace</AlertDialogAction>
+            {encryptedBackupText
+              ? <AlertDialogAction onClick={() => void unlockBackup()} disabled={backupBusy || !restorePassword}>Preview backup</AlertDialogAction>
+              : <AlertDialogAction onClick={confirmRestore} disabled={!pendingBackup}>Restore and replace</AlertDialogAction>}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

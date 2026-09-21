@@ -6,6 +6,7 @@ interface ScheduledNotification {
   title: string;
   body: string;
   schedule: { at: Date; allowWhileIdle: boolean };
+  actionTypeId?: string;
   extra: { scheduleId: string; workoutId: string; scheduledDate: string; courseId?: string; courseItemId?: string; occurrence: number };
 }
 
@@ -16,6 +17,7 @@ const { native, notif, settings } = vi.hoisted(() => ({
     getPending: vi.fn(async () => ({ notifications: [] as { id: number; extra?: Record<string, unknown> }[] })),
     cancel: vi.fn(async (_opts: { notifications: { id: number }[] }) => {}),
     schedule: vi.fn(async (_opts: { notifications: ScheduledNotification[] }) => {}),
+    registerActionTypes: vi.fn(async () => {}),
   },
   settings: { value: { enabled: true, leadMinutes: 0 } },
 }));
@@ -75,6 +77,7 @@ describe('scheduleWorkoutReminders', () => {
       title: 'Workout reminder',
       body: 'Leg Day starts now',
       extra: { scheduleId: 's1', workoutId: 'w1', scheduledDate: '2026-06-01' },
+      actionTypeId: 'WORKOUT_REMINDER',
     });
   });
 

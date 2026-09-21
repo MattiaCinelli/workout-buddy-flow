@@ -8,7 +8,7 @@ import {
 import { useIndexedDBCollection } from './useIndexedDBCollection';
 
 export const useMuscleGroups = () => {
-  const { items, isLoading, error, load, create, update, remove, getById } =
+  const { items, isLoading, error, load, create, update, remove, restore, getById } =
     useIndexedDBCollection<MuscleGroup>({
       getAll: getAllMuscleGroupsFromDB,
       save: saveMuscleGroupToDB,
@@ -26,6 +26,7 @@ export const useMuscleGroups = () => {
     createMuscleGroup: create,
     updateMuscleGroup: update,
     deleteMuscleGroup: remove,
+    restoreMuscleGroup: restore,
     getMuscleGroupById: getById,
     refreshMuscleGroups: load
   };

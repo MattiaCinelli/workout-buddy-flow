@@ -142,6 +142,18 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
     return target;
   }, []);
 
+  const restore = useCallback(async (item: T): Promise<T> => {
+    const { save, transform } = configRef.current;
+    const restored = { ...item, deletedAt: undefined, updatedAt: new Date().toISOString() } as T;
+    await save(restored);
+    setItems(previous => {
+      const withoutDuplicate = previous.filter(candidate => candidate.id !== restored.id);
+      const next = [...withoutDuplicate, restored];
+      return transform ? transform(next) : next;
+    });
+    return restored;
+  }, []);
+
   const clearAll = useCallback(async (): Promise<void> => {
     const { clearAll: clearAllFromDB, remove: removeFromDB, save } = configRef.current;
     if (isConnected()) {
@@ -159,5 +171,5 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
     return itemsRef.current.find(item => item.id === id);
   }, []);
 
-  return { items, isLoading, error, load, create, update, remove, clearAll, getById };
+  return { items, isLoading, error, load, create, update, remove, restore, clearAll, getById };
 }

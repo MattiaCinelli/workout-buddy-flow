@@ -1,6 +1,8 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { logDiagnostic } from '@/lib/diagnosticLog';
+import { formatDiagnostics } from '@/lib/diagnosticLog';
+import { saveTextFile } from '@/lib/downloadFile';
 
 interface Props { children: ReactNode; }
 interface State { error: Error | null; }
@@ -34,6 +36,10 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex justify-center gap-2">
             <Button onClick={() => window.location.reload()}>Reload app</Button>
             <Button variant="outline" onClick={() => { this.setState({ error: null }); }}>Try again</Button>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="outline" onClick={() => { window.location.assign('/settings#data'); }}>Restore backup</Button>
+            <Button variant="ghost" onClick={() => void saveTextFile(formatDiagnostics(), `workout-buddy-diagnostics-${new Date().toISOString().slice(0, 10)}.txt`, 'text/plain')}>Export diagnostics</Button>
           </div>
           <details className="rounded-md border bg-muted/40 p-3 text-left text-xs text-muted-foreground">
             <summary className="cursor-pointer select-none">Error details</summary>

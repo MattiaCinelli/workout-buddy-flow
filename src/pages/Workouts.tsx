@@ -19,9 +19,13 @@ import {
 import { folderName, isFolderOrDescendant, rebaseFolderPath, useWorkoutFolders } from '@/hooks/useWorkoutFolders';
 import { workoutContainsExerciseQuery } from '@/lib/workoutSearch';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import { writeWorkoutFolders } from '@/lib/workoutFolders';
 
 const WorkoutsPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -47,9 +51,19 @@ const WorkoutsPage = () => {
     renameFolder(folder, next);
   };
   const removeFolder = async (folder: string) => {
-    if (!window.confirm(`Delete the “${folder}” folder? Its workouts will remain in My Workouts.`)) return;
-    await Promise.all(workouts.filter(workout => workout.folder && isFolderOrDescendant(workout.folder, folder)).map(workout => updateWorkout(workout.id, { folder: undefined })));
+    const affected = workouts.filter(workout => workout.folder && isFolderOrDescendant(workout.folder, folder));
+    if (!window.confirm(`Delete the “${folder}” folder? ${affected.length} workout${affected.length === 1 ? '' : 's'} will move to My Workouts and can be restored with Undo.`)) return;
+    const previousFolders = [...folders];
+    await Promise.all(affected.map(workout => updateWorkout(workout.id, { folder: undefined })));
     deleteFolder(folder);
+    toast({
+      title: 'Folder deleted',
+      description: `${affected.length} workout${affected.length === 1 ? '' : 's'} moved to My Workouts.`,
+      action: <ToastAction altText={`Undo deletion of ${folder}`} onClick={() => void (async () => {
+        writeWorkoutFolders(previousFolders);
+        await Promise.all(affected.map(workout => updateWorkout(workout.id, { folder: workout.folder })));
+      })()}>Undo</ToastAction>,
+    });
   };
   const moveWorkout = (workoutId: string, folder?: string) => updateWorkout(workoutId, { folder });
   const nestFolder = async (source: string, target?: string) => {

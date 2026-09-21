@@ -38,6 +38,7 @@ export interface DataContextType {
   createExercise: (data: Omit<Exercise, 'id'>) => Promise<Exercise>;
   updateExercise: (id: string, updates: Partial<Exercise>) => Promise<Exercise | null>;
   deleteExercise: (id: string) => Promise<Exercise | null>;
+  restoreExercise: (exercise: Exercise) => Promise<Exercise>;
   getExerciseById: (id: string) => Exercise | undefined;
   refreshExercises: () => Promise<void>;
   
@@ -48,6 +49,7 @@ export interface DataContextType {
   createWorkout: (data: Omit<WorkoutEntry, 'id'>) => Promise<WorkoutEntry>;
   updateWorkout: (id: string, updates: Partial<WorkoutEntry>) => Promise<WorkoutEntry | null>;
   deleteWorkout: (id: string) => Promise<WorkoutEntry | null>;
+  restoreWorkout: (workout: WorkoutEntry) => Promise<WorkoutEntry>;
   clearAllWorkouts: () => Promise<void>;
   getWorkoutById: (id: string) => WorkoutEntry | undefined;
   fetchWorkoutById: (id: string) => Promise<WorkoutEntry | undefined>;
@@ -60,6 +62,7 @@ export interface DataContextType {
   createScheduledWorkout: (data: Omit<ScheduledWorkout, 'id' | 'createdAt'>) => Promise<ScheduledWorkout>;
   updateScheduledWorkout: (id: string, updates: Partial<ScheduledWorkout>) => Promise<ScheduledWorkout | null>;
   deleteScheduledWorkout: (id: string) => Promise<ScheduledWorkout | null>;
+  restoreScheduledWorkout: (schedule: ScheduledWorkout) => Promise<ScheduledWorkout>;
   getScheduledWorkoutsForRange: (startDate: Date, endDate: Date) => ExpandedScheduledWorkout[];
   getScheduledWorkoutsForDate: (date: Date) => ExpandedScheduledWorkout[];
   refreshScheduledWorkouts: () => Promise<void>;
@@ -87,6 +90,7 @@ export interface DataContextType {
   createMuscleGroup: (data: Omit<MuscleGroup, 'id'>) => Promise<MuscleGroup>;
   updateMuscleGroup: (id: string, updates: Partial<MuscleGroup>) => Promise<MuscleGroup | null>;
   deleteMuscleGroup: (id: string) => Promise<MuscleGroup | null>;
+  restoreMuscleGroup: (group: MuscleGroup) => Promise<MuscleGroup>;
   refreshMuscleGroups: () => Promise<void>;
 
   // Body metrics
@@ -114,6 +118,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createExercise,
     updateExercise,
     deleteExercise: deleteExerciseRaw,
+    restoreExercise,
     getExerciseById,
     refreshExercises
   } = useExercises();
@@ -125,6 +130,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createWorkout,
     updateWorkout,
     deleteWorkout: deleteWorkoutRaw,
+    restoreWorkout,
     clearAllWorkouts,
     getWorkoutById,
     fetchWorkoutById,
@@ -138,6 +144,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createScheduledWorkout: createScheduledWorkoutRaw,
     updateScheduledWorkout: updateScheduledWorkoutRaw,
     deleteScheduledWorkout: deleteScheduledWorkoutRaw,
+    restoreScheduledWorkout: restoreScheduledWorkoutRaw,
     getScheduledWorkoutsForRange,
     getScheduledWorkoutsForDate,
     refreshScheduledWorkouts
@@ -167,6 +174,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createMuscleGroup,
     updateMuscleGroup,
     deleteMuscleGroup: deleteMuscleGroupRaw,
+    restoreMuscleGroup,
     refreshMuscleGroups
   } = useMuscleGroups();
 
@@ -271,6 +279,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return deleted;
   };
 
+  const restoreScheduledWorkout = async (schedule: ScheduledWorkout) => {
+    const restored = await restoreScheduledWorkoutRaw(schedule);
+    const title = workouts.find(workout => workout.id === restored.workoutId)?.title || 'Workout';
+    try { await scheduleWorkoutReminders(restored, title); }
+    catch (error) { console.warn('Schedule restored, but its reminder could not be recreated:', error); }
+    return restored;
+  };
+
   // Untags rather than blocks: a muscle-group tag is one of several loosely
   // descriptive labels on an exercise, not a hard dependency like a workout
   // referencing an exercise template — losing one tag doesn't leave the
@@ -301,6 +317,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createExercise,
     updateExercise,
     deleteExercise,
+    restoreExercise,
     getExerciseById,
     refreshExercises,
     
@@ -310,6 +327,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createWorkout,
     updateWorkout,
     deleteWorkout,
+    restoreWorkout,
     clearAllWorkouts,
     getWorkoutById,
     fetchWorkoutById,
@@ -321,6 +339,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createScheduledWorkout,
     updateScheduledWorkout,
     deleteScheduledWorkout,
+    restoreScheduledWorkout,
     getScheduledWorkoutsForRange,
     getScheduledWorkoutsForDate,
     refreshScheduledWorkouts,
@@ -346,6 +365,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     createMuscleGroup,
     updateMuscleGroup,
     deleteMuscleGroup,
+    restoreMuscleGroup,
     refreshMuscleGroups,
 
     bodyMetrics,

@@ -30,6 +30,7 @@ import { format, parseISO } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
+import { ToastAction } from '@/components/ui/toast';
 
 interface ScheduleDetailModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   const [moveDate, setMoveDate] = useState('');
   const [recovering, setRecovering] = useState(false);
   const { toast } = useToast();
-  const { workouts, sessions, scheduledWorkouts, createScheduledWorkout, updateScheduledWorkout, deleteScheduledWorkout } = useData();
+  const { workouts, sessions, scheduledWorkouts, createScheduledWorkout, updateScheduledWorkout, deleteScheduledWorkout, restoreScheduledWorkout } = useData();
   const navigate = useNavigate();
 
   if (!schedule) return null;
@@ -106,12 +107,14 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
       const targets = scope === 'future' && schedule.courseId
         ? futureCourseOccurrences
         : [schedule];
-      await Promise.all(targets.map(item => deleteScheduledWorkout(item.id)));
+      const deleted = (await Promise.all(targets.map(item => deleteScheduledWorkout(item.id))))
+        .filter((item): item is NonNullable<typeof item> => !!item);
       toast({
         title: scope === 'future' ? "Future calendar entries deleted" : "Calendar occurrence deleted",
         description: scope === 'future'
           ? `Removed ${targets.length} entries from this date onward. Past entries and the course plan were not changed.`
           : "The calendar entry was removed. The course plan was not changed.",
+        action: deleted.length ? <ToastAction altText="Undo calendar deletion" onClick={() => void Promise.all(deleted.map(restoreScheduledWorkout))}>Undo</ToastAction> : undefined,
       });
       onDeleted();
       onClose();

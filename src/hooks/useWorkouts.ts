@@ -15,7 +15,7 @@ const byDateDescending = (workouts: WorkoutEntry[]) =>
   [...workouts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 export const useWorkouts = (exercises: Exercise[] = []) => {
-  const { items, isLoading, error, load, create, update, remove, clearAll, getById } =
+  const { items, isLoading, error, load, create, update, remove, restore, clearAll, getById } =
     useIndexedDBCollection<WorkoutEntry>({
       getAll: getAllWorkoutsFromDB,
       save: saveWorkoutToDB,
@@ -61,6 +61,7 @@ export const useWorkouts = (exercises: Exercise[] = []) => {
     createWorkout,
     updateWorkout,
     deleteWorkout: remove,
+    restoreWorkout: restore,
     clearAllWorkouts: clearAll,
     getWorkoutById: getById,
     fetchWorkoutById,

@@ -24,7 +24,7 @@ interface ManageMuscleGroupsModalProps {
 // several descriptive tags doesn't leave an exercise in a broken state,
 // unlike deleting an exercise or workout something else depends on.
 export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsModalProps) {
-  const { muscleGroups, exercises, createMuscleGroup, updateMuscleGroup, deleteMuscleGroup } = useData();
+  const { muscleGroups, exercises, createMuscleGroup, updateMuscleGroup, deleteMuscleGroup, restoreMuscleGroup, updateExercise } = useData();
 
   const [newName, setNewName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -92,8 +92,13 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
     if (!pendingDelete) return;
     setIsDeleting(true);
     try {
-      await deleteMuscleGroup(pendingDelete.id);
-      toast.success(`Deleted "${pendingDelete.name}"`);
+      const group = pendingDelete;
+      const affected = exercises.filter(exercise => exercise.muscleGroups.includes(group.id));
+      const deleted = await deleteMuscleGroup(group.id);
+      toast.success(`Deleted "${group.name}"`, { action: deleted ? { label: 'Undo', onClick: () => void (async () => {
+        await restoreMuscleGroup(deleted);
+        await Promise.all(affected.map(exercise => updateExercise(exercise.id, { muscleGroups: exercise.muscleGroups })));
+      })() } : undefined });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not delete muscle group');
     } finally {

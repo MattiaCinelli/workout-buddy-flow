@@ -4,6 +4,27 @@ import { addDays, format, isAfter, isSameDay, parseISO, set, subMinutes } from '
 import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 
+export const WORKOUT_NOTIFICATION_ACTION_TYPE = 'WORKOUT_REMINDER';
+export const WORKOUT_NOTIFICATION_START_ACTION = 'START_WORKOUT';
+export const WORKOUT_NOTIFICATION_SNOOZE_ACTION = 'SNOOZE_WORKOUT';
+export const WORKOUT_NOTIFICATION_SKIP_ACTION = 'SKIP_WORKOUT';
+
+let actionsRegistered = false;
+export const registerWorkoutNotificationActions = async () => {
+  if (!Capacitor.isNativePlatform() || actionsRegistered) return;
+  await LocalNotifications.registerActionTypes({
+    types: [{
+      id: WORKOUT_NOTIFICATION_ACTION_TYPE,
+      actions: [
+        { id: WORKOUT_NOTIFICATION_START_ACTION, title: 'Start', foreground: true },
+        { id: WORKOUT_NOTIFICATION_SNOOZE_ACTION, title: 'Snooze 10 min' },
+        { id: WORKOUT_NOTIFICATION_SKIP_ACTION, title: 'Skip today', destructive: true },
+      ],
+    }],
+  });
+  actionsRegistered = true;
+};
+
 const notificationId = (value: string) => {
   let hash = 0;
   for (let i = 0; i < value.length; i++) hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
@@ -46,6 +67,7 @@ export const cancelWorkoutReminders = async (scheduleId: string) => {
 
 export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, workoutTitle: string) => {
   if (!Capacitor.isNativePlatform()) return;
+  await registerWorkoutNotificationActions();
   await cancelWorkoutReminders(schedule.id);
 
   // Disabling reminders altogether just means: cancel whatever was there
@@ -71,6 +93,7 @@ export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, worko
         ? `${workoutTitle} starts in ${settings.leadMinutes} minute${settings.leadMinutes === 1 ? '' : 's'}`
         : `${workoutTitle} starts now`,
       schedule: { at: fireAt, allowWhileIdle: true },
+      actionTypeId: WORKOUT_NOTIFICATION_ACTION_TYPE,
       extra: {
         scheduleId: schedule.id,
         workoutId: schedule.workoutId,
@@ -81,6 +104,23 @@ export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, worko
       }
     }));
   if (notifications.length) await LocalNotifications.schedule({ notifications });
+};
+
+export const snoozeWorkoutReminder = async (extra: unknown, workoutTitle: string): Promise<boolean> => {
+  if (!Capacitor.isNativePlatform() || !extra || typeof extra !== 'object') return false;
+  const values = extra as Record<string, unknown>;
+  if (typeof values.workoutId !== 'string') return false;
+  await registerWorkoutNotificationActions();
+  const at = new Date(Date.now() + 10 * 60_000);
+  await LocalNotifications.schedule({ notifications: [{
+    id: notificationId(`snooze:${values.scheduleId ?? ''}:${values.workoutId}:${at.toISOString()}`),
+    title: 'Workout reminder',
+    body: `${workoutTitle} — snoozed for 10 minutes`,
+    schedule: { at, allowWhileIdle: true },
+    actionTypeId: WORKOUT_NOTIFICATION_ACTION_TYPE,
+    extra: values,
+  }] });
+  return true;
 };
 
 // Re-derives every reminder from the current calendar data — used when

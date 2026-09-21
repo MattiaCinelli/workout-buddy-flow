@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildExerciseShare, buildWorkoutShare, importShare, parseBackup, parseShare, summarizeShareImport,
-  ShareImportDeps, WorkoutBuddyShare,
+  decryptBackup, encryptBackup, ShareImportDeps, WorkoutBuddyBackup, WorkoutBuddyShare,
 } from './backup';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
@@ -209,10 +209,37 @@ const v3 = (over: Record<string, unknown> = {}) => JSON.stringify({
 });
 
 describe('parseBackup', () => {
-  it('accepts a current (v3) backup', () => {
+  it('continues to accept a v3 backup', () => {
     const { data, warnings } = parseBackup(v3());
     expect(data.version).toBe(3);
     expect(warnings).toEqual([]);
+  });
+
+  it('accepts embedded private media in v4 and reports missing media', () => {
+    const source = JSON.stringify({
+      format: 'workout-buddy-backup', version: 4, exportedAt: '2026-01-01T00:00:00.000Z',
+      data: {
+        exercises: [exercise({ imageUrl: 'private-exercise:kept.jpg', directionImageUrls: { left: 'private-exercise:missing.jpg' } })],
+        workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+      },
+      preferences: {}, media: { 'kept.jpg': { type: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,AA==' } },
+    });
+    const result = parseBackup(source);
+    expect(result.data.version).toBe(4);
+    expect(result.data.version === 4 && Object.keys(result.data.media ?? {})).toEqual(['kept.jpg']);
+    expect(result.warnings).toContainEqual(expect.stringMatching(/1 private exercise image/));
+  });
+
+  it('encrypts and decrypts a portable backup with its password', async () => {
+    const backup: WorkoutBuddyBackup = {
+      format: 'workout-buddy-backup', version: 4, exportedAt: '2026-01-01T00:00:00.000Z',
+      data: { exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [] },
+      preferences: {}, media: {},
+    };
+    const encrypted = await encryptBackup(backup, 'correct horse battery staple');
+    expect(encrypted.ciphertext).not.toContain('workout-buddy-backup');
+    await expect(decryptBackup(encrypted, 'wrong password')).rejects.toThrow(/incorrect|damaged/i);
+    await expect(decryptBackup(encrypted, 'correct horse battery staple')).resolves.toMatchObject({ data: { version: 4 } });
   });
 
   it('accepts legacy v1 (no muscleGroups / bodyMetrics required)', () => {

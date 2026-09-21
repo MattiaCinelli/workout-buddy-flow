@@ -53,6 +53,7 @@ import WorkoutDetail from './WorkoutDetail';
 
 describe('WorkoutDetail', () => {
   beforeEach(() => {
+    localStorage.clear();
     navigate.mockClear();
     toast.mockClear();
     updateWorkout.mockReset();
@@ -93,5 +94,29 @@ describe('WorkoutDetail', () => {
     const actions = thumbnail.closest('[data-selected-exercise-actions]');
     expect(actions).not.toBeNull();
     expect(within(actions as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
+  it('keeps unsaved workout edits as a device draft', async () => {
+    render(<WorkoutDetail />);
+    const title = await screen.findByLabelText('Title');
+    fireEvent.change(title, { target: { value: 'Mobility draft' } });
+
+    expect(screen.getByText(/Unsaved changes · saving draft/)).toBeInTheDocument();
+    await waitFor(() => expect(localStorage.getItem('workout-buddy-draft:workout:workout-1')).toContain('Mobility draft'), { timeout: 1200 });
+    await waitFor(() => expect(screen.getByText(/draft saved on this device/)).toBeInTheDocument());
+  });
+
+  it('previews a workout before a manual start', async () => {
+    render(<WorkoutDetail />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Workout' }));
+
+    expect(screen.getByRole('heading', { name: 'Ready for Mobility?' })).toBeInTheDocument();
+    expect(screen.getByText('Estimated time')).toBeInTheDocument();
+    expect(screen.getByText('No equipment listed')).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start workout' }));
+    expect(navigate).toHaveBeenCalledWith('/workouts/workout-1/session');
   });
 });

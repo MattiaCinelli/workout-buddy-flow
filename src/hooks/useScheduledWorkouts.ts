@@ -7,7 +7,7 @@ import { useIndexedDBCollection } from './useIndexedDBCollection';
 export type { ExpandedScheduledWorkout } from '@/lib/recurrence';
 
 export const useScheduledWorkouts = () => {
-  const { items, isLoading, error, load, create, update, remove } =
+  const { items, isLoading, error, load, create, update, remove, restore } =
     useIndexedDBCollection<ScheduledWorkout, 'createdAt'>({
       getAll: getAllScheduledWorkoutsFromDB,
       save: saveScheduledWorkoutToDB,
@@ -34,6 +34,7 @@ export const useScheduledWorkouts = () => {
     createScheduledWorkout: create,
     updateScheduledWorkout: update,
     deleteScheduledWorkout: remove,
+    restoreScheduledWorkout: restore,
     getScheduledWorkoutsForRange,
     getScheduledWorkoutsForDate,
     refreshScheduledWorkouts: load

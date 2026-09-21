@@ -11,6 +11,9 @@ import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { getCustomTrack, setCustomTrack } from './customAudio';
 import {
+  cachePrivateExerciseImage, fetchPrivateExerciseImage, privateExerciseImageFilename,
+} from './exerciseMediaClient';
+import {
   bodyMetricImportSchema, checkExerciseReferences, courseImportSchema, exerciseImportSchema,
   muscleGroupImportSchema, scheduledWorkoutImportSchema, validateImportCollection,
   workoutImportSchema, workoutSessionImportSchema,
@@ -28,6 +31,9 @@ export const BACKUP_PREFERENCE_KEYS = [
   'workout-buddy-bar-weight',
   'workout-buddy-voice-enabled',
   'workout-buddy-onboarded',
+  'workout-buddy-detailed-rpe',
+  'workout-buddy-workout-folders',
+  'workout-buddy-equipment-options',
 ] as const;
 
 export interface BackupAudioTrack {
@@ -35,6 +41,8 @@ export interface BackupAudioTrack {
   type: string;
   dataUrl: string;
 }
+
+export interface BackupMediaFile { type: string; dataUrl: string; }
 
 interface WorkoutBuddyBackupDataV1 {
   exercises: Exercise[];
@@ -68,7 +76,27 @@ export type WorkoutBuddyBackup = {
   // backup carries the whole app state, not just training records.
   preferences?: Record<string, string>;
   audioTrack?: BackupAudioTrack;
+} | {
+  format: 'workout-buddy-backup';
+  version: 4;
+  exportedAt: string;
+  data: WorkoutBuddyBackupDataV2;
+  preferences?: Record<string, string>;
+  audioTrack?: BackupAudioTrack;
+  /** Authenticated private exercise media, keyed by its safe filename. */
+  media?: Record<string, BackupMediaFile>;
 };
+
+export interface EncryptedWorkoutBuddyBackup {
+  format: 'workout-buddy-encrypted-backup';
+  version: 1;
+  encryption: 'AES-GCM';
+  kdf: 'PBKDF2-SHA256';
+  iterations: number;
+  salt: string;
+  iv: string;
+  ciphertext: string;
+}
 
 const legacyStores = ['exercises', 'workouts', 'workoutSessions', 'scheduledWorkouts', 'courses'] as const;
 const stores = [...legacyStores, 'muscleGroups', 'bodyMetrics'] as const;
@@ -91,30 +119,110 @@ const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(blob);
 });
 
-export const createBackup = async (): Promise<Extract<WorkoutBuddyBackup, { version: 3 }>> => {
+const privateMediaFrom = async (exercises: Exercise[]): Promise<Record<string, BackupMediaFile>> => {
+  const filenames = [...new Set(exercises.flatMap(exercise => [
+    exercise.imageUrl, ...Object.values(exercise.directionImageUrls ?? {}),
+  ]).filter((value): value is string => !!value)
+    .map(privateExerciseImageFilename).filter((value): value is string => !!value))];
+  const media: Record<string, BackupMediaFile> = {};
+  for (const filename of filenames) {
+    try {
+      const blob = await fetchPrivateExerciseImage(filename);
+      media[filename] = { type: blob.type, dataUrl: await blobToDataUrl(blob) };
+    } catch {
+      // A missing remote file must not prevent the user's records from being
+      // exported. The restore preview reports markers without embedded bytes.
+    }
+  }
+  return media;
+};
+
+export const createBackup = async (): Promise<Extract<WorkoutBuddyBackup, { version: 4 }>> => {
   const db = await getDB();
   const [exercises, workouts, workoutSessions, scheduledWorkouts, courses, muscleGroups, bodyMetrics] = await Promise.all([
     db.getAll('exercises'), db.getAll('workouts'), db.getAll('workoutSessions'),
     db.getAll('scheduledWorkouts'), db.getAll('courses'), db.getAll('muscleGroups'), db.getAll('bodyMetrics'),
   ]);
   const track = await getCustomTrack().catch(() => null);
+  const media = await privateMediaFrom(exercises);
   return {
-    format: 'workout-buddy-backup', version: 3, exportedAt: new Date().toISOString(),
+    format: 'workout-buddy-backup', version: 4, exportedAt: new Date().toISOString(),
     data: { exercises, workouts, workoutSessions, scheduledWorkouts, courses, muscleGroups, bodyMetrics },
     preferences: gatherPreferences(),
+    media,
     ...(track
       ? { audioTrack: { name: track.name, type: track.type, dataUrl: await blobToDataUrl(track.blob) } }
       : {}),
   };
 };
 
-export const downloadBackup = async () => {
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
+};
+const base64ToBytes = (value: string): Uint8Array => Uint8Array.from(atob(value), character => character.charCodeAt(0));
+
+export const encryptBackup = async (backup: WorkoutBuddyBackup, passphrase: string): Promise<EncryptedWorkoutBuddyBackup> => {
+  if (passphrase.length < 8) throw new Error('Use a backup password of at least 8 characters.');
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iterations = 250_000;
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, material,
+    { name: 'AES-GCM', length: 256 }, false, ['encrypt'],
+  );
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(backup)));
+  return {
+    format: 'workout-buddy-encrypted-backup', version: 1, encryption: 'AES-GCM', kdf: 'PBKDF2-SHA256',
+    iterations, salt: bytesToBase64(salt), iv: bytesToBase64(iv), ciphertext: bytesToBase64(new Uint8Array(encrypted)),
+  };
+};
+
+export const decryptBackup = async (encrypted: EncryptedWorkoutBuddyBackup, passphrase: string): Promise<ParsedBackup> => {
+  try {
+    const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', hash: 'SHA-256', salt: base64ToBytes(encrypted.salt), iterations: encrypted.iterations }, material,
+      { name: 'AES-GCM', length: 256 }, false, ['decrypt'],
+    );
+    const clear = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: base64ToBytes(encrypted.iv) }, key, base64ToBytes(encrypted.ciphertext),
+    );
+    return parseBackup(new TextDecoder().decode(clear));
+  } catch {
+    throw new Error('The backup password is incorrect or the encrypted file is damaged.');
+  }
+};
+
+export const isEncryptedBackupText = (text: string): boolean => {
+  try { return (JSON.parse(text) as { format?: string }).format === 'workout-buddy-encrypted-backup'; }
+  catch { return false; }
+};
+
+export const parseEncryptedBackupEnvelope = (text: string): EncryptedWorkoutBuddyBackup => {
+  const value = JSON.parse(text) as Partial<EncryptedWorkoutBuddyBackup>;
+  if (value.format !== 'workout-buddy-encrypted-backup' || value.version !== 1
+    || value.encryption !== 'AES-GCM' || value.kdf !== 'PBKDF2-SHA256'
+    || typeof value.iterations !== 'number' || typeof value.salt !== 'string'
+    || typeof value.iv !== 'string' || typeof value.ciphertext !== 'string') {
+    throw new Error('This is not a supported encrypted Workout Buddy backup.');
+  }
+  return value as EncryptedWorkoutBuddyBackup;
+};
+
+export const downloadBackup = async (passphrase = '') => {
   const backup = await createBackup();
-  const json = JSON.stringify(backup, null, 2);
-  const filename = `workout-buddy-${backup.exportedAt.slice(0, 10)}.json`;
+  const payload = passphrase ? await encryptBackup(backup, passphrase) : backup;
+  const json = JSON.stringify(payload, null, 2);
+  const filename = `workout-buddy-${backup.exportedAt.slice(0, 10)}${passphrase ? '-encrypted' : ''}.json`;
   if (Capacitor.isNativePlatform()) {
     const saved = await Filesystem.writeFile({ path: filename, data: json, directory: Directory.Cache, encoding: Encoding.UTF8 });
     await Share.share({ title: 'Workout Buddy backup', text: 'Save this file somewhere safe.', url: saved.uri, dialogTitle: 'Export Workout Buddy data' });
+    localStorage.setItem(LAST_EXPORTED_BACKUP_KEY, backup.exportedAt);
     return;
   }
   const blob = new Blob([json], { type: 'application/json' });
@@ -124,6 +232,44 @@ export const downloadBackup = async () => {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+  localStorage.setItem(LAST_EXPORTED_BACKUP_KEY, backup.exportedAt);
+};
+
+const AUTOMATIC_BACKUP_PATH = 'backups/automatic-latest.json';
+const LAST_AUTOMATIC_BACKUP_KEY = 'workout-buddy-backup:lastAutomaticAt';
+const LAST_EXPORTED_BACKUP_KEY = 'workout-buddy-backup:lastExportedAt';
+export const AUTOMATIC_BACKUP_UPDATED_EVENT = 'workout-buddy:automatic-backup-updated';
+
+export const getLastAutomaticBackupAt = (): string | null => localStorage.getItem(LAST_AUTOMATIC_BACKUP_KEY);
+export const getLastExportedBackupAt = (): string | null => localStorage.getItem(LAST_EXPORTED_BACKUP_KEY);
+
+// Native-only rolling safety copy in the app's private files directory.
+// This protects against a damaged IndexedDB database, while a manual export
+// or server sync is still required to survive uninstalling or losing a phone.
+export const createAutomaticBackup = async (): Promise<boolean> => {
+  if (!Capacitor.isNativePlatform()) return false;
+  const backup = await createBackup();
+  await Filesystem.writeFile({
+    path: AUTOMATIC_BACKUP_PATH,
+    data: JSON.stringify(backup),
+    directory: Directory.Data,
+    encoding: Encoding.UTF8,
+    recursive: true,
+  });
+  localStorage.setItem(LAST_AUTOMATIC_BACKUP_KEY, backup.exportedAt);
+  window.dispatchEvent(new Event(AUTOMATIC_BACKUP_UPDATED_EVENT));
+  return true;
+};
+
+export const readAutomaticBackup = async (): Promise<ParsedBackup> => {
+  if (!Capacitor.isNativePlatform()) throw new Error('Automatic snapshots are available in the installed phone app.');
+  const file = await Filesystem.readFile({
+    path: AUTOMATIC_BACKUP_PATH,
+    directory: Directory.Data,
+    encoding: Encoding.UTF8,
+  });
+  if (typeof file.data !== 'string') throw new Error('The automatic snapshot could not be read.');
+  return parseBackup(file.data);
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -134,6 +280,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 // corrupt, and parsing it would just bloat IndexedDB.
 const MAX_IMPORT_BYTES = 128 * 1024 * 1024;
 const MAX_IMAGE_URL_LENGTH = 4 * 1024 * 1024; // ~3 MB once base64-decoded
+const MAX_BACKUP_MEDIA_DATA_URL_LENGTH = 8 * 1024 * 1024; // up to the 5 MB stored-file limit
 const MAX_AUDIO_DATA_URL_LENGTH = 40 * 1024 * 1024; // ~30 MB decoded
 
 // An imported `imageUrl` is untrusted. Private server images use an inert,
@@ -197,10 +344,10 @@ export const parseBackup = (text: string): ParsedBackup => {
   if (text.length > MAX_IMPORT_BYTES) throw new Error('That backup file is too large to import.');
   const parsed: unknown = JSON.parse(text);
   if (!isRecord(parsed) || parsed.format !== 'workout-buddy-backup'
-    || ![1, 2, 3].includes(parsed.version as number) || !isRecord(parsed.data)) {
+    || ![1, 2, 3, 4].includes(parsed.version as number) || !isRecord(parsed.data)) {
     throw new Error('This is not a supported Workout Buddy backup.');
   }
-  const version = parsed.version as 1 | 2 | 3;
+  const version = parsed.version as 1 | 2 | 3 | 4;
   const requiredStores = version === 1 ? legacyStores : stores;
   for (const store of requiredStores) {
     if (!Array.isArray((parsed.data as Record<string, unknown>)[store])) {
@@ -237,7 +384,7 @@ export const parseBackup = (text: string): ParsedBackup => {
     [...workouts.map(asContainer('Workout')), ...sessions.map(asContainer('Session'))],
   ));
 
-  if (version === 3) {
+  if (version >= 3) {
     const clean: Record<string, string> = {};
     if (isRecord(parsed.preferences)) {
       for (const key of BACKUP_PREFERENCE_KEYS) {
@@ -259,6 +406,26 @@ export const parseBackup = (text: string): ParsedBackup => {
     }
   }
 
+  if (version === 4) {
+    const cleanMedia: Record<string, BackupMediaFile> = {};
+    if (isRecord(parsed.media)) {
+      for (const [filename, raw] of Object.entries(parsed.media)) {
+        if (!/^[a-z0-9][a-z0-9-]*\.(?:jpg|gif|svg)$/.test(filename) || !isRecord(raw)) continue;
+        if (typeof raw.type !== 'string' || !raw.type.startsWith('image/')
+          || typeof raw.dataUrl !== 'string' || !raw.dataUrl.startsWith(`data:${raw.type};`)
+          || raw.dataUrl.length > MAX_BACKUP_MEDIA_DATA_URL_LENGTH) continue;
+        cleanMedia[filename] = { type: raw.type, dataUrl: raw.dataUrl };
+      }
+    }
+    parsed.media = cleanMedia;
+    const referenced = new Set((data.exercises as Exercise[]).flatMap(exercise => [
+      exercise.imageUrl, ...Object.values(exercise.directionImageUrls ?? {}),
+    ]).filter((value): value is string => !!value).map(privateExerciseImageFilename)
+      .filter((value): value is string => !!value));
+    const missing = [...referenced].filter(filename => !cleanMedia[filename]);
+    if (missing.length) warnings.push(`${missing.length} private exercise image${missing.length === 1 ? '' : 's'} could not be embedded and will require server sync after restore.`);
+  }
+
   return { data: parsed as unknown as WorkoutBuddyBackup, warnings };
 };
 
@@ -276,7 +443,7 @@ export const restoreBackup = async (backup: WorkoutBuddyBackup) => {
   }
   await tx.done;
 
-  if (backup.version === 3) {
+  if (backup.version === 3 || backup.version === 4) {
     for (const [key, value] of Object.entries(backup.preferences ?? {})) {
       if ((BACKUP_PREFERENCE_KEYS as readonly string[]).includes(key)) {
         try { localStorage.setItem(key, value); } catch { /* ignore */ }
@@ -288,6 +455,12 @@ export const restoreBackup = async (backup: WorkoutBuddyBackup) => {
       } catch (error) {
         console.warn('Could not restore the custom audio track:', error);
       }
+    }
+  }
+  if (backup.version === 4) {
+    for (const [filename, media] of Object.entries(backup.media ?? {})) {
+      try { await cachePrivateExerciseImage(filename, await (await fetch(media.dataUrl)).blob()); }
+      catch (error) { console.warn(`Could not restore exercise image ${filename}:`, error); }
     }
   }
 };

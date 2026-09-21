@@ -98,6 +98,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
   const [actualSets, setActualSets] = useState<WorkoutSetResult[]>([]);
   const [rpe, setRpe] = useState('');
   const [completionNotes, setCompletionNotes] = useState('');
+  const detailedRpe = localStorage.getItem('workout-buddy-detailed-rpe') === 'true';
   const [voiceEnabled, setVoiceEnabled] = useState(() => getAccessibilitySettings().voiceCues);
   const [musicEnabled, setMusicEnabled] = useState(() => getAccessibilitySettings().backgroundMusic);
   const musicVolume = useRef(getAccessibilitySettings().musicVolume).current;
@@ -733,12 +734,18 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
         </DialogContent>
       </Dialog>
     ) : (
-    <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle className="flex items-center gap-2"><CheckCircle2 className="completion-check h-6 w-6 text-workout-green" aria-hidden="true" />Complete workout</DialogTitle><DialogDescription>Confirm what you completed. Adjust results or mark skipped sets before saving.</DialogDescription></DialogHeader>
-      <div className="space-y-3">{actualSets.map((result, index) => {
+    <Dialog open={completionOpen} onOpenChange={(open) => { if (!open) setExitConfirmOpen(true); }}><DialogContent className="h-[100dvh] w-screen max-w-none overflow-y-auto rounded-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg"><DialogHeader><DialogTitle className="flex items-center gap-2"><CheckCircle2 className="completion-check h-6 w-6 text-workout-green" aria-hidden="true" />Complete workout</DialogTitle><DialogDescription>Save immediately if everything went to plan, or expand the set details to make corrections.</DialogDescription></DialogHeader>
+      <div className="rounded-xl border border-workout-green/30 bg-workout-green/10 p-4">
+        <p className="font-semibold text-workout-green">{actualSets.filter(set => set.completed).length} of {actualSets.length} sets marked complete</p>
+        <p className="mt-1 text-sm text-muted-foreground">Your planned repetitions, time, distance and weight are already filled in.</p>
+      </div>
+      <details className="group rounded-xl border bg-muted/20">
+        <summary className="cursor-pointer select-none px-4 py-3 font-medium">Adjust sets or mark any as skipped</summary>
+        <div className="space-y-3 border-t p-3">{actualSets.map((result, index) => {
         const planned = workout.sets[index];
         const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise';
         const tag = `${result.direction && result.direction !== 'none' ? ` · ${workoutDirectionLabel(result.direction)}` : ''}${result.warmup ? ' · Warm-up' : result.amrap ? ' · AMRAP' : ''}`;
-        return <div key={index} className={`border rounded-md p-3 ${result.warmup ? 'border-amber-400/40' : ''}`}>
+        return <div key={index} className={`rounded-md border p-3 ${result.warmup ? 'border-amber-400/40' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
             <Checkbox id={`completed-${index}`} checked={result.completed} onCheckedChange={checked => updateResult(index, { completed: checked === true })} />
             <Label htmlFor={`completed-${index}`} className="font-medium flex-1">{name} · Set {result.setIndex + 1}{tag}</Label>
@@ -749,10 +756,11 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
             {planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}
             {planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}
             {planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}
-            {!result.warmup && <div><Label htmlFor={`result-rpe-${index}`}>RPE (1–10)</Label><Input id={`result-rpe-${index}`} type="number" min="1" max="10" step="0.5" value={result.rpe ?? ''} onChange={e => updateResult(index, { rpe: e.target.value ? Number(e.target.value) : undefined })} /></div>}
+            {detailedRpe && !result.warmup && <div><Label htmlFor={`result-rpe-${index}`}>RPE (1–10)</Label><Input id={`result-rpe-${index}`} type="number" min="1" max="10" step="0.5" value={result.rpe ?? ''} onChange={e => updateResult(index, { rpe: e.target.value ? Number(e.target.value) : undefined })} /></div>}
           </div>
         </div>;
       })}</div>
+      </details>
       <div className="space-y-2"><Label htmlFor="rpe">Perceived exertion (1–10)</Label><Input id="rpe" type="number" min="1" max="10" value={rpe} onChange={e => setRpe(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="completion-notes">Session notes</Label><Textarea id="completion-notes" value={completionNotes} onChange={e => setCompletionNotes(e.target.value)} placeholder="Energy, pain, achievements, substitutions…" /></div>
       {!resultsValid && <p className="text-sm text-destructive" role="alert">Check the entered workout values before saving.</p>}
       <DialogFooter className="sticky bottom-0 bg-background py-3">

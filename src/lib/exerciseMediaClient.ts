@@ -69,6 +69,24 @@ const storeCachedImage = async (image: CachedExerciseImage): Promise<void> => {
   }
 };
 
+/** Store media restored from a portable backup in the same persistent cache
+ * used by synchronized images, so private-exercise markers work offline. */
+export const cachePrivateExerciseImage = async (
+  filename: string,
+  blob: Blob,
+): Promise<void> => {
+  if (!SAFE_PRIVATE_IMAGE_NAME.test(filename) || !blob.type.startsWith('image/')) {
+    throw new Error('Invalid private exercise image.');
+  }
+  await storeCachedImage({
+    filename,
+    data: await blob.arrayBuffer(),
+    contentType: blob.type,
+    cachedAt: new Date().toISOString(),
+  });
+  notifyPrivateExerciseImageAvailable(filename);
+};
+
 const cachedImageBlob = (image: CachedExerciseImage): Blob => (
   new Blob([image.data], { type: image.contentType })
 );

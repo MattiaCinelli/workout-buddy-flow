@@ -12,6 +12,17 @@ export const ManageEquipmentModal = ({ isOpen, onClose }: { isOpen: boolean; onC
   const taken = (name: string, except?: string) => equipment.some(item => item !== except && item.toLowerCase() === name.toLowerCase());
   const add = () => { const name = newName.trim(); if (!name || taken(name)) return void toast.error(name ? `"${name}" already exists` : 'Enter an equipment name'); addEquipment(name); setNewName(''); };
   const rename = async () => { if (!editing) return; const name = editName.trim(); if (!name || taken(name, editing)) return void toast.error('Choose a unique equipment name'); await Promise.all(exercises.filter(ex => ex.equipment?.includes(editing)).map(ex => updateExercise(ex.id, { equipment: ex.equipment?.map(item => item === editing ? name : item) }))); renameEquipment(editing, name); setEditing(null); };
-  const remove = async (name: string) => { await Promise.all(exercises.filter(ex => ex.equipment?.includes(name)).map(ex => updateExercise(ex.id, { equipment: ex.equipment?.filter(item => item !== name) }))); deleteEquipment(name); };
+  const remove = async (name: string) => {
+    const affected = exercises.filter(ex => ex.equipment?.includes(name));
+    if (!window.confirm(affected.length
+      ? `Remove “${name}” from the equipment list and ${affected.length} tagged exercise${affected.length === 1 ? '' : 's'}?`
+      : `Remove “${name}” from the equipment list?`)) return;
+    await Promise.all(affected.map(ex => updateExercise(ex.id, { equipment: ex.equipment?.filter(item => item !== name) })));
+    deleteEquipment(name);
+    toast.success(`Removed “${name}”`, { action: { label: 'Undo', onClick: () => void (async () => {
+      addEquipment(name);
+      await Promise.all(affected.map(ex => updateExercise(ex.id, { equipment: ex.equipment })));
+    })() } });
+  };
   return <Dialog open={isOpen} onOpenChange={open => !open && onClose()}><DialogContent className="sm:max-w-[420px] max-h-[85vh] flex flex-col"><DialogHeader><DialogTitle>Manage Equipment</DialogTitle><DialogDescription>Add, rename, or remove equipment. Removing one only untags exercises.</DialogDescription></DialogHeader><div className="flex gap-2"><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="New equipment…" /><Button onClick={add}><Plus /></Button></div><div className="overflow-y-auto">{equipment.map(item => <div key={item} className="flex items-center gap-2 rounded-md p-2 hover:bg-muted">{editing === item ? <><Input value={editName} onChange={e => setEditName(e.target.value)} /><Button size="icon" variant="ghost" onClick={() => void rename()}><Check /></Button><Button size="icon" variant="ghost" onClick={() => setEditing(null)}><X /></Button></> : <><span className="flex-1">{item}</span><span className="text-xs text-muted-foreground">{exercises.filter(ex => ex.equipment?.includes(item)).length || ''}</span><Button size="icon" variant="ghost" aria-label={`Rename ${item}`} onClick={() => { setEditing(item); setEditName(item); }}><Pencil /></Button><Button size="icon" variant="ghost" aria-label={`Delete ${item}`} onClick={() => void remove(item)}><Trash2 /></Button></>}</div>)}</div></DialogContent></Dialog>;
 };

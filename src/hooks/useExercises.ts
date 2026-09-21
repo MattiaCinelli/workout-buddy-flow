@@ -31,7 +31,7 @@ const courseExerciseIds = new Set([
 ]);
 
 export const useExercises = () => {
-  const { items, isLoading, error, load, create, update, remove, getById } =
+  const { items, isLoading, error, load, create, update, remove, restore, getById } =
     useIndexedDBCollection<Exercise>({
       getAll: getAllExercisesFromDB,
       save: saveExerciseToDB,
@@ -84,6 +84,7 @@ export const useExercises = () => {
     createExercise: createUniqueExercise,
     updateExercise: updateUniqueExercise,
     deleteExercise: remove,
+    restoreExercise: restore,
     getExerciseById: getById,
     refreshExercises: load
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star, Image as ImageIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star, Image as ImageIcon, GripVertical } from 'lucide-react';
 import { Exercise, getExerciseImageUrl, getLogType, getExecutionDirections } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
@@ -27,7 +28,11 @@ import {
 } from '@/lib/workoutDirections';
 import { useWorkoutFolders } from '@/hooks/useWorkoutFolders';
 import { exerciseMatchesSearchQuery } from '@/lib/exerciseLibrary';
-import { workoutDurationMinutes } from '@/lib/workoutRuntime';
+import { workoutDurationMinutes, workoutDurationSeconds } from '@/lib/workoutRuntime';
+import { ToastAction } from '@/components/ui/toast';
+import { useTouchReorder } from '@/hooks/useTouchReorder';
+import { suggestNextSet } from '@/lib/progression';
+import { exerciseSessionHistory } from '@/lib/exerciseHistory';
 
 interface SelectedExercise {
   occurrenceId: string;
@@ -35,13 +40,20 @@ interface SelectedExercise {
   sets: WorkoutSet[];
 }
 
+interface WorkoutEditDraft {
+  workoutId: string; title: string; category: string; folder: string; description: string; notes: string;
+  restBetweenSets: number; restBetweenExercises: number;
+  selectedExercises: Array<{ occurrenceId: string; exerciseId: string; sets: WorkoutSet[] }>;
+}
+const workoutDraftKey = (id: string) => `workout-buddy-draft:workout:${id}`;
+
 // Deliberately not a separate read-only view + Edit modal: clicking into a
 // workout should land you directly on the same editable form, so tweaking
 // a set's reps doesn't require an extra "Edit" click first.
 const WorkoutDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { workouts, exercises, workoutsLoading, createWorkout, updateWorkout, deleteWorkout, muscleGroups } = useData();
+  const { workouts, exercises, workoutsLoading, createWorkout, updateWorkout, deleteWorkout, restoreWorkout, muscleGroups, sessions = [] } = useData();
   const { toast } = useToast();
   const workout = workouts.find(w => w.id === id);
 
@@ -58,7 +70,11 @@ const WorkoutDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [startPreviewOpen, setStartPreviewOpen] = useState(false);
   const [loadedWorkoutId, setLoadedWorkoutId] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const touchReorder = useTouchReorder(selectedExercises, setSelectedExercises, item => item.occurrenceId);
+  const baselineDraft = useRef('');
   const { folders } = useWorkoutFolders((workouts ?? []).map(item => item.folder));
 
   const muscleGroupName = (groupId: string) => muscleGroups.find(group => group.id === groupId)?.name ?? groupId;
@@ -68,14 +84,6 @@ const WorkoutDetail = () => {
   // silently overwrite whatever the user is in the middle of typing.
   useEffect(() => {
     if (!workout || loadedWorkoutId === workout.id) return;
-    setTitle(workout.title);
-    setCategory(workout.category);
-    setFolder(workout.folder ?? 'none');
-    setDescription(workout.description || '');
-    setNotes(workout.notes || '');
-    setRestBetweenSets(workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS);
-    setRestBetweenExercises(workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES);
-
     const selected: SelectedExercise[] = [];
     workout.sets.forEach((set, index) => {
       const previous = selected[selected.length - 1];
@@ -94,9 +102,49 @@ const WorkoutDetail = () => {
     selected.forEach(item => {
       item.sets = materializeLegacyDirections(item.sets, item.exercise);
     });
-    setSelectedExercises(selected);
+    const original: WorkoutEditDraft = {
+      workoutId: workout.id, title: workout.title, category: workout.category, folder: workout.folder ?? 'none',
+      description: workout.description || '', notes: workout.notes || '',
+      restBetweenSets: workout.restBetweenSets ?? DEFAULT_REST_BETWEEN_SETS,
+      restBetweenExercises: workout.restBetweenExercises ?? DEFAULT_REST_BETWEEN_EXERCISES,
+      selectedExercises: selected.map(item => ({ occurrenceId: item.occurrenceId, exerciseId: item.exercise.id, sets: item.sets })),
+    };
+    baselineDraft.current = JSON.stringify(original);
+    let source = original;
+    try {
+      const raw = localStorage.getItem(workoutDraftKey(workout.id));
+      if (raw) {
+        const candidate = JSON.parse(raw) as WorkoutEditDraft;
+        if (candidate.workoutId === workout.id) { source = candidate; setDraftSaved(true); }
+      }
+    } catch { localStorage.removeItem(workoutDraftKey(workout.id)); }
+    setTitle(source.title); setCategory(source.category); setFolder(source.folder);
+    setDescription(source.description); setNotes(source.notes);
+    setRestBetweenSets(source.restBetweenSets); setRestBetweenExercises(source.restBetweenExercises);
+    setSelectedExercises(source.selectedExercises.flatMap(item => {
+      const exercise = exercises.find(candidate => candidate.id === item.exerciseId);
+      return exercise ? [{ occurrenceId: item.occurrenceId, exercise, sets: item.sets }] : [];
+    }));
     setLoadedWorkoutId(workout.id);
-  }, [workout, exercises, loadedWorkoutId]);
+    if (source !== original) toast({ title: 'Workout draft restored', description: 'Your unsaved edits are ready to continue.' });
+  }, [workout, exercises, loadedWorkoutId, toast]);
+
+  const currentDraft: WorkoutEditDraft | null = workout && loadedWorkoutId === workout.id ? {
+    workoutId: workout.id, title, category, folder, description, notes, restBetweenSets, restBetweenExercises,
+    selectedExercises: selectedExercises.map(item => ({ occurrenceId: item.occurrenceId, exerciseId: item.exercise.id, sets: item.sets })),
+  } : null;
+  const currentDraftJson = currentDraft ? JSON.stringify(currentDraft) : '';
+  const isDirty = !!currentDraft && !!baselineDraft.current && currentDraftJson !== baselineDraft.current;
+
+  useEffect(() => {
+    if (!workout || !currentDraftJson || !isDirty) return;
+    setDraftSaved(false);
+    const timer = window.setTimeout(() => {
+      localStorage.setItem(workoutDraftKey(workout.id), currentDraftJson);
+      setDraftSaved(true);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [currentDraftJson, isDirty, workout]);
 
   if (workoutsLoading) {
     return (
@@ -119,6 +167,19 @@ const WorkoutDetail = () => {
   const filteredExercises = exercises.filter(exercise =>
     exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroupName)
   );
+  const previewSeconds = workoutDurationSeconds(workout, exercises);
+  const previewDuration = previewSeconds < 60 ? `${previewSeconds} seconds`
+    : previewSeconds % 60 === 0 ? `${previewSeconds / 60} minutes`
+      : `${Math.floor(previewSeconds / 60)}m ${previewSeconds % 60}s`;
+  const previewExercises = [...new Set(workout.sets.map(set => set.exerciseId))]
+    .map(exerciseId => exercises.find(exercise => exercise.id === exerciseId)).filter(Boolean) as Exercise[];
+  const previewEquipment = [...new Set(previewExercises.flatMap(exercise => exercise.equipment ?? []))];
+  const missingImages = previewExercises.filter(exercise => !getExerciseImageUrl(exercise));
+  const progressionPreviews = previewExercises.flatMap(exercise => {
+    const planned = workout.sets.find(set => set.exerciseId === exercise.id);
+    const suggestion = planned ? suggestNextSet(exercise, planned, exerciseSessionHistory(exercise.id, sessions)) : null;
+    return suggestion ? [{ exercise, suggestion }] : [];
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +203,8 @@ const WorkoutDetail = () => {
       };
       updates.duration = workoutDurationMinutes({ ...workout, ...updates } as WorkoutEntry, exercises);
       await updateWorkout(workout.id, updates);
+      localStorage.removeItem(workoutDraftKey(workout.id));
+      setDraftSaved(false);
       toast({ title: 'Workout updated!', description: `"${title}" has been saved.` });
       navigate('/workouts');
     } catch (error) {
@@ -268,8 +331,12 @@ const WorkoutDetail = () => {
   const handleDeleteWorkout = async () => {
     setIsDeleting(true);
     try {
-      await deleteWorkout(workout.id);
-      toast({ title: 'Workout deleted', description: `"${workout.title}" has been deleted.` });
+      const deleted = await deleteWorkout(workout.id);
+      localStorage.removeItem(workoutDraftKey(workout.id));
+      toast({
+        title: 'Workout deleted', description: `"${workout.title}" was removed.`,
+        action: deleted ? <ToastAction altText={`Undo deletion of ${deleted.title}`} onClick={() => void restoreWorkout(deleted)}>Undo</ToastAction> : undefined,
+      });
       navigate('/workouts');
     } catch (error) {
       console.error('Failed to delete workout:', error);
@@ -311,14 +378,24 @@ const WorkoutDetail = () => {
           <Button
             size="sm"
             className="bg-workout-green hover:bg-green-600 text-white flex items-center gap-1"
-            onClick={() => navigate(`/workouts/${id}/session`)}
+            onClick={() => {
+              if (isDirty) {
+                toast({ title: 'Save changes before starting', description: 'This ensures the guided workout uses the settings currently shown.' });
+                return;
+              }
+              setStartPreviewOpen(true);
+            }}
           >
             <Play className="h-4 w-4" />
             <span>Start Workout</span>
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} onWheelCapture={event => {
+          const target = event.target as HTMLInputElement;
+          if (target.type === 'number' && document.activeElement === target) target.blur();
+        }}>
+          {isDirty && <p className="mb-3 text-sm text-muted-foreground" role="status">{draftSaved ? 'Unsaved changes · draft saved on this device' : 'Unsaved changes · saving draft…'}</p>}
           <div className="grid gap-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="workout-title" className="text-right">Title</Label>
@@ -411,6 +488,17 @@ const WorkoutDetail = () => {
                       value={searchQuery} onChange={e => setSearchQuery(e.target.value)} disabled={isSubmitting}
                     />
                   </div>
+                  {selectedExercises.length > 0 && (
+                    <div className="mb-4 flex items-center justify-between gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">
+                        <strong className="text-foreground">{selectedExercises.length}</strong> selected ·{' '}
+                        {selectedExercises.reduce((total, item) => total + item.sets.length, 0)} sets
+                      </span>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setActiveTab('selected')}>
+                        Review
+                      </Button>
+                    </div>
+                  )}
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {filteredExercises.map(exercise => (
                       <ExerciseItem key={exercise.id} exercise={exercise} onSelect={handleSelectExercise} />
@@ -431,9 +519,14 @@ const WorkoutDetail = () => {
                   ) : (
                     <div className="space-y-6 py-2">
                       {selectedExercises.map((selectedEx, exIndex) => (
-                        <div key={selectedEx.occurrenceId} className="border rounded-md p-4">
+                        <div key={selectedEx.occurrenceId} data-reorder-id={selectedEx.occurrenceId}
+                          className={`border rounded-md p-4 ${touchReorder.draggingId === selectedEx.occurrenceId ? 'border-primary bg-primary/5 shadow-lg' : ''}`}>
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex min-w-0 flex-1 items-center gap-1">
+                              <button type="button" aria-label={`Hold and drag ${selectedEx.exercise.name}`}
+                                className="touch-none rounded p-1 text-muted-foreground md:hidden" {...touchReorder.bind(selectedEx.occurrenceId)}>
+                                <GripVertical className="h-5 w-5" />
+                              </button>
                               <div className="flex flex-col -my-1">
                                 <Button
                                   variant="ghost" size="icon" type="button" className="h-5 w-6"
@@ -639,6 +732,47 @@ const WorkoutDetail = () => {
           </div>
         </form>
       </main>
+
+      <Dialog open={startPreviewOpen} onOpenChange={setStartPreviewOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ready for {workout.title}?</DialogTitle>
+            <DialogDescription>Review what you need before starting the guided workout.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Estimated time</p><p className="font-semibold">{previewDuration}</p></div>
+            <div className="rounded-lg border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">Exercises</p><p className="font-semibold">{previewExercises.length}</p></div>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Equipment</p>
+            <p className="mt-1 text-sm text-muted-foreground">{previewEquipment.length ? previewEquipment.join(' · ') : 'No equipment listed'}</p>
+          </div>
+          {missingImages.length > 0 && (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
+              {missingImages.length} exercise{missingImages.length === 1 ? '' : 's'} {missingImages.length === 1 ? 'has' : 'have'} no demonstration image. The workout can still be completed.
+            </p>
+          )}
+          {progressionPreviews.length > 0 && (
+            <div>
+              <p className="text-sm font-medium">Suggested next targets</p>
+              <div className="mt-1 space-y-2">
+                {progressionPreviews.map(({ exercise, suggestion }) => (
+                  <div key={exercise.id} className="rounded-lg border bg-muted/30 p-3 text-sm">
+                    <p className="font-medium">{exercise.name}: {suggestion.reps} reps{suggestion.weight ? ` × ${suggestion.weight} kg` : ''}</p>
+                    <p className="text-muted-foreground">{suggestion.note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setStartPreviewOpen(false)}>Not yet</Button>
+            <Button className="bg-workout-green text-white hover:bg-green-600" onClick={() => navigate(`/workouts/${id}/session`)}>
+              <Play className="mr-2 h-4 w-4" />Start workout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

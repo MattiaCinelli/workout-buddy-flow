@@ -178,6 +178,8 @@ describe('WorkoutPresentation — guided run', () => {
     await startAndSkipPrep();
     fireEvent.click(screen.getByRole('button', { name: /finish/i }));
     expect(screen.getByRole('heading', { name: 'Complete workout' })).toBeInTheDocument();
+    expect(screen.getByText('1 of 1 sets marked complete')).toBeInTheDocument();
+    expect(screen.getByText('Adjust sets or mark any as skipped').closest('details')).not.toHaveAttribute('open');
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save workout' }));

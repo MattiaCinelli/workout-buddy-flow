@@ -9,9 +9,27 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-21
+
+### Added
+
+- **Automatic phone recovery snapshots** — the installed app now keeps a private on-device backup after data changes, reports when it was last created, and can restore it from Settings. The dashboard also shows whether data is saved locally, synced, or needs attention.
+- **Workout and exercise edit protection** — unfinished new workouts are saved as recoverable drafts, existing workout edits survive navigation or reload, and closing a changed exercise form now asks before discarding it.
+- **Actionable workout reminders** — phone notifications now offer Start, Snooze 10 min, and Skip today actions, while a regular tap still opens the scheduled workout directly.
+- **Workout start preview** — manually starting a workout now shows its estimated duration, exercise count, equipment, and any missing exercise imagery before entering the guided player.
+- **Complete portable backups** — version 4 backups embed available authenticated exercise pictures, folders, equipment and preferences; exports can optionally be protected with an AES-256 password, and restoration previews record and image totals before replacement.
+- **Recoverable destructive actions** — deleting exercises, workouts, calendar entries, folders, equipment, or muscle groups now offers Undo while retaining dependency warnings and reminder restoration.
+- **Guided data recovery** — database-load failures now provide Retry, diagnostics export, and direct backup restoration; the first-run guide explains local storage, snapshots, sync, notifications, and private exercise media.
+
 ### Changed
 
+- **Faster workout completion** — the completion screen now starts with a compact completed-set summary and keeps detailed set corrections collapsed unless they are needed.
 - **App identity** — replaced the old barbell mark across the website favicon and Android launcher icons with the blue athlete inside the green-and-navy circular logo, including adaptive-icon safe padding.
+- **Clearer workout building** — the exercise library keeps the current search and scroll position after an exercise is added, and now shows a persistent selected-exercise and set count with a one-tap Review shortcut.
+- **Phone-friendly workout ordering** — selected exercises can be reordered from a dedicated long-press drag handle on touch devices while the existing accessible move buttons remain available.
+- **Safer mobile forms** — exercise drafts, including newly selected pictures, are kept in private IndexedDB; image selection preserves the editor scroll position, and number fields no longer change accidentally from wheel scrolling.
+- **More useful progression previews** — the manual workout-start preview shows history-based next targets together with the reason for each suggestion.
+- **Configurable effort logging** — completion asks for one overall effort rating by default; optional set-by-set RPE can be enabled in Settings.
 
 ### Fixed
 
@@ -19,6 +37,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Safer exercise editing on mobile** — opening an existing exercise no longer automatically focuses and selects its name, preventing accidental deletion while the edit card is loading.
 - **Stable Linux visual snapshots** — capture the explicitly baseline-sized Settings viewport so Chromium's one-pixel document-height difference cannot fail CI before visual pixel tolerance is evaluated.
 - **Directional image uploads on phones** — prevent an exercise from being saved while an uploaded image is still resizing, which previously made direction-specific images such as Forearm Stretch's Left–Backward variation appear to save and then disappear.
+- **Directional image completeness** — each configured direction now identifies a custom image, default-image fallback, or missing image, and saving provides a non-blocking coverage warning.
 
 ## [1.0.10] - 2026-09-20
 

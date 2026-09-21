@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, Dumbbell, ListChecks, TrendingUp } from 'lucide-react';
+import { Bell, CalendarDays, Dumbbell, Image, ListChecks, ShieldCheck, TrendingUp } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -13,6 +13,9 @@ const STEPS = [
   { icon: ListChecks, title: 'Workouts', text: 'Three starter workouts are ready to run. Build your own from sets of reps or timed holds.' },
   { icon: CalendarDays, title: 'Plan it', text: 'Put workouts on the calendar, or follow the “Strength & Stretch Starter” course over four weeks.' },
   { icon: TrendingUp, title: 'Run & review', text: 'Full-screen guided mode counts you through. History, per-exercise trends and streaks build up as you go.' },
+  { icon: ShieldCheck, title: 'Your data', text: 'Changes save locally first. The phone app keeps a recovery snapshot; portable encrypted backups and optional self-hosted sync are available in Settings.' },
+  { icon: Bell, title: 'Reminders', text: 'Notification permission is optional. If enabled, reminders can start, snooze, or skip a scheduled workout.' },
+  { icon: Image, title: 'Exercise pictures', text: 'Pictures stay on your device or behind your authenticated sync account and are included in new portable backups.' },
 ];
 
 // A one-time welcome on first launch. Everything it mentions already exists
@@ -42,7 +45,7 @@ export function OnboardingDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <ul className="space-y-3">
+        <ul className="max-h-[52vh] space-y-3 overflow-y-auto pr-1">
           {STEPS.map(({ icon: Icon, title, text }) => (
             <li key={title} className="flex gap-3">
               <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -61,6 +64,7 @@ export function OnboardingDialog() {
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={dismiss}>Explore on my own</Button>
+          <Button variant="outline" onClick={() => { dismiss(); navigate('/settings#data'); }}>Review data safety</Button>
           <Button onClick={() => { dismiss(); navigate('/courses'); }}>See the starter course</Button>
         </DialogFooter>
       </DialogContent>

@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 const resizeImageToDataUrl = vi.fn();
 vi.mock('@/lib/image', () => ({
   readFileAsDataUrl: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock('@/contexts/useData', () => ({
 import ExerciseForm from './ExerciseForm';
 
 describe('ExerciseForm', () => {
+  beforeEach(() => localStorage.clear());
   afterEach(cleanup);
 
   it('renders an existing exercise without crashing', () => {
@@ -32,6 +33,20 @@ describe('ExerciseForm', () => {
 
     expect(screen.getByDisplayValue('Hamstring stretch')).toBeInTheDocument();
     expect(screen.queryByText('Variations')).not.toBeInTheDocument();
+  });
+
+  it('reports when the exercise form has unsaved changes', () => {
+    const onDirtyChange = vi.fn();
+    render(<ExerciseForm
+      exercise={{
+        id: 'hamstring-stretch', name: 'Hamstring stretch', category: 'flexibility',
+        muscleGroups: ['hamstrings'], difficulty: 'beginner',
+      }}
+      onSubmit={vi.fn()} onCancel={vi.fn()} onDirtyChange={onDirtyChange}
+    />);
+
+    fireEvent.change(screen.getByLabelText('Exercise Name'), { target: { value: 'Edited stretch' } });
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
   });
 
   it('shows four explicit image slots when side and orientation are combined', () => {

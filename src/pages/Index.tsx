@@ -10,6 +10,7 @@ import QuickStats from '@/components/dashboard/QuickStats';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { useData } from '@/contexts/useData';
 import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
+import DataSafetyStatus from '@/components/DataSafetyStatus';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ const Index = () => {
             <span className="lcars-status-dot" /> SYSTEM ACTIVE
           </div>
         </div>
+        <DataSafetyStatus />
         
         {/* Main Dashboard Grid */}
         <div className="space-y-5">

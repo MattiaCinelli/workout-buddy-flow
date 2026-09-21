@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ExerciseItem from './ExerciseItem';
 import ExerciseTile from './ExerciseTile';
 import ExerciseForm from './ExerciseForm';
+import { deleteExerciseFormDraft } from '@/lib/exerciseDraft';
 import ImportShareButton from './ImportShareButton';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
 import { ManageMuscleGroupsModal } from './ManageMuscleGroupsModal';
@@ -28,6 +29,7 @@ import { Plus, Search, X, FileImage, Loader2, Settings2, LayoutGrid, List, Libra
 import { useData } from '@/contexts/useData';
 import { exerciseNamesConflict } from '@/lib/exerciseAliases';
 import CardStack from '@/components/CardStack';
+import { ToastAction } from '@/components/ui/toast';
 import {
   ExerciseCategoryFilter, ExerciseDifficultyFilter, filterExerciseLibrary,
 } from '@/lib/exerciseLibrary';
@@ -53,6 +55,7 @@ const ExerciseManager: React.FC = () => {
     createExercise,
     updateExercise,
     deleteExercise,
+    restoreExercise,
     muscleGroups,
   } = useData();
 
@@ -67,6 +70,8 @@ const ExerciseManager: React.FC = () => {
   const [currentExercise, setCurrentExercise] = useState<Exercise | undefined>(undefined);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formDirty, setFormDirty] = useState(false);
+  const [discardFormOpen, setDiscardFormOpen] = useState(false);
   const [isManageMusclesOpen, setIsManageMusclesOpen] = useState(false);
   const [isManageEquipmentOpen, setIsManageEquipmentOpen] = useState(false);
   const { equipment: equipmentOptions } = useEquipment();
@@ -134,6 +139,8 @@ const ExerciseManager: React.FC = () => {
         description: `${newExercise.name} has been created successfully.`,
       });
       setIsFormOpen(false);
+      setFormDirty(false);
+      void deleteExerciseFormDraft();
     } catch (error) {
       console.error('Failed to create exercise:', error);
       toast({
@@ -172,6 +179,8 @@ const ExerciseManager: React.FC = () => {
           });
         }
         setIsFormOpen(false);
+        setFormDirty(false);
+        void deleteExerciseFormDraft(currentExercise.id);
         setCurrentExercise(undefined);
       } catch (error) {
         console.error('Failed to update exercise:', error);
@@ -189,6 +198,7 @@ const ExerciseManager: React.FC = () => {
   const handleEdit = (exercise: Exercise) => {
     setViewingExercise(null);
     setCurrentExercise(exercise);
+    setFormDirty(false);
     setIsFormOpen(true);
   };
 
@@ -218,9 +228,11 @@ const ExerciseManager: React.FC = () => {
       try {
         const deleted = await deleteExercise(currentExercise.id);
         if (deleted) {
+          void deleteExerciseFormDraft(deleted.id);
           toast({
             title: "Exercise deleted",
-            description: `${deleted.name} has been deleted successfully.`,
+            description: `${deleted.name} was removed.`,
+            action: <ToastAction altText={`Undo deletion of ${deleted.name}`} onClick={() => void restoreExercise(deleted)}>Undo</ToastAction>,
           });
         }
       } catch (error) {
@@ -240,7 +252,20 @@ const ExerciseManager: React.FC = () => {
   };
 
   const handleCancel = () => {
+    if (isSubmitting) return;
+    if (formDirty) {
+      setDiscardFormOpen(true);
+      return;
+    }
+    setIsFormOpen(false);
+    setCurrentExercise(undefined);
+  };
+
+  const discardForm = () => {
     if (!isSubmitting) {
+      void deleteExerciseFormDraft(currentExercise?.id);
+      setDiscardFormOpen(false);
+      setFormDirty(false);
       setIsFormOpen(false);
       setCurrentExercise(undefined);
     }
@@ -429,7 +454,7 @@ const ExerciseManager: React.FC = () => {
             {!hasActiveFilters && (
               <div className="mt-6">
                 <Button
-                  onClick={() => setIsFormOpen(true)}
+                  onClick={() => { setFormDirty(false); setCurrentExercise(undefined); setIsFormOpen(true); }}
                   className="bg-primary hover:bg-primary/90"
                 >
                   <Plus className="mr-2 h-4 w-4" /> New Exercise
@@ -442,7 +467,7 @@ const ExerciseManager: React.FC = () => {
       
       <div className="fixed bottom-6 right-6 md:hidden">
         <Button
-          onClick={() => setIsFormOpen(true)}
+          onClick={() => { setFormDirty(false); setCurrentExercise(undefined); setIsFormOpen(true); }}
           size="icon"
           className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90"
         >
@@ -476,9 +501,23 @@ const ExerciseManager: React.FC = () => {
             onCancel={handleCancel}
             onDelete={currentExercise ? () => setIsDeleteDialogOpen(true) : undefined}
             isSubmitting={isSubmitting}
+            onDirtyChange={setFormDirty}
           />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={discardFormOpen} onOpenChange={setDiscardFormOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved exercise changes?</AlertDialogTitle>
+            <AlertDialogDescription>Your changes have not been saved and will be lost.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction onClick={discardForm}>Discard changes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDeleteDialogOpen(open)}>
         <AlertDialogContent>

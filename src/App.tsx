@@ -13,6 +13,8 @@ import Index from "./pages/Index";
 import { AppearanceController } from "@/hooks/useTheme";
 import ReminderRefresh from "@/components/ReminderRefresh";
 import NotificationActionHandler from "@/components/NotificationActionHandler";
+import AutoBackup from "@/components/AutoBackup";
+import { DataRecoveryGate } from "@/components/DataRecoveryGate";
 
 // Every route past the dashboard is code-split so the initial load only
 // ships the landing screen. The Suspense fallback covers the fetch.
@@ -54,6 +56,7 @@ const App = () => (
     <TooltipProvider>
       <DataProvider>
         <AutoSync />
+        <AutoBackup />
         <ReminderRefresh />
         <AccessibilityController />
         <AppearanceController />
@@ -62,6 +65,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <NotificationActionHandler />
+          <DataRecoveryGate>
           <div className="lcars-app">
           <Suspense fallback={<RouteFallback />}>
             <Routes>
@@ -88,6 +92,7 @@ const App = () => (
             </Routes>
           </Suspense>
           </div>
+          </DataRecoveryGate>
         </BrowserRouter>
       </DataProvider>
     </TooltipProvider>
