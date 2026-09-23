@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Dumbbell, Home, Menu, Library, Calendar, History, ListChecks, TrendingUp, BookOpen, Settings } from "lucide-react";
+import { Activity, ChevronDown, Dumbbell, Home, Menu, Library, Calendar, History, ListChecks, TrendingUp, BookOpen, Settings } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AccountButton } from "@/components/AccountButton";
 import { RemindersDialog, RemindersTriggerButton } from "@/components/RemindersButton";
@@ -16,6 +18,29 @@ const OPEN_SWIPE_PX = 60;
 const CLOSE_SWIPE_PX = 60;
 const MAX_VERTICAL_DRIFT_PX = 60;
 type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => unknown };
+
+interface NavItem { path: string; label: string; icon: React.ReactNode }
+
+const navItem = (path: string, label: string, Icon: LucideIcon): NavItem => ({
+  path, label, icon: <Icon className="h-4 w-4" />,
+});
+
+// What you do, then how you are doing: the everyday pages stay one tap away,
+// while the pages you look back at share one "Track" menu. On a phone the same
+// groups appear as headings in the drawer instead of a nested menu.
+const HOME = navItem('/', 'Dashboard', Home);
+const TRAIN: NavItem[] = [
+  navItem('/workouts', 'Workouts', ListChecks),
+  navItem('/exercises', 'Exercises', Library),
+  navItem('/courses', 'Courses', BookOpen),
+];
+const TRACK: NavItem[] = [
+  navItem('/calendar', 'Calendar', Calendar),
+  navItem('/history', 'History', History),
+  navItem('/progress', 'Progress', TrendingUp),
+];
+const TRACK_LABEL = 'Track';
+const SETTINGS = navItem('/settings', 'Settings', Settings);
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -100,16 +125,52 @@ const Navbar: React.FC = () => {
     }
   };
 
-  const navLinks: { path: string; label: string; icon: React.ReactNode }[] = [
-    { path: '/', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
-    { path: '/workouts', label: 'Workouts', icon: <ListChecks className="h-4 w-4" /> },
-    { path: '/exercises', label: 'Exercises', icon: <Library className="h-4 w-4" /> },
-    { path: '/calendar', label: 'Calendar', icon: <Calendar className="h-4 w-4" /> },
-    { path: '/history', label: 'History', icon: <History className="h-4 w-4" /> },
-    { path: '/progress', label: 'Progress', icon: <TrendingUp className="h-4 w-4" /> },
-    { path: '/courses', label: 'Courses', icon: <BookOpen className="h-4 w-4" /> },
-    { path: '/settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
-  ];
+  const trackActive = TRACK.some(item => isActive(item.path));
+
+  const desktopLinkClass = (active: boolean) => cn(
+    'nav-desktop-link h-9 px-2.5 text-muted-foreground hover:text-foreground lg:px-3',
+    active && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+  );
+
+  const renderDesktopLink = (link: NavItem) => (
+    <Button
+      key={link.path}
+      variant="ghost"
+      size="sm"
+      className={desktopLinkClass(isActive(link.path))}
+      onClick={() => goTo(link.path)}
+      aria-label={link.label}
+      aria-current={isActive(link.path) ? 'page' : undefined}
+    >
+      {link.icon}
+      <span className="hidden lg:inline">{link.label}</span>
+    </Button>
+  );
+
+  const renderDrawerLink = (link: NavItem) => (
+    <Button
+      key={link.path}
+      variant="ghost"
+      className={cn(
+        'h-11 w-full justify-start gap-3 px-3 text-muted-foreground',
+        isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
+      )}
+      onClick={() => goTo(link.path)}
+      aria-current={isActive(link.path) ? 'page' : undefined}
+    >
+      {link.icon}
+      <span>{link.label}</span>
+    </Button>
+  );
+
+  const renderDrawerGroup = (label: string, items: NavItem[]) => (
+    <div role="group" aria-labelledby={`nav-group-${label}`} className="flex flex-col gap-1 pt-2">
+      <p id={`nav-group-${label}`} className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      {items.map(renderDrawerLink)}
+    </div>
+  );
 
   return (
     <nav className="lcars-nav sticky top-0 z-40 bg-card px-4 md:px-6" aria-label="Primary navigation">
@@ -146,23 +207,38 @@ const Navbar: React.FC = () => {
 
         {/* Desktop navigation */}
         <div className="hidden min-w-0 items-center gap-1 md:flex">
-          {navLinks.map(link => (
-            <Button
-              key={link.path}
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'nav-desktop-link h-9 px-2.5 text-muted-foreground hover:text-foreground min-[1360px]:px-3',
-                isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
-              )}
-              onClick={() => goTo(link.path)}
-              aria-label={link.label}
-              aria-current={isActive(link.path) ? 'page' : undefined}
-            >
-              {link.icon}
-              <span className="hidden min-[1360px]:inline">{link.label}</span>
-            </Button>
-          ))}
+          {[HOME, ...TRAIN].map(renderDesktopLink)}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={desktopLinkClass(trackActive)}
+                data-active={trackActive || undefined}
+                aria-label={TRACK_LABEL}
+              >
+                <Activity className="h-4 w-4" />
+                <span className="hidden lg:inline">{TRACK_LABEL}</span>
+                <ChevronDown className="h-3 w-3 opacity-70" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-40">
+              {TRACK.map(item => (
+                <DropdownMenuItem
+                  key={item.path}
+                  className={cn('gap-2', isActive(item.path) && 'font-semibold text-primary')}
+                  aria-current={isActive(item.path) ? 'page' : undefined}
+                  onSelect={() => goTo(item.path)}
+                >
+                  {item.icon}
+                  {item.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {renderDesktopLink(SETTINGS)}
 
           <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
           <RemindersTriggerButton onClick={() => setRemindersOpen(true)} />
@@ -196,21 +272,10 @@ const Navbar: React.FC = () => {
             </SheetTitle>
           </SheetHeader>
 
-          {navLinks.map(link => (
-            <Button
-              key={link.path}
-              variant="ghost"
-              className={cn(
-                'h-11 w-full justify-start gap-3 px-3 text-muted-foreground',
-                isActive(link.path) && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary',
-              )}
-              onClick={() => goTo(link.path)}
-              aria-current={isActive(link.path) ? 'page' : undefined}
-            >
-              {link.icon}
-              <span>{link.label}</span>
-            </Button>
-          ))}
+          {renderDrawerLink(HOME)}
+          {renderDrawerGroup('Train', TRAIN)}
+          {renderDrawerGroup(TRACK_LABEL, TRACK)}
+          <div className="pt-2">{renderDrawerLink(SETTINGS)}</div>
 
           <RemindersTriggerButton
             variant="menu-item"

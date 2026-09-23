@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { getUserByEmail } from '../../db/users';
 import { createSession, deleteSession } from '../../db/sessions';
 import { verifyPassword } from '../../auth/password';
+import { createLoginThrottle } from '../../auth/loginThrottle';
 import { requireAuth } from '../requireAuth';
 
 interface LoginBody {
@@ -16,7 +17,13 @@ const INVALID_CREDENTIALS = { error: 'Invalid email or password' };
 const DUMMY_PASSWORD_HASH = `scrypt:${'00'.repeat(16)}:${'00'.repeat(64)}`;
 
 export const registerAuthRoutes = (app: FastifyInstance) => {
+  const throttle = createLoginThrottle();
+
   app.post<{ Body: LoginBody }>('/auth/login', {
+    // Unauthenticated, so keep the body tiny: 320 + 1024 chars is at most a
+    // few KB even in multi-byte UTF-8. (The global limit is 50 MB, sized for
+    // sync pushes.)
+    bodyLimit: 8 * 1024,
     schema: {
       body: {
         type: 'object',
@@ -35,21 +42,39 @@ export const registerAuthRoutes = (app: FastifyInstance) => {
       return;
     }
 
-    const user = getUserByEmail(app.db, email.trim().toLowerCase());
+    const normalizedEmail = email.trim().toLowerCase();
+    // Checked before the (deliberately slow) password hash, so a locked-out
+    // address costs the server nothing.
+    const retryAfterMs = throttle.retryAfterMs(normalizedEmail);
+    if (retryAfterMs > 0) {
+      reply
+        .code(429)
+        .header('Retry-After', Math.ceil(retryAfterMs / 1000))
+        .send({ error: 'Too many failed sign-in attempts. Try again later.' });
+      return;
+    }
+
+    const user = getUserByEmail(app.db, normalizedEmail);
     // Same response whether the email is unknown or the password is wrong —
     // distinguishing the two would let a caller enumerate which emails have
     // accounts on this server.
     const passwordMatches = await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
     if (!user || !passwordMatches) {
+      // Failures are otherwise invisible (the server runs without a request
+      // logger), so surface the moment a guessing run trips the limit.
+      if (throttle.recordFailure(normalizedEmail)) {
+        console.warn(`[auth] Too many failed sign-ins for ${JSON.stringify(normalizedEmail.slice(0, 100))}; locking that address out for 15 minutes.`);
+      }
       reply.code(401).send(INVALID_CREDENTIALS);
       return;
     }
 
+    throttle.recordSuccess(normalizedEmail);
     const session = createSession(app.db, user.id);
     reply.send({ token: session.token, expiresAt: session.expiresAt, displayName: user.displayName });
   });
 
-  app.post('/auth/logout', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/auth/logout', { onRequest: requireAuth }, async (request, reply) => {
     deleteSession(app.db, request.sessionToken!);
     reply.code(204).send();
   });

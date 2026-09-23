@@ -9,7 +9,7 @@ vi.mock('@/lib/diagnosticLog', () => ({ logDiagnostic: vi.fn() }));
 
 const refreshers = Object.fromEntries(
   ['refreshExercises', 'refreshWorkouts', 'refreshScheduledWorkouts', 'refreshCourses',
-    'refreshSessions', 'refreshMuscleGroups', 'refreshBodyMetrics'].map(k => [k, vi.fn(async () => {})]),
+    'refreshSessions', 'refreshMuscleGroups', 'refreshBodyMetrics', 'refreshMeasurements'].map(k => [k, vi.fn(async () => {})]),
 );
 vi.mock('@/contexts/useData', () => ({ useData: () => refreshers }));
 

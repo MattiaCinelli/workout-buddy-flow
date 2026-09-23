@@ -144,8 +144,8 @@ a session linked to a course also reopens that exact course item.
 ## Backup format — `src/lib/backup.ts`
 
 Backups are versioned JSON documents. **Version 3** carries the full app state: all
-seven object-store collections (exercises, workout templates, workout sessions,
-schedules, courses, muscle groups, body metrics), plus `preferences` (a whitelist of
+eight object-store collections (exercises, workout templates, workout sessions,
+schedules, courses, muscle groups, body metrics, My Records), plus `preferences` (a whitelist of
 device `localStorage` keys — theme, weekly goal, accessibility, reminders, height,
 plate-calculator bar; sync credentials and seed markers are deliberately excluded) and
 the optional custom workout `audioTrack` as a data URL. Restore validates each record
@@ -153,8 +153,41 @@ against a Zod schema (`src/lib/importSchemas.ts`) — malformed records and dupl
 are dropped and surfaced as warnings in the confirm dialog — then replaces the included
 stores in one transaction and writes the preferences / audio track back. Legacy
 version 1 and 2 files still restore (a v1 file leaves muscle groups and body metrics
-untouched; v1/v2 carry no preferences). On Android the file goes to the cache directory
+untouched; v1/v2 carry no preferences). `measurements` (My Records) is an *optional*
+list in every version: a file without it — anything written before the feature — leaves
+the device's records untouched on restore instead of clearing them, and a file with it
+replaces them. On Android the file goes to the cache directory
 and the native share sheet; on the web it downloads as `.json`.
+
+## My Records (measurement) — `src/data/measurements.ts`
+
+Things the user measures themselves and wants to watch change over time — the gap
+between fingertips and toes in a toe touch, a plank hold, a one-rep max. The logic lives
+in `src/lib/measurements.ts`; the UI is `MeasurementsCard` on the Progress page.
+
+One `Measurement` is **one logged value**, not a whole series. Values of the same thing
+share a `measurementId`, and the descriptive fields are repeated on each of them:
+
+| Field | Meaning |
+| --- | --- |
+| `measurementId` | Groups every logged value of the same thing. |
+| `name`, `description?` | What is being measured, e.g. "Toe touch" / "Seated, legs straight". |
+| `kind` | `length` (stored in **cm**, negative allowed — e.g. −5 = reaching 5 cm past the toes), `weight` (**kg**) or `time` (**seconds**, entered as `90` or `1:30`). |
+| `better` | `lower` or `higher` — which direction is an improvement. Chosen per record, because a shrinking gap is progress and a shrinking plank hold is not. It decides what "best" and "improved" mean. |
+| `value`, `date`, `notes?` | The reading, the day it was taken (`YYYY-MM-DD`), and an optional note. |
+
+Why one record per value rather than a record holding a list: two devices logging
+values between syncs would otherwise overwrite each other (last-write-wins applies to a
+whole record), silently dropping a reading. As separate records they simply merge.
+The cost is that renaming a record or changing its direction updates every value; when
+devices disagree, a group takes its name, description and direction from its **most
+recent** entry (`groupMeasurements`).
+
+"Best" is the lowest or highest value depending on `better`; on a tie the earliest entry
+keeps the date. A "new best" means the latest entry strictly beats every earlier one.
+
+This is separate from the automatic per-exercise records, which are computed from
+completed workouts and shown in the collapsed "Exercise Records" card.
 
 ## Scheduled workout — `src/data/scheduledWorkouts.ts`
 
@@ -248,6 +281,7 @@ The current IndexedDB version is **6** (`DB_VERSION` in `src/lib/db.ts`):
 - Version 4: `workoutSessions`
 - Version 5: `muscleGroups`
 - Version 6: `bodyMetrics`
+- Version 7: `measurements`
 
 Each `upgrade` block is guarded with `if (!db.objectStoreNames.contains(...))`, so a
 version bump only *adds* missing stores and never clears existing ones. New optional

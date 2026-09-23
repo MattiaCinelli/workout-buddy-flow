@@ -23,12 +23,12 @@ vi.mock('@/lib/syncConflicts', () => ({
 vi.mock('@/lib/db', () => ({
   saveExerciseToDB,
   saveWorkoutToDB: vi.fn(), saveScheduledWorkoutToDB: vi.fn(), saveCourseToDB: vi.fn(),
-  saveWorkoutSessionToDB: vi.fn(), saveMuscleGroupToDB: vi.fn(), saveBodyMetricToDB: vi.fn(),
+  saveWorkoutSessionToDB: vi.fn(), saveMuscleGroupToDB: vi.fn(), saveBodyMetricToDB: vi.fn(), saveMeasurementToDB: vi.fn(),
 }));
 vi.mock('@/contexts/useData', () => ({
   useData: () => ({
     refreshExercises, refreshWorkouts: vi.fn(), refreshScheduledWorkouts: vi.fn(),
-    refreshCourses: vi.fn(), refreshSessions: vi.fn(), refreshMuscleGroups: vi.fn(), refreshBodyMetrics: vi.fn(),
+    refreshCourses: vi.fn(), refreshSessions: vi.fn(), refreshMuscleGroups: vi.fn(), refreshBodyMetrics: vi.fn(), refreshMeasurements: vi.fn(),
   }),
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));

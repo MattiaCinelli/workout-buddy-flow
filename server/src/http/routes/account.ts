@@ -25,6 +25,16 @@ interface DeleteAccountBody {
 
 const MIN_PASSWORD_LENGTH = 8;
 
+// Account bodies are a few short strings, so cap them. Without a schema a
+// non-string field (e.g. a number for currentPassword) reached the password
+// hash and surfaced as a 500 with Node's internal error text. Deliberately no
+// `required` here: the handlers already return their own specific 400s.
+const ACCOUNT_BODY_LIMIT = 16 * 1024;
+const passwordField = { type: 'string', maxLength: 1024 };
+const bodySchema = (properties: Record<string, object>) => ({
+  body: { type: 'object', properties },
+});
+
 const toAccountView = (user: { id: string; email: string; displayName?: string }) => ({
   id: user.id,
   email: user.email,
@@ -32,14 +42,18 @@ const toAccountView = (user: { id: string; email: string; displayName?: string }
 });
 
 export const registerAccountRoutes = (app: FastifyInstance) => {
-  app.get('/account', { preHandler: requireAuth }, async (request, reply) => {
+  app.get('/account', { onRequest: requireAuth }, async (request, reply) => {
     const user = getUserById(app.db, request.userId!);
     if (!user) { reply.code(404).send({ error: 'Account not found' }); return; }
     reply.send(toAccountView(user));
   });
 
   // Cosmetic — no current-password check, unlike email/password below.
-  app.patch<{ Body: UpdateProfileBody }>('/account/profile', { preHandler: requireAuth }, async (request, reply) => {
+  app.patch<{ Body: UpdateProfileBody }>('/account/profile', {
+    onRequest: requireAuth,
+    bodyLimit: ACCOUNT_BODY_LIMIT,
+    schema: bodySchema({ displayName: { type: 'string', maxLength: 100 } }),
+  }, async (request, reply) => {
     const displayName = request.body?.displayName?.trim();
     if (!displayName) { reply.code(400).send({ error: 'displayName is required' }); return; }
 
@@ -49,7 +63,11 @@ export const registerAccountRoutes = (app: FastifyInstance) => {
 
   // Changes the login identity, so this requires re-proving the password —
   // same reasoning as the password change below.
-  app.patch<{ Body: UpdateEmailBody }>('/account/email', { preHandler: requireAuth }, async (request, reply) => {
+  app.patch<{ Body: UpdateEmailBody }>('/account/email', {
+    onRequest: requireAuth,
+    bodyLimit: ACCOUNT_BODY_LIMIT,
+    schema: bodySchema({ currentPassword: passwordField, email: { type: 'string', maxLength: 320 } }),
+  }, async (request, reply) => {
     const { currentPassword, email } = request.body ?? {};
     if (!currentPassword || !email) {
       reply.code(400).send({ error: 'currentPassword and email are required' });
@@ -73,7 +91,11 @@ export const registerAccountRoutes = (app: FastifyInstance) => {
     reply.send(toAccountView(updated));
   });
 
-  app.post<{ Body: ChangePasswordBody }>('/account/password', { preHandler: requireAuth }, async (request, reply) => {
+  app.post<{ Body: ChangePasswordBody }>('/account/password', {
+    onRequest: requireAuth,
+    bodyLimit: ACCOUNT_BODY_LIMIT,
+    schema: bodySchema({ currentPassword: passwordField, newPassword: passwordField }),
+  }, async (request, reply) => {
     const { currentPassword, newPassword } = request.body ?? {};
     if (!currentPassword || !newPassword) {
       reply.code(400).send({ error: 'currentPassword and newPassword are required' });
@@ -102,7 +124,7 @@ export const registerAccountRoutes = (app: FastifyInstance) => {
   // detail (the sessions table is keyed by the token hash and has no
   // stable public id) — just a count, which is all the "sign out other
   // devices" affordance needs.
-  app.get('/account/sessions', { preHandler: requireAuth }, async (request, reply) => {
+  app.get('/account/sessions', { onRequest: requireAuth }, async (request, reply) => {
     const otherDevices = countOtherSessionsForUser(app.db, request.userId!, request.sessionToken!);
     reply.send({ otherDevices });
   });
@@ -111,7 +133,7 @@ export const registerAccountRoutes = (app: FastifyInstance) => {
   // ever reduces access, and the caller already holds a valid session.
   // Those devices fall back to offline mode with their local data intact
   // and have to reconnect.
-  app.post('/account/sessions/revoke-others', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/account/sessions/revoke-others', { onRequest: requireAuth }, async (request, reply) => {
     deleteOtherSessionsForUser(app.db, request.userId!, request.sessionToken!);
     reply.code(204).send();
   });
@@ -120,7 +142,11 @@ export const registerAccountRoutes = (app: FastifyInstance) => {
   // or password change), then removes the user, all their sessions, and
   // every synced row they own. Nothing is tombstoned — other devices just
   // start failing auth and keep working offline against their local copy.
-  app.delete<{ Body: DeleteAccountBody }>('/account', { preHandler: requireAuth }, async (request, reply) => {
+  app.delete<{ Body: DeleteAccountBody }>('/account', {
+    onRequest: requireAuth,
+    bodyLimit: ACCOUNT_BODY_LIMIT,
+    schema: bodySchema({ currentPassword: passwordField }),
+  }, async (request, reply) => {
     const { currentPassword } = request.body ?? {};
     if (!currentPassword) {
       reply.code(400).send({ error: 'currentPassword is required' });

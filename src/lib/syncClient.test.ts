@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { stores, STORE_NAMES } = vi.hoisted(() => {
   const STORE_NAMES = [
     'exercises', 'workouts', 'scheduledWorkouts', 'courses',
-    'workoutSessions', 'muscleGroups', 'bodyMetrics',
+    'workoutSessions', 'muscleGroups', 'bodyMetrics', 'measurements',
   ];
   const stores: Record<string, Map<string, Record<string, unknown>>> = {};
   for (const name of STORE_NAMES) stores[name] = new Map();
@@ -35,6 +35,7 @@ vi.mock('./db', () => {
     getAllWorkoutSessionsFromDB: api.workoutSessions.getAll, saveWorkoutSessionToDB: api.workoutSessions.save, deleteWorkoutSessionFromDB: api.workoutSessions.remove,
     getAllMuscleGroupsFromDB: api.muscleGroups.getAll, saveMuscleGroupToDB: api.muscleGroups.save, deleteMuscleGroupFromDB: api.muscleGroups.remove,
     getAllBodyMetricsFromDB: api.bodyMetrics.getAll, saveBodyMetricToDB: api.bodyMetrics.save, deleteBodyMetricFromDB: api.bodyMetrics.remove,
+    getAllMeasurementsFromDB: api.measurements.getAll, saveMeasurementToDB: api.measurements.save, deleteMeasurementFromDB: api.measurements.remove,
     // Unused by syncClient but exported by the real module.
     ...Object.fromEntries(STORE_NAMES.map(n => [`bulkSave${cap(n)}ToDB`, async () => {}])),
   };
@@ -46,7 +47,7 @@ vi.mock('./seedVersion', () => ({ SEED_IDS: new Set<string>() }));
 import {
   changePassword, deleteAccount, getLastSyncedAt, getOtherDeviceCount,
   fetchPrivateExerciseImage, getServerUrl, getSyncStatus, isConnected, isSyncing, login, logout, resetSyncState, revokeOtherSessions,
-  subscribeSyncActivity, syncAll, updateDisplayName, updateEmail,
+  scrubSyncedRecord, subscribeSyncActivity, syncAll, updateDisplayName, updateEmail,
 } from './syncClient';
 import { getConflicts, setBaseline } from './syncConflicts';
 
@@ -56,6 +57,8 @@ interface FakeServer {
   collections: Record<string, Record<string, { updatedAt?: string; deletedAt?: string; id: string }>>;
   settings: { settings: unknown; updatedAt: string } | null;
   failCollection: string | null;
+  /** Collections the (older) server has no route for: Fastify's real 404 body. */
+  missingRoutes: string[];
   requests: { method: string; path: string; body: unknown }[];
   serverTime: string;
 }
@@ -98,6 +101,9 @@ const fetchMock = vi.fn(async (input: string | URL, init: RequestInit = {}) => {
   const syncMatch = path.match(/^\/sync\/(\w+)$/);
   if (syncMatch) {
     const name = syncMatch[1];
+    if (server.missingRoutes.includes(name)) {
+      return jsonResponse({ message: `Route ${method}:${path} not found`, error: 'Not Found', statusCode: 404 }, 404);
+    }
     if (server.failCollection === name) return jsonResponse({ error: 'server on fire' }, 500);
     server.collections[name] ??= {};
     const table = server.collections[name];
@@ -124,6 +130,7 @@ beforeEach(() => {
     collections: {},
     settings: null,
     failCollection: null,
+    missingRoutes: [],
     requests: [],
     serverTime: '2026-09-01T00:00:00.000Z',
   };
@@ -194,6 +201,76 @@ describe('private exercise media', () => {
   });
 });
 
+describe('exercise videoUrl scrubbing', () => {
+  it('drops non-https links from records pulled from the server', async () => {
+    await connect();
+    server.collections.exercises = {
+      bad: { id: 'bad', name: 'Bad', videoUrl: 'javascript:alert(1)', updatedAt: '2026-05-01T00:00:00.000Z' } as never,
+      good: { id: 'good', name: 'Good', videoUrl: 'https://example.com/v', updatedAt: '2026-05-01T00:00:00.000Z' } as never,
+    };
+
+    await syncAll('pull');
+
+    expect(stores.exercises.get('bad')?.videoUrl).toBeUndefined();
+    expect(stores.exercises.get('good')?.videoUrl).toBe('https://example.com/v');
+  });
+
+  it('does not send a legacy non-https link, which the server would reject as a whole batch', async () => {
+    await connect();
+    stores.exercises.set('old', { id: 'old', name: 'Old', videoUrl: 'http://example.com/v', updatedAt: '2026-01-01T00:00:00.000Z' });
+
+    await syncAll('both');
+
+    expect(server.collections.exercises.old).not.toHaveProperty('videoUrl');
+  });
+
+  it('leaves other collections and untouched records alone', () => {
+    const workout = { id: 'w', videoUrl: 'javascript:1' };
+    expect(scrubSyncedRecord('workouts', workout)).toBe(workout);
+    const exercise = { id: 'e', videoUrl: 'https://example.com/v' };
+    expect(scrubSyncedRecord('exercises', exercise)).toBe(exercise);
+    expect(scrubSyncedRecord('exercises', { id: 'e' })).toEqual({ id: 'e' });
+  });
+});
+
+describe('syncing "My records" (measurements)', () => {
+  const record = (over: Record<string, unknown> = {}) => ({
+    id: 'm1', measurementId: 'toe', name: 'Toe touch', kind: 'length', better: 'lower', value: 12,
+    date: '2026-09-01', updatedAt: '2026-09-01T00:00:00.000Z', ...over,
+  });
+
+  it('pushes local records and pulls the server\'s', async () => {
+    await connect();
+    stores.measurements.set('m1', record());
+    server.collections.measurements = { m2: record({ id: 'm2', value: 9, updatedAt: '2026-09-02T00:00:00.000Z' }) as never };
+
+    await syncAll('both');
+
+    expect(server.collections.measurements.m1).toMatchObject({ value: 12 });
+    expect(stores.measurements.get('m2')).toMatchObject({ value: 9 });
+  });
+
+  it('keeps syncing every other collection when the server predates "My records"', async () => {
+    await connect();
+    stores.exercises.set('e1', { id: 'e1', name: 'Squat', updatedAt: '2026-01-01T00:00:00.000Z' });
+    stores.measurements.set('m1', record());
+    server.missingRoutes = ['measurements'];
+
+    const results = await syncAll('both');
+
+    expect(results).toHaveLength(7);
+    expect(server.collections.exercises.e1).toMatchObject({ name: 'Squat' });
+    expect(stores.measurements.get('m1')).toMatchObject({ value: 12 }); // local data untouched
+    expect(getSyncStatus().lastError).toBeNull();
+  });
+
+  it('still fails the sync for any other server error on that collection', async () => {
+    await connect();
+    server.failCollection = 'measurements';
+    await expect(syncAll('both')).rejects.toThrow(/server on fire/);
+  });
+});
+
 describe('syncAll — both (bidirectional merge)', () => {
   it('pushes local rows, stores the server echo, pulls, and records the watermark + lastSyncedAt', async () => {
     await connect();
@@ -209,7 +286,7 @@ describe('syncAll — both (bidirectional merge)', () => {
     // watermark saved from the GET response
     expect(localStorage.getItem('workout-buddy-sync:watermark:exercises')).toBe(server.serverTime);
     expect(getLastSyncedAt()).not.toBeNull();
-    expect(results).toHaveLength(7);
+    expect(results).toHaveLength(8);
     expect(results[0]).toMatchObject({ collection: 'exercises', pushed: 1 });
   });
 
@@ -344,7 +421,7 @@ describe('syncAll — settings and failures', () => {
       return realImpl(input, init as RequestInit);
     });
 
-    await expect(syncAll('both')).resolves.toHaveLength(7);
+    await expect(syncAll('both')).resolves.toHaveLength(8);
     expect(getLastSyncedAt()).not.toBeNull();
   });
 

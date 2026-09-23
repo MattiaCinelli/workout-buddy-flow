@@ -205,6 +205,9 @@ workout_sessions    id, user_id, workout_id, date, title, duration,
                     actual_sets, perceived_exertion,
                     completion_notes, updated_at, deleted_at       (002)
 users               + display_name (nullable)                     (004)
+measurements        id, user_id, measurement_id, name, description,
+                    kind, better, value, date, notes,
+                    updated_at, deleted_at, synced_at              (030)
 user_settings       user_id (PK), data (JSON text), updated_at     (015)
 ```
 
@@ -268,10 +271,19 @@ Endpoints that exist right now:
 | `POST /sync/<collection>` | `Authorization: Bearer <token>` | `{ <collection>: [...] }`, up to 1000 per request, validated by JSON schema. Applies each with last-write-wins in one transaction and returns the post-merge state — a caller whose write lost a conflict gets told what actually won, not an echo of what it sent. |
 
 `<collection>` is one of `exercises`, `workouts`, `scheduledWorkouts`,
-`courses`, `workoutSessions`, `muscleGroups`, `bodyMetrics` — all seven
-exist and share this exact
+`courses`, `workoutSessions`, `muscleGroups`, `bodyMetrics`, `measurements` — all
+eight exist and share this exact
 shape, registered through one generic factory
-(`server/src/http/syncRoute.ts`) rather than seven hand-written route pairs.
+(`server/src/http/syncRoute.ts`) rather than eight hand-written route pairs.
+`measurements` (the user's own records — see `docs/data-model.md`) validates
+`kind` (`length`/`weight`/`time`) and `better` (`higher`/`lower`) as enums and caps
+`name` at 100 characters and `description`/`notes` at 2000.
+
+An **older server** with no `/sync/measurements` route answers 404. The client
+treats that one case as "skip this collection until the server is updated" so a
+client update that reaches a phone before the laptop server is restarted never
+stops the other seven collections from syncing; any other error on that collection
+still fails the sync.
 Only the DB-layer SQL stays explicit per table
 (`server/src/db/`)
 — deliberately not genericized, so each table's upsert logic stays directly
@@ -289,7 +301,7 @@ readable rather than generated from column config.
   re-pushing unchanged rows is harmless at personal-library scale), saves
   back whatever the server says actually won each conflict, then pulls
   anything changed since the last watermark and merges it in. After the
-  seven collections it does one more round for the account settings blob
+  eight collections it does one more round for the account settings blob
   (see "Settings sync" below). `syncAll(direction)` takes `'both'`
   (default), `'push'`, or `'pull'` — the one-way modes are manual overrides
   from the "One-way sync" panel for forcing a direction when the automatic

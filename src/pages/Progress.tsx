@@ -42,6 +42,7 @@ import { format, parseISO, endOfWeek, eachWeekOfInterval, subMonths, isWithinInt
 import { describeSeries } from '@/lib/chartA11y';
 import { BodyWeightCard } from '@/components/dashboard/BodyWeightCard';
 import { PersonalRecordsCard } from '@/components/dashboard/PersonalRecordsCard';
+import { MeasurementsCard } from '@/components/dashboard/MeasurementsCard';
 import { muscleGroupLoad } from '@/lib/muscleGroupVolume';
 
 const ProgressPage = () => {
@@ -188,7 +189,7 @@ const ProgressPage = () => {
           
           <div className="page-actions">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[180px]" aria-label="Time range">
                 <SelectValue placeholder="Time range" />
               </SelectTrigger>
               <SelectContent>
@@ -199,7 +200,7 @@ const ProgressPage = () => {
               </SelectContent>
             </Select>
             
-            <Button variant="outline" onClick={() => setClearHistoryOpen(true)} className="text-destructive">
+            <Button variant="outline" onClick={() => setClearHistoryOpen(true)} className="text-red-700 dark:text-red-400">
               <Trash2 className="mr-2 h-4 w-4" />Clear history
             </Button>
           </div>
@@ -406,9 +407,12 @@ const ProgressPage = () => {
           </Card>
         )}
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PersonalRecordsCard />
-          <BodyWeightCard />
+        <div className="mt-6 space-y-6">
+          <MeasurementsCard />
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            <BodyWeightCard />
+            <PersonalRecordsCard />
+          </div>
         </div>
       </main>
       <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>

@@ -39,5 +39,15 @@ describe('useBackDismiss', () => {
     expect(dismissChild).toHaveBeenCalledOnce();
     expect(dismissParent).not.toHaveBeenCalled();
   });
-});
 
+  it('removes its history entry when an overlay is closed normally', async () => {
+    window.history.replaceState({}, '', '/history');
+    const startLength = window.history.length;
+    const view = render(<Harness open onDismiss={vi.fn()} />);
+    await waitFor(() => expect(window.history.state.__workoutBuddyOverlay).toBeTruthy());
+    expect(window.history.length).toBe(startLength + 1);
+
+    view.rerender(<Harness open={false} onDismiss={vi.fn()} />);
+    await waitFor(() => expect(window.history.state?.__workoutBuddyOverlay).toBeFalsy());
+  });
+});

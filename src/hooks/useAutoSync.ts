@@ -23,7 +23,7 @@ const MAX_BACKOFF_MS = 15 * 60_000;
 export const useAutoSync = () => {
   const {
     refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions,
-    refreshMuscleGroups, refreshBodyMetrics,
+    refreshMuscleGroups, refreshBodyMetrics, refreshMeasurements,
   } = useData();
   const syncingRef = useRef(false);
   const failuresRef = useRef(0);
@@ -41,7 +41,7 @@ export const useAutoSync = () => {
         await syncAll();
         await Promise.all([
           refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
-          refreshMuscleGroups(), refreshBodyMetrics(),
+          refreshMuscleGroups(), refreshBodyMetrics(), refreshMeasurements(),
         ]);
         failuresRef.current = 0;
         nextAllowedAtRef.current = 0;
@@ -70,6 +70,6 @@ export const useAutoSync = () => {
     };
   }, [
     refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions,
-    refreshMuscleGroups, refreshBodyMetrics,
+    refreshMuscleGroups, refreshBodyMetrics, refreshMeasurements,
   ]);
 };

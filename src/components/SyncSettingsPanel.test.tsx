@@ -31,7 +31,7 @@ vi.mock('@/lib/syncClient', () => ({
 vi.mock('@/contexts/useData', () => ({
   useData: () => Object.fromEntries(
     ['refreshExercises', 'refreshWorkouts', 'refreshScheduledWorkouts', 'refreshCourses',
-      'refreshSessions', 'refreshMuscleGroups', 'refreshBodyMetrics'].map(k => [k, vi.fn(async () => {})]),
+      'refreshSessions', 'refreshMuscleGroups', 'refreshBodyMetrics', 'refreshMeasurements'].map(k => [k, vi.fn(async () => {})]),
   ),
 }));
 vi.mock('./SyncConflicts', () => ({ SyncConflicts: () => null }));

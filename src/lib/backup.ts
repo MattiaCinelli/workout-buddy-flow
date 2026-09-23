@@ -6,6 +6,7 @@ import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course } from '@/data/courses';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
+import { Measurement } from '@/data/measurements';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -15,7 +16,7 @@ import {
 } from './exerciseMediaClient';
 import {
   bodyMetricImportSchema, checkExerciseReferences, courseImportSchema, exerciseImportSchema,
-  muscleGroupImportSchema, scheduledWorkoutImportSchema, validateImportCollection,
+  measurementImportSchema, muscleGroupImportSchema, scheduledWorkoutImportSchema, validateImportCollection,
   workoutImportSchema, workoutSessionImportSchema,
 } from './importSchemas';
 
@@ -50,6 +51,10 @@ interface WorkoutBuddyBackupDataV1 {
   workoutSessions: WorkoutSession[];
   scheduledWorkouts: ScheduledWorkout[];
   courses: Course[];
+  // Optional in every version: files written before "My records" existed
+  // don't have it, and restoring one of those must leave the device's
+  // records alone rather than wipe them.
+  measurements?: Measurement[];
 }
 
 interface WorkoutBuddyBackupDataV2 extends WorkoutBuddyBackupDataV1 {
@@ -139,15 +144,16 @@ const privateMediaFrom = async (exercises: Exercise[]): Promise<Record<string, B
 
 export const createBackup = async (): Promise<Extract<WorkoutBuddyBackup, { version: 4 }>> => {
   const db = await getDB();
-  const [exercises, workouts, workoutSessions, scheduledWorkouts, courses, muscleGroups, bodyMetrics] = await Promise.all([
+  const [exercises, workouts, workoutSessions, scheduledWorkouts, courses, muscleGroups, bodyMetrics, measurements] = await Promise.all([
     db.getAll('exercises'), db.getAll('workouts'), db.getAll('workoutSessions'),
     db.getAll('scheduledWorkouts'), db.getAll('courses'), db.getAll('muscleGroups'), db.getAll('bodyMetrics'),
+    db.getAll('measurements'),
   ]);
   const track = await getCustomTrack().catch(() => null);
   const media = await privateMediaFrom(exercises);
   return {
     format: 'workout-buddy-backup', version: 4, exportedAt: new Date().toISOString(),
-    data: { exercises, workouts, workoutSessions, scheduledWorkouts, courses, muscleGroups, bodyMetrics },
+    data: { exercises, workouts, workoutSessions, scheduledWorkouts, courses, muscleGroups, bodyMetrics, measurements },
     preferences: gatherPreferences(),
     media,
     ...(track
@@ -378,6 +384,10 @@ export const parseBackup = (text: string): ParsedBackup => {
     validate('muscleGroups', muscleGroupImportSchema);
     validate('bodyMetrics', bodyMetricImportSchema);
   }
+  if ('measurements' in data) {
+    if (!Array.isArray(data.measurements)) throw new Error('Backup measurements are malformed.');
+    validate('measurements', measurementImportSchema);
+  }
 
   warnings.push(...checkExerciseReferences(
     exercises.map(item => item.id),
@@ -434,12 +444,17 @@ export const restoreBackup = async (backup: WorkoutBuddyBackup) => {
   // Version 1 predates muscle-group and body-metric backup support. Leave
   // those device stores untouched when restoring an old file: clearing
   // data that the file could never have contained would be destructive.
-  const storesToRestore = backup.version === 1 ? legacyStores : stores;
+  const storesToRestore: Array<typeof stores[number] | 'measurements'> = [...(backup.version === 1 ? legacyStores : stores)];
+  // Same rule for "My records": only replace them when the file carries them.
+  const restoredMeasurements = Array.isArray((backup.data as { measurements?: unknown }).measurements);
+  if (restoredMeasurements) storesToRestore.push('measurements');
   const tx = db.transaction(storesToRestore, 'readwrite');
   for (const storeName of storesToRestore) {
     const store = tx.objectStore(storeName);
     await store.clear();
-    for (const record of backup.data[storeName] ?? []) await store.put(record);
+    for (const record of (backup.data as unknown as Record<string, unknown[] | undefined>)[storeName] ?? []) {
+      await (store as unknown as { put: (value: unknown) => Promise<unknown> }).put(record);
+    }
   }
   await tx.done;
 

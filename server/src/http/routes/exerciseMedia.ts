@@ -15,7 +15,7 @@ const contentTypeFor = (filename: string): string => {
 export const registerExerciseMediaRoute = (app: FastifyInstance) => {
   app.get<{ Params: { filename: string } }>(
     '/media/exercises/:filename',
-    { preHandler: requireAuth },
+    { onRequest: requireAuth },
     async (request, reply) => {
       const { filename } = request.params;
       if (!SAFE_IMAGE_NAME.test(filename)) {

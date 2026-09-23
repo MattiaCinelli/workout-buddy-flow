@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/useData';
 import { getConflicts, removeConflict, SyncConflict } from '@/lib/syncConflicts';
 import {
-  saveBodyMetricToDB, saveCourseToDB, saveExerciseToDB, saveMuscleGroupToDB,
+  saveBodyMetricToDB, saveCourseToDB, saveExerciseToDB, saveMeasurementToDB, saveMuscleGroupToDB,
   saveScheduledWorkoutToDB, saveWorkoutSessionToDB, saveWorkoutToDB,
 } from '@/lib/db';
 
@@ -17,6 +17,7 @@ const SAVERS = {
   workoutSessions: saveWorkoutSessionToDB,
   muscleGroups: saveMuscleGroupToDB,
   bodyMetrics: saveBodyMetricToDB,
+  measurements: saveMeasurementToDB,
 } as unknown as Record<string, (record: Record<string, unknown>) => Promise<void>>;
 
 // Shown in the Sync settings when a background sync found that a record we
@@ -37,6 +38,7 @@ export function SyncConflicts() {
     workoutSessions: data.refreshSessions,
     muscleGroups: data.refreshMuscleGroups,
     bodyMetrics: data.refreshBodyMetrics,
+    measurements: data.refreshMeasurements,
   };
 
   const keepMine = async (conflict: SyncConflict) => {

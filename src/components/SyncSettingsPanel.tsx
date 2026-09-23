@@ -31,7 +31,7 @@ interface SyncSettingsPanelProps {
 export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps) {
   const {
     refreshExercises, refreshWorkouts, refreshScheduledWorkouts, refreshCourses, refreshSessions,
-    refreshMuscleGroups, refreshBodyMetrics,
+    refreshMuscleGroups, refreshBodyMetrics, refreshMeasurements,
   } = useData();
   const [connected, setConnected] = useState(isConnected());
   const [serverUrl, setServerUrl] = useState(getServerUrl() ?? 'http://');
@@ -53,7 +53,7 @@ export function SyncSettingsPanel({ onConnectionChange }: SyncSettingsPanelProps
 
   const refreshAll = () => Promise.all([
     refreshExercises(), refreshWorkouts(), refreshScheduledWorkouts(), refreshCourses(), refreshSessions(),
-    refreshMuscleGroups(), refreshBodyMetrics(),
+    refreshMuscleGroups(), refreshBodyMetrics(), refreshMeasurements(),
   ]);
 
   const handleConnect = async () => {

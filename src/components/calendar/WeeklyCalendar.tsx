@@ -2,9 +2,11 @@ import React from 'react';
 import { format, startOfWeek, addDays, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { WorkoutEntry } from '@/data/workoutHistory';
+import type { WorkoutSession } from '@/data/workoutSessions';
+import { sessionCalendarTime } from '@/lib/calendarSessions';
 import { cn } from '@/lib/utils';
 
 interface WeeklyCalendarProps {
@@ -12,8 +14,12 @@ interface WeeklyCalendarProps {
   onDateChange: (date: Date) => void;
   scheduledWorkouts: ExpandedScheduledWorkout[];
   workouts: WorkoutEntry[];
+  /** Workouts done without being scheduled, by day (yyyy-MM-dd). */
+  unplannedByDate: Map<string, WorkoutSession[]>;
+  isCompleted: (schedule: ExpandedScheduledWorkout) => boolean;
   onAddClick: (date: Date) => void;
   onScheduleClick: (schedule: ExpandedScheduledWorkout) => void;
+  onSessionClick: (session: WorkoutSession) => void;
 }
 
 const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
@@ -21,8 +27,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   onDateChange,
   scheduledWorkouts,
   workouts,
+  unplannedByDate,
+  isCompleted,
   onAddClick,
   onScheduleClick,
+  onSessionClick,
 }) => {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -75,6 +84,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day) => {
           const schedules = getSchedulesForDate(day);
+          const unplanned = unplannedByDate.get(format(day, 'yyyy-MM-dd')) ?? [];
           const dayIsToday = isToday(day);
 
           return (
@@ -114,16 +124,36 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                         "w-full text-left p-1.5 rounded border text-xs transition-colors hover:opacity-80",
                         getCategoryColor(workout.category), schedule.skipped && "line-through opacity-50"
                       )}
-                      aria-label={`${workout.title}${schedule.skipped ? ', skipped' : ''}`}
+                      aria-label={`${workout.title}${schedule.skipped ? ', skipped' : isCompleted(schedule) ? ', done' : ''}`}
                     >
                       <div className="font-medium truncate flex items-center gap-1">
                         {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0" />}
                         <span className="truncate">{workout.title}</span>
+                        {!schedule.skipped && isCompleted(schedule) && <Check className="ml-auto h-3 w-3 flex-shrink-0" aria-hidden="true" />}
                       </div>
                       <div className="text-[10px] opacity-70">{schedule.startTime}</div>
                     </button>
                   );
                 })}
+
+                {/* Done without being scheduled: still part of the day. */}
+                {unplanned.map(session => (
+                  <button
+                    key={session.id}
+                    onClick={() => onSessionClick(session)}
+                    className={cn(
+                      "w-full text-left p-1.5 rounded border border-dashed text-xs transition-colors hover:opacity-80",
+                      getCategoryColor(session.category),
+                    )}
+                    aria-label={`${session.title}, done, not scheduled`}
+                  >
+                    <div className="font-medium truncate flex items-center gap-1">
+                      <span className="truncate">{session.title}</span>
+                      <Check className="ml-auto h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                    </div>
+                    <div className="text-[10px] opacity-70">{sessionCalendarTime(session)} · done</div>
+                  </button>
+                ))}
               </div>
 
               {/* Add Button */}

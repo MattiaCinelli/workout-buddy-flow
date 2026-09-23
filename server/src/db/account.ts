@@ -13,6 +13,7 @@ const SYNCED_TABLES = [
   'workout_sessions',
   'muscle_groups',
   'body_metrics',
+  'measurements',
   'user_settings',
 ] as const;
 

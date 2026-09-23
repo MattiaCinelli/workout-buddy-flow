@@ -3,7 +3,9 @@ import { getValidSession } from '../db/sessions';
 
 const BEARER_PREFIX = 'Bearer ';
 
-// A preHandler for routes that need an authenticated user. On success it
+// An onRequest hook, so it runs BEFORE the body is read, parsed and
+// validated (an unauthenticated caller must not be able to make the server
+// buffer a 50 MB body), for routes that need an authenticated user. On success it
 // attaches userId/sessionToken to the request for the route handler to use;
 // on failure it sends 401 itself and the route handler never runs.
 export const requireAuth = async (request: FastifyRequest, reply: FastifyReply) => {

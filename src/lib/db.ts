@@ -6,9 +6,10 @@ import { Course } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
+import { Measurement } from '@/data/measurements';
 
 const DB_NAME = 'workout-buddy-db';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 export interface WorkoutBuddyDB {
   exercises: Exercise;
@@ -18,6 +19,7 @@ export interface WorkoutBuddyDB {
   workoutSessions: WorkoutSession;
   muscleGroups: MuscleGroup;
   bodyMetrics: BodyMetric;
+  measurements: Measurement;
 }
 
 let dbPromise: Promise<IDBPDatabase<WorkoutBuddyDB>> | null = null;
@@ -52,6 +54,10 @@ export const getDB = () => {
         // Create body metrics store (added in v6)
         if (!db.objectStoreNames.contains('bodyMetrics')) {
           db.createObjectStore('bodyMetrics', { keyPath: 'id' });
+        }
+        // Create measurements store (added in v7)
+        if (!db.objectStoreNames.contains('measurements')) {
+          db.createObjectStore('measurements', { keyPath: 'id' });
         }
       },
     });
@@ -217,6 +223,21 @@ export const saveBodyMetricToDB = async (metric: BodyMetric): Promise<void> => {
 export const deleteBodyMetricFromDB = async (id: string): Promise<void> => {
   const db = await getDB();
   await db.delete('bodyMetrics', id);
+};
+
+export const getAllMeasurementsFromDB = async (): Promise<Measurement[]> => {
+  const db = await getDB();
+  return db.getAll('measurements');
+};
+
+export const saveMeasurementToDB = async (measurement: Measurement): Promise<void> => {
+  const db = await getDB();
+  await db.put('measurements', measurement);
+};
+
+export const deleteMeasurementFromDB = async (id: string): Promise<void> => {
+  const db = await getDB();
+  await db.delete('measurements', id);
 };
 
 export const getAllWorkoutSessionsFromDB = async (): Promise<WorkoutSession[]> => {

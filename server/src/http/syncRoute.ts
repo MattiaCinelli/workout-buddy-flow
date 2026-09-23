@@ -32,13 +32,13 @@ export const registerSyncCollection = <T extends SyncedRecord>(
   const { path, listChangedSince, upsertBatch, itemSchema, maxBatchSize = DEFAULT_MAX_BATCH_SIZE } = config;
   const url = `/sync/${path}`;
 
-  app.get<{ Querystring: { since?: string } }>(url, { preHandler: requireAuth }, async (request, reply) => {
+  app.get<{ Querystring: { since?: string } }>(url, { onRequest: requireAuth }, async (request, reply) => {
     const items = listChangedSince(app.db, request.userId!, request.query.since);
     reply.send({ [path]: items, serverTime: new Date().toISOString() });
   });
 
   app.post<{ Body: Record<string, T[]> }>(url, {
-    preHandler: requireAuth,
+    onRequest: requireAuth,
     schema: {
       body: {
         type: 'object',

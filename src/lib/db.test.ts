@@ -7,6 +7,7 @@ import {
   getAllWorkoutsFromDB, saveWorkoutToDB, bulkSaveWorkoutsToDB,
   getAllWorkoutSessionsFromDB, saveWorkoutSessionToDB, deleteAllWorkoutSessionsFromDB,
   getAllBodyMetricsFromDB, saveBodyMetricToDB, deleteBodyMetricFromDB,
+  getAllMeasurementsFromDB, saveMeasurementToDB, deleteMeasurementFromDB,
 } from './db';
 import type { Exercise } from '@/data/exercises';
 
@@ -68,10 +69,19 @@ describe('db CRUD wrappers', () => {
     expect(await getAllBodyMetricsFromDB()).toHaveLength(0);
   });
 
-  it('opens the database with all seven stores', async () => {
+  it('measurement helpers round-trip and delete', async () => {
+    await saveMeasurementToDB({
+      id: 'm1', measurementId: 'toe', name: 'Toe touch', kind: 'length', better: 'lower', value: 12, date: '2026-01-01',
+    });
+    expect(await getAllMeasurementsFromDB()).toHaveLength(1);
+    await deleteMeasurementFromDB('m1');
+    expect(await getAllMeasurementsFromDB()).toHaveLength(0);
+  });
+
+  it('opens the database with all eight stores', async () => {
     const db = await getDB();
     expect([...db.objectStoreNames].sort()).toEqual([
-      'bodyMetrics', 'courses', 'exercises', 'muscleGroups', 'scheduledWorkouts', 'workoutSessions', 'workouts',
+      'bodyMetrics', 'courses', 'exercises', 'measurements', 'muscleGroups', 'scheduledWorkouts', 'workoutSessions', 'workouts',
     ]);
   });
 });

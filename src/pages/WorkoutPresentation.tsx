@@ -27,6 +27,7 @@ import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
+import { normalizeHttpsUrl } from '@/lib/url';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
 import { getExerciseImageUrl } from '@/data/exercises';
@@ -533,6 +534,8 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
   const current = steps[activeStep];
   const upcoming = steps[activeStep + 1];
   const exercise = current?.exerciseId ? exercises.find(item => item.id === current.exerciseId) : undefined;
+  // Only ever link a plain https URL, whatever is stored (see src/lib/url.ts).
+  const videoUrl = normalizeHttpsUrl(exercise?.videoUrl);
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   // Self-paced steps have no live clock (timeLeft stays 0), so fall back to
   // their nominal duration for the "About X remaining" estimate. Rests and
@@ -605,10 +608,10 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
               <Dumbbell className="h-20 w-20" aria-hidden="true" />
             </div>
           )}
-          {(exercise.videoUrl || exercise.instructions) && (
+          {(videoUrl || exercise.instructions) && (
             <div className="absolute right-3 top-3 flex gap-2">
-              {exercise.videoUrl && (
-                <a href={exercise.videoUrl} target="_blank" rel="noopener noreferrer"
+              {videoUrl && (
+                <a href={videoUrl} target="_blank" rel="noopener noreferrer"
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-slate-950/75 text-white shadow-lg backdrop-blur transition hover:bg-slate-900"
                   aria-label={`Watch a video of ${exercise.name} (opens in a new tab)`}>
                   <Video className="h-4 w-4" />

@@ -12,14 +12,14 @@ export function DataRecoveryGate({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [retrying, setRetrying] = useState(false);
   const errors = [data.exercisesError, data.workoutsError, data.sessionsError,
-    data.scheduledWorkoutsError, data.coursesError, data.muscleGroupsError, data.bodyMetricsError]
+    data.scheduledWorkoutsError, data.coursesError, data.muscleGroupsError, data.bodyMetricsError, data.measurementsError]
     .filter((error): error is string => !!error);
   if (!errors.length || location.pathname === '/settings') return <>{children}</>;
 
   const retry = async () => {
     setRetrying(true);
     await Promise.allSettled([data.refreshExercises(), data.refreshWorkouts(), data.refreshSessions(),
-      data.refreshScheduledWorkouts(), data.refreshCourses(), data.refreshMuscleGroups(), data.refreshBodyMetrics()]);
+      data.refreshScheduledWorkouts(), data.refreshCourses(), data.refreshMuscleGroups(), data.refreshBodyMetrics(), data.refreshMeasurements()]);
     setRetrying(false);
   };
 

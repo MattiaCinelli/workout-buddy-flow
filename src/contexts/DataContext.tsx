@@ -13,14 +13,16 @@ import { Course, CourseWorkout } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
+import { Measurement } from '@/data/measurements';
+import { useMeasurements } from '@/hooks/useMeasurements';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
 
-/** The seven synced collections, as named by the sync layer. */
+/** The eight synced collections, as named by the sync layer. */
 export type SyncedCollection =
   | 'exercises' | 'workouts' | 'scheduledWorkouts' | 'courses'
-  | 'workoutSessions' | 'muscleGroups' | 'bodyMetrics';
+  | 'workoutSessions' | 'muscleGroups' | 'bodyMetrics' | 'measurements';
 
 export interface DataContextType {
   sessions: WorkoutSession[];
@@ -101,6 +103,15 @@ export interface DataContextType {
   updateBodyMetric: (id: string, updates: Partial<BodyMetric>) => Promise<BodyMetric | null>;
   deleteBodyMetric: (id: string) => Promise<BodyMetric | null>;
   refreshBodyMetrics: () => Promise<void>;
+
+  // Self-measured records (toe-touch gap, plank hold, ...)
+  measurements: Measurement[];
+  measurementsLoading: boolean;
+  measurementsError: string | null;
+  createMeasurement: (data: Omit<Measurement, 'id'>) => Promise<Measurement>;
+  updateMeasurement: (id: string, updates: Partial<Measurement>) => Promise<Measurement | null>;
+  deleteMeasurement: (id: string) => Promise<Measurement | null>;
+  refreshMeasurements: () => Promise<void>;
 
   // Combined loading state
   isLoading: boolean;
@@ -187,6 +198,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     deleteBodyMetric,
     refreshBodyMetrics
   } = useBodyMetrics();
+
+  const {
+    measurements,
+    isLoading: measurementsLoading,
+    error: measurementsError,
+    createMeasurement,
+    updateMeasurement,
+    deleteMeasurement,
+    refreshMeasurements
+  } = useMeasurements();
 
   const duplicateRepairStarted = useRef(new Set<string>());
   useEffect(() => {
@@ -376,7 +397,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     deleteBodyMetric,
     refreshBodyMetrics,
 
-    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading || muscleGroupsLoading || bodyMetricsLoading
+    measurements,
+    measurementsLoading,
+    measurementsError,
+    createMeasurement,
+    updateMeasurement,
+    deleteMeasurement,
+    refreshMeasurements,
+
+    isLoading: exercisesLoading || workoutsLoading || scheduledWorkoutsLoading || coursesLoading || sessionsLoading || muscleGroupsLoading || bodyMetricsLoading || measurementsLoading
   };
 
   return (

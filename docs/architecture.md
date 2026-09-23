@@ -33,7 +33,7 @@ Rules of thumb:
 
 ## The data layer (`src/lib/db.ts`)
 
-One IndexedDB database, `workout-buddy-db`, with seven object stores, each keyed by `id`:
+One IndexedDB database, `workout-buddy-db`, with eight object stores, each keyed by `id`:
 
 | Store | Type | Added in DB version |
 | --- | --- | --- |
@@ -44,6 +44,7 @@ One IndexedDB database, `workout-buddy-db`, with seven object stores, each keyed
 | `workoutSessions` | `WorkoutSession` | 4 |
 | `muscleGroups` | `MuscleGroup` | 5 |
 | `bodyMetrics` | `BodyMetric` | 6 |
+| `measurements` | `Measurement` | 7 |
 
 `getDB()` lazily opens the database once and memoises the promise. The `upgrade`
 callback creates any store that does not yet exist, so bumping `DB_VERSION` and adding
@@ -77,7 +78,7 @@ safe upserts by entity ID.
 
 ## State management (`src/contexts/DataContext.tsx`)
 
-`DataProvider` calls the seven domain hooks once, near the root of the app, and republishes
+`DataProvider` calls the eight domain hooks once, near the root of the app, and republishes
 their values on a single context. Consumers use:
 
 ```ts
@@ -118,6 +119,9 @@ while history, courses or calendar records reference it. This prevents dangling 
   a fresh database. Group IDs remain stable when their display names are changed.
 - **`useBodyMetrics`** — owns dated body-weight measurements and keeps them ordered for
   progress charts.
+- **`useMeasurements`** — owns the user's own measured records (toe-touch gap, plank hold,
+  …), one logged value per record, kept ordered by date. Grouping into "a record with a
+  history" happens in `groupMeasurements` (`src/lib/measurements.ts`).
 
 ## Routing (`src/App.tsx`)
 

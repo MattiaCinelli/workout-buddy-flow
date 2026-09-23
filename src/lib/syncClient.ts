@@ -5,7 +5,9 @@ import { Course } from '@/data/courses';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
+import { Measurement } from '@/data/measurements';
 import { SEED_IDS } from './seedVersion';
+import { normalizeHttpsUrl } from './url';
 import { addConflicts, clearBaselines, clearConflicts, detectOverwrites, getBaseline, setBaseline } from './syncConflicts';
 import {
   applyRemoteSettings, clearSettingsSnapshot, collectLocalSettings, getSettingsSnapshot,
@@ -20,6 +22,7 @@ import {
   getAllWorkoutSessionsFromDB, saveWorkoutSessionToDB, deleteWorkoutSessionFromDB,
   getAllMuscleGroupsFromDB, saveMuscleGroupToDB, deleteMuscleGroupFromDB,
   getAllBodyMetricsFromDB, saveBodyMetricToDB, deleteBodyMetricFromDB,
+  getAllMeasurementsFromDB, saveMeasurementToDB, deleteMeasurementFromDB,
 } from './db';
 
 export { fetchPrivateExerciseImage } from './exerciseMediaClient';
@@ -115,7 +118,7 @@ export const login = async (serverUrl: string, email: string, password: string):
   else localStorage.removeItem(displayNameKey);
 };
 
-const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions', 'muscleGroups', 'bodyMetrics'];
+const COLLECTION_PATHS = ['exercises', 'workouts', 'scheduledWorkouts', 'courses', 'workoutSessions', 'muscleGroups', 'bodyMetrics', 'measurements'];
 
 // Wipe every trace of the sync connection from this device. The app keeps
 // all its actual data (that lives in IndexedDB, untouched) and carries on
@@ -174,14 +177,29 @@ const authorizedRequest = async <T>(path: string, options: RequestInit = {}): Pr
   return response.json() as Promise<T>;
 };
 
+// An exercise's videoUrl is rendered as a link, so only a plain https URL may
+// be stored or sent (a javascript: URL would run in the app's origin when
+// tapped, and the server rejects anything else). Drops anything unusable.
+export const scrubSyncedRecord = <T extends SyncedRecord>(collection: string, item: T): T => {
+  if (collection !== 'exercises') return item;
+  const { videoUrl } = item as T & { videoUrl?: string };
+  if (videoUrl === undefined) return item;
+  const safe = normalizeHttpsUrl(videoUrl);
+  return safe === videoUrl ? item : { ...item, videoUrl: safe };
+};
+
 const pull = async <T extends SyncedRecord>(collection: string, since?: string) => {
   const query = since ? `?since=${encodeURIComponent(since)}` : '';
   const body = await authorizedRequest<Record<string, unknown>>(`/sync/${collection}${query}`, { method: 'GET' });
-  return { items: (body[collection] ?? []) as T[], serverTime: body.serverTime as string };
+  const items = ((body[collection] ?? []) as T[]).map(item => scrubSyncedRecord(collection, item));
+  return { items, serverTime: body.serverTime as string };
 };
 
-const push = async <T extends SyncedRecord>(collection: string, items: T[]): Promise<T[]> => {
-  if (items.length === 0) return [];
+const push = async <T extends SyncedRecord>(collection: string, rawItems: T[]): Promise<T[]> => {
+  if (rawItems.length === 0) return [];
+  // Older records may hold a link the server now refuses; without this one
+  // such record would fail the whole batch.
+  const items = rawItems.map(item => scrubSyncedRecord(collection, item));
   // Chunk by bytes, not record count: the server caps one request body
   // (Fastify bodyLimit), and 500 records with embedded images can be many
   // megabytes while 500 plain records are a few KB. A byte budget keeps
@@ -418,6 +436,9 @@ const syncSettings = async (direction: SyncDirection): Promise<void> => {
   }
 };
 
+const isMissingRouteError = (error: unknown): boolean =>
+  error instanceof Error && /\bnot found\b|\(404\)|\b404\b/i.test(error.message);
+
 // Runs every collection in turn. Deliberately sequential and fail-fast: if
 // one collection's sync fails partway through, the caller sees the error
 // and can retry, rather than this silently reporting partial success. The
@@ -433,6 +454,16 @@ const runSyncAll = async (direction: SyncDirection): Promise<CollectionSyncResul
       await syncNamedCollection<MuscleGroup>({ path: 'muscleGroups', getAll: getAllMuscleGroupsFromDB, save: saveMuscleGroupToDB, remove: deleteMuscleGroupFromDB }, direction),
       await syncNamedCollection<BodyMetric>({ path: 'bodyMetrics', getAll: getAllBodyMetricsFromDB, save: saveBodyMetricToDB, remove: deleteBodyMetricFromDB }, direction),
     ];
+    // A server that has not been updated yet has no /sync/measurements
+    // route (404). That must not stop every other collection from syncing,
+    // so skip just this one until the server is updated; any other failure
+    // still fails the sync as usual.
+    try {
+      results.push(await syncNamedCollection<Measurement>({ path: 'measurements', getAll: getAllMeasurementsFromDB, save: saveMeasurementToDB, remove: deleteMeasurementFromDB }, direction));
+    } catch (error) {
+      if (!isMissingRouteError(error)) throw error;
+      console.warn('The sync server has no records (measurements) support yet; update the server to sync them.');
+    }
     // Best-effort and non-fatal: an older server with no /settings route
     // would 404 here, and that must not break data sync. Settings are the
     // nice-to-have, the collections above are the point.

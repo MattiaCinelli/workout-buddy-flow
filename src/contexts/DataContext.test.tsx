@@ -66,6 +66,12 @@ vi.mock('@/hooks/useBodyMetrics', () => ({
     createBodyMetric: vi.fn(), updateBodyMetric: vi.fn(), deleteBodyMetric: vi.fn(), refreshBodyMetrics: vi.fn(),
   }),
 }));
+vi.mock('@/hooks/useMeasurements', () => ({
+  useMeasurements: () => ({
+    measurements: [], isLoading: false, error: null,
+    createMeasurement: vi.fn(), updateMeasurement: vi.fn(), deleteMeasurement: vi.fn(), refreshMeasurements: vi.fn(),
+  }),
+}));
 vi.mock('@/hooks/useWorkoutSessions', () => ({
   useWorkoutSessions: () => ({
     sessions: state.sessions, isLoading: false, error: null,

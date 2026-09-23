@@ -1,4 +1,4 @@
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyError, FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { Db } from '../db';
 import { registerAuthRoutes } from './routes/auth';
@@ -29,6 +29,18 @@ export const buildApp = (db: Db): FastifyInstance => {
   // records a single push can contain.
   const app = Fastify({ logger: false, bodyLimit: 50 * 1024 * 1024 });
   app.decorate('db', db);
+
+  // Never send internal error text (stack-derived messages, library
+  // internals) to the caller: log it server-side, return a generic 500.
+  // 4xx errors (validation, payload too large, ...) are the caller's to see.
+  app.setErrorHandler((error: FastifyError, _request, reply) => {
+    if ((error.statusCode ?? 500) >= 500) {
+      console.error('Unhandled server error:', error);
+      reply.code(500).send({ error: 'Internal Server Error' });
+      return;
+    }
+    reply.send(error);
+  });
 
   // Reflects whatever Origin the request sends (there's no cookie session
   // to protect here — auth is a Bearer token the browser never attaches

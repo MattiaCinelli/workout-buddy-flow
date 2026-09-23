@@ -60,7 +60,8 @@ const SettingsPage = () => {
   const [lastExportedBackupAt, setLastExportedBackupAt] = useState(getLastExportedBackupAt());
   const backupInput = useRef<HTMLInputElement>(null);
   const recordCount = data.exercises.length + data.workouts.length + data.sessions.length
-    + data.scheduledWorkouts.length + data.courses.length + data.muscleGroups.length + data.bodyMetrics.length;
+    + data.scheduledWorkouts.length + data.courses.length + data.muscleGroups.length + data.bodyMetrics.length
+    + data.measurements.length;
 
   useEffect(() => {
     const refresh = () => setLastAutomaticBackupAt(getLastAutomaticBackupAt());
@@ -113,6 +114,7 @@ const SettingsPage = () => {
       ['Muscle groups', pendingBackup.data.muscleGroups.length],
       ['Body measurements', pendingBackup.data.bodyMetrics.length],
     ] as Array<[string, number]> : []),
+    ...(Array.isArray(pendingBackup.data.measurements) ? [['My records', pendingBackup.data.measurements.length] as [string, number]] : []),
     ...(pendingBackup.version === 4 ? [['Images', Object.keys(pendingBackup.media ?? {}).length] as [string, number]] : []),
   ] as Array<[string, number]> : [];
 
@@ -280,7 +282,7 @@ const SettingsPage = () => {
                 <p className="text-sm text-muted-foreground">
                   {data.exercises.length} exercises · {data.workouts.length} workouts · {data.sessions.length} sessions ·{' '}
                   {data.scheduledWorkouts.length} scheduled · {data.courses.length} courses ·{' '}
-                  {data.muscleGroups.length} muscle groups · {data.bodyMetrics.length} body measurements
+                  {data.muscleGroups.length} muscle groups · {data.bodyMetrics.length} body measurements · {data.measurements.length} records
                 </p>
               </div>
               <div className="rounded-lg border bg-muted/30 p-4 text-sm">

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Copy, Image as ImageIcon, Loader2, Pencil, Play, Repeat, Share2, Timer, TrendingUp, Video, ZoomIn } from 'lucide-react';
 import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { shareExercise } from '@/lib/backup';
+import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/useData';
 import ExerciseImage from '@/components/ExerciseImage';
 
@@ -63,6 +64,9 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: 
   if (!exercise) return null;
 
   const logType = getLogType(exercise);
+  // The link is only ever offered as a plain https URL, whatever is stored
+  // (a synced or older record could hold a javascript: URL).
+  const videoUrl = normalizeHttpsUrl(exercise.videoUrl);
   const muscleGroupNames = exercise.muscleGroups
     .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
     .join(', ');
@@ -129,9 +133,9 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: 
           {exercise.defaultDistance ? <span className="text-muted-foreground font-normal">· {exercise.defaultDistance}m</span> : null}
         </div>
 
-        {exercise.videoUrl && (
+        {videoUrl && (
           <a
-            href={exercise.videoUrl}
+            href={videoUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"

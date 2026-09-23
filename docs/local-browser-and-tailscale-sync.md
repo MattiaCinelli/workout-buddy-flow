@@ -6,7 +6,7 @@ This guide uses three separate addresses:
 | --- | --- |
 | App in the Mac browser | `http://localhost:8081` |
 | Sync server on the Mac | `http://127.0.0.1:3001` |
-| Sync server for both devices | `https://mattias-macbook-pro.taild9aa5c.ts.net` |
+| Sync server for both devices | `https://your-machine.your-tailnet.ts.net` |
 
 The frontend and sync server are different processes. Only the sync server is
 published through Tailscale. Obsidian may continue using its own ports.
@@ -140,7 +140,7 @@ tailscale serve status
 The status should show:
 
 ```text
-https://mattias-macbook-pro.taild9aa5c.ts.net/
+https://your-machine.your-tailnet.ts.net/
 |-- proxy http://127.0.0.1:3001
 ```
 
@@ -155,7 +155,7 @@ tailscale serve status
 Test the Tailscale address first on the Mac and then on the phone:
 
 ```text
-https://mattias-macbook-pro.taild9aa5c.ts.net/health
+https://your-machine.your-tailnet.ts.net/health
 ```
 
 Both should display `{"status":"ok"}`. A `404` at the address without
@@ -170,7 +170,7 @@ On the Mac browser app:
 3. Enter this server URL, without `/health`:
 
    ```text
-   https://mattias-macbook-pro.taild9aa5c.ts.net
+   https://your-machine.your-tailnet.ts.net
    ```
 
 4. Enter the sync-account email and password.

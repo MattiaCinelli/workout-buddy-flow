@@ -7,6 +7,7 @@ import * as courses from '../../db/courses';
 import * as workoutSessions from '../../db/workoutSessions';
 import * as muscleGroups from '../../db/muscleGroups';
 import * as bodyMetrics from '../../db/bodyMetrics';
+import * as measurements from '../../db/measurements';
 
 const workoutSetSchema = {
   type: 'object',
@@ -64,7 +65,11 @@ const exerciseSchema = {
       },
     },
     instructions: { type: 'string' },
-    videoUrl: { type: 'string' },
+    // Rendered as an <a href>, so it must be a plain https link: a javascript:
+    // or data: URL would run in the app's origin when tapped. The client
+    // enforces the same rule (src/lib/url.ts); this stops a bad value at the
+    // source so it can't be synced to other devices.
+    videoUrl: { type: 'string', maxLength: 2048, pattern: '^[hH][tT][tT][pP][sS]://' },
     imageUrl: { type: 'string' },
     directionImageUrls: {
       type: 'object',
@@ -236,6 +241,26 @@ const bodyMetricSchema = {
   },
 };
 
+// Bounded like the other user-typed text (a value is a short number; the
+// name and free text are capped so one record can't be arbitrarily large).
+const measurementSchema = {
+  type: 'object',
+  required: ['id', 'measurementId', 'name', 'kind', 'better', 'value', 'date', 'updatedAt'],
+  properties: {
+    id: { type: 'string', minLength: 1, maxLength: 100 },
+    measurementId: { type: 'string', minLength: 1, maxLength: 100 },
+    name: { type: 'string', minLength: 1, maxLength: 100 },
+    description: { type: 'string', maxLength: 2000 },
+    kind: { type: 'string', enum: ['length', 'weight', 'time'] },
+    better: { type: 'string', enum: ['higher', 'lower'] },
+    value: { type: 'number' },
+    date: { type: 'string', maxLength: 32 },
+    notes: { type: 'string', maxLength: 2000 },
+    updatedAt: { type: 'string' },
+    deletedAt: { type: 'string' },
+  },
+};
+
 export const registerSyncRoutes = (app: FastifyInstance) => {
   registerSyncCollection(app, {
     path: 'exercises',
@@ -284,5 +309,12 @@ export const registerSyncRoutes = (app: FastifyInstance) => {
     listChangedSince: bodyMetrics.listChangedSince,
     upsertBatch: bodyMetrics.upsertBodyMetricsBatch,
     itemSchema: bodyMetricSchema,
+  });
+
+  registerSyncCollection(app, {
+    path: 'measurements',
+    listChangedSince: measurements.listChangedSince,
+    upsertBatch: measurements.upsertMeasurementsBatch,
+    itemSchema: measurementSchema,
   });
 };

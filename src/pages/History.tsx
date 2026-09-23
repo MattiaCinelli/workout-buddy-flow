@@ -20,7 +20,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CalendarIcon, Download, Search, X, Filter, Dumbbell, Loader2 } from 'lucide-react';
-import { format, parseISO, isAfter, isBefore, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isAfter, isBefore, isSameDay, isValid, startOfDay, endOfDay } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import WorkoutCard from '@/components/WorkoutCard';
 import { useData } from '@/contexts/useData';
@@ -30,7 +30,7 @@ import { saveTextFile } from '@/lib/downloadFile';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS, WorkoutCategory } from '@/data/workoutHistory';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SessionCorrectionDialog } from '@/components/SessionCorrectionDialog';
 import { workoutContainsExerciseQuery } from '@/lib/workoutSearch';
 
@@ -42,8 +42,15 @@ const HistoryPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
-  const [startDate, setStartDate] = useState<Date | undefined>();
-  const [endDate, setEndDate] = useState<Date | undefined>();
+  // The calendar links here with ?date=YYYY-MM-DD to show a single day.
+  const [searchParams] = useSearchParams();
+  const [presetDay] = useState<Date | undefined>(() => {
+    const value = searchParams.get('date');
+    const day = value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseISO(value) : undefined;
+    return day && isValid(day) ? day : undefined;
+  });
+  const [startDate, setStartDate] = useState<Date | undefined>(presetDay);
+  const [endDate, setEndDate] = useState<Date | undefined>(presetDay);
   
   const { sessions: workouts, exercises, createSession, deleteSession, updateSession, uncompleteWorkoutInCourse } = useData();
   const { toast } = useToast();

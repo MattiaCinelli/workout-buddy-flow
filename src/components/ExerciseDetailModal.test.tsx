@@ -60,3 +60,19 @@ describe('ExerciseDetailModal image viewer', () => {
     expect(onDuplicate).toHaveBeenCalledWith(exercise);
   });
 });
+
+describe('ExerciseDetailModal video link', () => {
+  afterEach(cleanup);
+
+  it('links an https video', () => {
+    render(<ExerciseDetailModal exercise={{ ...exercise, videoUrl: 'https://example.com/v' }} onClose={vi.fn()} onEdit={vi.fn()} />);
+    expect(screen.getByRole('link', { name: /Watch demonstration video/i })).toHaveAttribute('href', 'https://example.com/v');
+  });
+
+  it.each(['javascript:alert(1)', 'data:text/html,<b>x</b>', 'http://example.com/v'])(
+    'does not render a link for a stored %s URL', videoUrl => {
+      render(<ExerciseDetailModal exercise={{ ...exercise, videoUrl }} onClose={vi.fn()} onEdit={vi.fn()} />);
+      expect(screen.queryByRole('link', { name: /Watch demonstration video/i })).not.toBeInTheDocument();
+    },
+  );
+});

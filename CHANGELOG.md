@@ -13,14 +13,29 @@ together — a single tag `vX.Y.Z` releases both.
 
 - **Course workout previews** — every workout in a course can now be expanded in place, including locked and completed sessions, to show its exercises in authored order with thumbnails, set targets and directions.
 - **Single Leg Standing Hamstring Stretch** — added a beginner standing hamstring stretch with three 30-second holds per side, complete technique guidance and a new private instructional photograph.
+- **My Records** — a new card at the top of Progress for anything you measure yourself, such as the gap between your fingers and toes in a toe touch. Each record has a name, an optional description, a value in length (cm, negative values allowed for reaching past the target), weight (kg) or time (seconds or m:ss), and a date; log new values whenever you like to see the latest, best and first values, whether the last change was an improvement, a "New best" badge and a trend chart. You choose per record whether lower (a gap, a race time) or higher (a hold, a lift) is better. Records sync between devices (each logged value is its own record, so two devices adding values never overwrite each other), are included in backups, and are removed with the account. Restoring a backup made before this feature leaves your records untouched.
 
 ### Changed
 
+- **Calendar shows workouts you did without scheduling** — a workout completed on a day it wasn't planned now appears on that day in both the Week and Month views (dashed outline, completion time and a check mark), placed by your local day so a late-night workout doesn't slip to the day before. Tapping one opens History filtered to that day, and History accepts a `?date=YYYY-MM-DD` link for this. Scheduled workouts you completed now show the same check mark, so done and pending are visible at a glance. A completed workout that belongs to a schedule is still shown only once.
+- **Simpler navigation bar** — Calendar, History and Progress now sit together in a **Track** menu, so the bar shows six items (Dashboard, Workouts, Exercises, Courses, Track, Settings) instead of eight. The Track button shows as current on any of its pages, the menu works with the keyboard, and the current page is marked inside it. Item labels now show from small-laptop widths (1024 px and up) instead of only on very wide screens, and narrower screens keep named icons. In the phone menu the pages are grouped under **Train** and **Track** headings.
+- **Automatic exercise records moved down and collapsed** — the calculated best weight, reps, time and distance per exercise is now the "Exercise Records" card below My Records and Body Weight, closed until you open it.
 - **Compact workout exercise cards** — exercise instructions are now available from a small per-exercise button and scrollable dialog instead of expanding every card, making workout editing much easier to scan on phones.
 
 ### Fixed
 
 - **Completed-workout reminders** — saving a scheduled or course workout now removes that occurrence's pending phone notification, and reminder refreshes no longer recreate notifications for workouts already marked Done that day.
+- **Reminders button in the phone menu** — tapping Reminders in the navigation drawer opened the dialog and then closed it again a moment later, so the button appeared dead. Closing one overlay and opening another in the same tap no longer lets the first one's browser-history cleanup dismiss the second, which also protects any other place where a dialog or menu hands over to another. The Back button still closes the topmost dialog first without leaving the page.
+- **Progress page accessibility** — the "Clear history" button's red text now meets the WCAG AA contrast minimum in light mode (it was 3.8:1, below the required 4.5:1), and the time-range dropdown now has an accessible name for screen readers. The Progress page is now covered by an automated accessibility audit in light and dark mode.
+- **Updating the app before the sync server no longer breaks sync** — a phone updated to this version keeps syncing every other collection with a sync server that does not have My Records yet; only that one collection is skipped until the server is updated and restarted.
+- **Account errors no longer leak internals** — a malformed account request (for example a non-text password field) now returns a normal 400, and any unexpected server error returns a generic message while the details are logged on the server instead of being sent to the caller.
+
+### Security
+
+- **Exercise video links are https-only everywhere** — the sync server now rejects an exercise `videoUrl` that is not an `https://` link, the app strips any other link when syncing (both when sending and receiving, so one old `http://` link cannot block a whole sync batch), and the exercise detail and workout player only render a link that passes the same check. Previously only the exercise form and backup import enforced this, so a `javascript:` link arriving through sync would have run in the app's origin when tapped.
+- **Sign-in brute-force protection** — after 10 failed sign-ins for an email within 15 minutes the sync server answers 429 with `Retry-After`, even for the correct password, and logs when an address is locked out. The count is per email and held in memory, so a server restart clears it.
+- **Authentication now happens before request bodies are read** — unauthenticated requests are refused with 401 before the server buffers or validates their payload (previously up to 50 MB), and the sign-in and account endpoints accept only small bodies (8 KB and 16 KB).
+- **Personal Tailscale hostname removed from the docs** — the sync guide now uses a placeholder address.
 
 ## [1.1.0] - 2026-09-21
 

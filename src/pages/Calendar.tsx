@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, format } from 'date-fns';
 import Navbar from '@/components/Navbar';
 import WeeklyCalendar from '@/components/calendar/WeeklyCalendar';
 import MonthlyCalendar from '@/components/calendar/MonthlyCalendar';
@@ -9,6 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useData } from '@/contexts/useData';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { CalendarDays } from 'lucide-react';
+import type { WorkoutSession } from '@/data/workoutSessions';
+import { getUnplannedSessionsByDate, sessionCalendarDate } from '@/lib/calendarSessions';
+import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
 
 const CalendarPage: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -19,7 +23,8 @@ const CalendarPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'week' | 'month'>('week');
 
-  const { workouts, getScheduledWorkoutsForRange, refreshScheduledWorkouts } = useData();
+  const navigate = useNavigate();
+  const { workouts, sessions, scheduledWorkouts: allSchedules, getScheduledWorkoutsForRange, refreshScheduledWorkouts } = useData();
 
   const getDateRange = useCallback(() => {
     if (view === 'week') {
@@ -35,8 +40,28 @@ const CalendarPage: React.FC = () => {
     }
   }, [currentDate, view]);
 
-  const { start, end } = getDateRange();
-  const scheduledWorkouts = getScheduledWorkoutsForRange(start, end);
+  // Stable between renders (getDateRange only changes with the date or view),
+  // so everything derived from the range can be memoised honestly.
+  const { start, end } = useMemo(() => getDateRange(), [getDateRange]);
+  const scheduledWorkouts = useMemo(
+    () => getScheduledWorkoutsForRange(start, end),
+    [getScheduledWorkoutsForRange, start, end],
+  );
+
+  // A workout done without being scheduled still belongs on the day it was
+  // done, so the calendar reflects what actually happened.
+  const unplannedByDate = useMemo(
+    () => getUnplannedSessionsByDate(
+      sessions, allSchedules, scheduledWorkouts, format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd'),
+    ),
+    [sessions, allSchedules, scheduledWorkouts, start, end],
+  );
+  const isCompleted = useCallback(
+    (schedule: ExpandedScheduledWorkout) => isScheduledOccurrenceCompleted(schedule, sessions),
+    [sessions],
+  );
+  const handleSessionClick = (session: WorkoutSession) =>
+    navigate(`/history?date=${sessionCalendarDate(session)}`);
 
   const handleAddClick = (date: Date) => {
     setEditingSchedule(null);
@@ -89,8 +114,11 @@ const CalendarPage: React.FC = () => {
             onDateChange={setCurrentDate}
             scheduledWorkouts={scheduledWorkouts}
             workouts={workouts}
+            unplannedByDate={unplannedByDate}
+            isCompleted={isCompleted}
             onAddClick={handleAddClick}
             onScheduleClick={handleScheduleClick}
+            onSessionClick={handleSessionClick}
           />
         ) : (
           <MonthlyCalendar
@@ -98,8 +126,11 @@ const CalendarPage: React.FC = () => {
             onDateChange={setCurrentDate}
             scheduledWorkouts={scheduledWorkouts}
             workouts={workouts}
+            unplannedByDate={unplannedByDate}
+            isCompleted={isCompleted}
             onAddClick={handleAddClick}
             onScheduleClick={handleScheduleClick}
+            onSessionClick={handleSessionClick}
           />
         )}
       </main>

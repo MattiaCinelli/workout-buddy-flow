@@ -52,6 +52,32 @@ describe('restoreBackup', () => {
     expect((await (await getDB()).getAll('muscleGroups')).map((r: { id: string }) => r.id)).toEqual(['mg-keep']);
   });
 
+  it('replaces "My records" when the backup carries them', async () => {
+    const db = await getDB();
+    await db.put('measurements', { id: 'old', measurementId: 'a', name: 'Old' } as never);
+
+    await restoreBackup({
+      format: 'workout-buddy-backup', version: 4, exportedAt: '2026-01-01T00:00:00.000Z',
+      data: { ...emptyV2Data(), measurements: [{ id: 'new', measurementId: 'b', name: 'Toe touch' }] as never },
+      preferences: {},
+    });
+
+    expect((await (await getDB()).getAll('measurements')).map((r: { id: string }) => r.id)).toEqual(['new']);
+  });
+
+  it('leaves "My records" untouched when restoring a backup written before they existed', async () => {
+    const db = await getDB();
+    await db.put('measurements', { id: 'keep', measurementId: 'a', name: 'Toe touch' } as never);
+
+    await restoreBackup({
+      format: 'workout-buddy-backup', version: 4, exportedAt: '2026-01-01T00:00:00.000Z',
+      data: emptyV2Data() as never, // no measurements key: an older file
+      preferences: {},
+    });
+
+    expect((await (await getDB()).getAll('measurements')).map((r: { id: string }) => r.id)).toEqual(['keep']);
+  });
+
   it('restores whitelisted v3 preferences and ignores unknown keys', async () => {
     await restoreBackup({
       format: 'workout-buddy-backup', version: 3, exportedAt: '2026-01-01T00:00:00.000Z',

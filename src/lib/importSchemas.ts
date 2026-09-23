@@ -57,6 +57,18 @@ export const muscleGroupImportSchema = z.object({ id, name: z.string() }).passth
 
 export const bodyMetricImportSchema = z.object({ id, date: z.string(), weight: z.number() }).passthrough();
 
+export const measurementImportSchema = z.object({
+  id,
+  measurementId: id,
+  name: z.string().min(1).max(100),
+  description: z.string().max(2000).optional(),
+  kind: z.enum(['length', 'weight', 'time']),
+  better: z.enum(['higher', 'lower']),
+  value: z.number().finite(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}/),
+  notes: z.string().max(2000).optional(),
+}).passthrough();
+
 export type ImportedRecord = { id: string } & Record<string, unknown>;
 
 export interface CollectionValidation {

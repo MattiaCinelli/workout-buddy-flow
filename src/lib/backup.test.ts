@@ -215,6 +215,30 @@ describe('parseBackup', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('validates "My records" in a backup and drops malformed ones with a warning', () => {
+    const good = {
+      id: 'm1', measurementId: 'toe', name: 'Toe touch', kind: 'length', better: 'lower', value: -2, date: '2026-01-01',
+    };
+    const { data, warnings } = parseBackup(v3({
+      data: {
+        exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+        measurements: [good, { ...good, id: 'bad-kind', kind: 'colour' }, { ...good, id: 'bad-value', value: 'lots' }],
+      },
+    }));
+    expect(data.data.measurements).toEqual([good]);
+    expect(warnings).toContainEqual(expect.stringMatching(/measurements: skipped 2 records/));
+  });
+
+  it('accepts a backup with no "My records" at all, and rejects a malformed list', () => {
+    expect(parseBackup(v3()).data.data.measurements).toBeUndefined();
+    expect(() => parseBackup(v3({
+      data: {
+        exercises: [], workouts: [], workoutSessions: [], scheduledWorkouts: [], courses: [], muscleGroups: [], bodyMetrics: [],
+        measurements: 'nope',
+      },
+    }))).toThrow(/measurements are malformed/);
+  });
+
   it('accepts embedded private media in v4 and reports missing media', () => {
     const source = JSON.stringify({
       format: 'workout-buddy-backup', version: 4, exportedAt: '2026-01-01T00:00:00.000Z',

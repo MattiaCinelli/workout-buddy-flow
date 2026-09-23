@@ -11,9 +11,10 @@ import {
   isToday,
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { WorkoutEntry } from '@/data/workoutHistory';
+import type { WorkoutSession } from '@/data/workoutSessions';
 import { cn } from '@/lib/utils';
 
 interface MonthlyCalendarProps {
@@ -21,8 +22,12 @@ interface MonthlyCalendarProps {
   onDateChange: (date: Date) => void;
   scheduledWorkouts: ExpandedScheduledWorkout[];
   workouts: WorkoutEntry[];
+  /** Workouts done without being scheduled, by day (yyyy-MM-dd). */
+  unplannedByDate: Map<string, WorkoutSession[]>;
+  isCompleted: (schedule: ExpandedScheduledWorkout) => boolean;
   onAddClick: (date: Date) => void;
   onScheduleClick: (schedule: ExpandedScheduledWorkout) => void;
+  onSessionClick: (session: WorkoutSession) => void;
 }
 
 const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
@@ -30,8 +35,11 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
   onDateChange,
   scheduledWorkouts,
   workouts,
+  unplannedByDate,
+  isCompleted,
   onAddClick,
   onScheduleClick,
+  onSessionClick,
 }) => {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -117,6 +125,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
           <div key={weekIndex} className="grid grid-cols-7">
             {week.map((dayDate) => {
               const schedules = getSchedulesForDate(dayDate);
+              const unplanned = unplannedByDate.get(format(dayDate, 'yyyy-MM-dd')) ?? [];
               const dayIsToday = isToday(dayDate);
               const isCurrentMonth = isSameMonth(dayDate, currentDate);
 
@@ -161,7 +170,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                           onClick={() => onScheduleClick(schedule)}
                           className={cn("w-full flex items-center gap-1 text-left text-xs p-0.5 rounded hover:bg-muted transition-colors",
                             schedule.skipped && "line-through opacity-50")}
-                          aria-label={`${workout.title}${schedule.skipped ? ', skipped' : ''}`}
+                          aria-label={`${workout.title}${schedule.skipped ? ', skipped' : isCompleted(schedule) ? ', done' : ''}`}
                         >
                           <span
                             className={cn(
@@ -171,12 +180,27 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                           />
                           {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0 text-muted-foreground" />}
                           <span className="truncate">{workout.title}</span>
+                          {!schedule.skipped && isCompleted(schedule) && <Check className="ml-auto h-3 w-3 flex-shrink-0 text-muted-foreground" aria-hidden="true" />}
                         </button>
                       );
                     })}
-                    {schedules.length > 3 && (
+                    {/* Done without being scheduled: still part of the day. Only as many
+                        as fit beside the planned ones; the rest are counted below. */}
+                    {unplanned.slice(0, Math.max(0, 3 - schedules.length)).map(session => (
+                      <button
+                        key={session.id}
+                        onClick={() => onSessionClick(session)}
+                        className="w-full flex items-center gap-1 text-left text-xs p-0.5 rounded hover:bg-muted transition-colors"
+                        aria-label={`${session.title}, done, not scheduled`}
+                      >
+                        <span className={cn("w-2 h-2 rounded-full flex-shrink-0", getCategoryDot(session.category))} />
+                        <span className="truncate">{session.title}</span>
+                        <Check className="ml-auto h-3 w-3 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+                      </button>
+                    ))}
+                    {schedules.length + unplanned.length > 3 && (
                       <div className="text-[10px] text-muted-foreground pl-3">
-                        +{schedules.length - 3} more
+                        +{schedules.length + unplanned.length - 3} more
                       </div>
                     )}
                   </div>

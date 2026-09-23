@@ -16,7 +16,7 @@ const AutoBackup = () => {
   const ready = !data.isLoading;
   const signature = [
     data.exercises, data.workouts, data.sessions, data.scheduledWorkouts,
-    data.courses, data.muscleGroups, data.bodyMetrics,
+    data.courses, data.muscleGroups, data.bodyMetrics, data.measurements,
   ].map(items => `${items.length}:${items.map(item => item.updatedAt ?? item.id).join(',')}`).join('|');
 
   useEffect(() => {

@@ -15,7 +15,7 @@ interface PutSettingsBody {
 // upserts it with last-write-wins on `updatedAt` and returns the winner.
 // The server treats `settings` as opaque — it never inspects the shape.
 export const registerSettingsRoutes = (app: FastifyInstance) => {
-  app.get('/settings', { preHandler: requireAuth }, async (request, reply) => {
+  app.get('/settings', { onRequest: requireAuth }, async (request, reply) => {
     const stored = getUserSettings(app.db, request.userId!);
     if (!stored) {
       reply.send({ settings: null, updatedAt: null });
@@ -24,7 +24,7 @@ export const registerSettingsRoutes = (app: FastifyInstance) => {
     reply.send({ settings: JSON.parse(stored.data), updatedAt: stored.updatedAt });
   });
 
-  app.put<{ Body: PutSettingsBody }>('/settings', { preHandler: requireAuth }, async (request, reply) => {
+  app.put<{ Body: PutSettingsBody }>('/settings', { onRequest: requireAuth }, async (request, reply) => {
     const { settings, updatedAt } = request.body ?? {};
     if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) {
       reply.code(400).send({ error: 'settings must be an object' });
