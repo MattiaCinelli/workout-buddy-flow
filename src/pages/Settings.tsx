@@ -148,6 +148,7 @@ const SettingsPage = () => {
         await replaceAllWorkoutReminders(
           pendingBackup.data.scheduledWorkouts,
           workoutId => pendingBackup.data.workouts.find(workout => workout.id === workoutId)?.title,
+          pendingBackup.data.workoutSessions,
         );
       } catch (error) {
         console.warn('Backup restored, but reminders could not be rebuilt:', error);

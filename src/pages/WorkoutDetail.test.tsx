@@ -40,6 +40,7 @@ vi.mock('@/contexts/useData', () => ({
       difficulty: 'beginner',
       logType: 'time',
       imageUrl: 'private-exercise:stretch.jpg',
+      instructions: 'Keep your spine long and breathe steadily.',
     }],
     workoutsLoading: false,
     muscleGroups: [{ id: 'hips', name: 'Hips' }],
@@ -94,6 +95,20 @@ describe('WorkoutDetail', () => {
     const actions = thumbnail.closest('[data-selected-exercise-actions]');
     expect(actions).not.toBeNull();
     expect(within(actions as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
+  it('keeps exercise instructions collapsed until requested', async () => {
+    render(<WorkoutDetail />);
+
+    const instructions = 'Keep your spine long and breathe steadily.';
+    expect(await screen.findByRole('button', { name: 'View instructions for Stretch' })).toBeInTheDocument();
+    expect(screen.queryByText(instructions)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View instructions for Stretch' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Stretch' })).toBeInTheDocument();
+    expect(screen.getByText(instructions)).toBeInTheDocument();
   });
 
   it('keeps unsaved workout edits as a device draft', async () => {

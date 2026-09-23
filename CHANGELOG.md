@@ -9,6 +9,19 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+### Added
+
+- **Course workout previews** — every workout in a course can now be expanded in place, including locked and completed sessions, to show its exercises in authored order with thumbnails, set targets and directions.
+- **Single Leg Standing Hamstring Stretch** — added a beginner standing hamstring stretch with three 30-second holds per side, complete technique guidance and a new private instructional photograph.
+
+### Changed
+
+- **Compact workout exercise cards** — exercise instructions are now available from a small per-exercise button and scrollable dialog instead of expanding every card, making workout editing much easier to scan on phones.
+
+### Fixed
+
+- **Completed-workout reminders** — saving a scheduled or course workout now removes that occurrence's pending phone notification, and reminder refreshes no longer recreate notifications for workouts already marked Done that day.
+
 ## [1.1.0] - 2026-09-21
 
 ### Added

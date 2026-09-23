@@ -27,7 +27,7 @@ interface ReminderPreferencesProps {
 
 export function ReminderPreferences({ onApplied }: ReminderPreferencesProps) {
   const id = useId();
-  const { scheduledWorkouts, getWorkoutById } = useData();
+  const { scheduledWorkouts, getWorkoutById, sessions } = useData();
   const [settings, setSettings] = useState(getNotificationSettings);
   const [applyingSettings, setApplyingSettings] = useState(false);
   const [diagnosticsKey, setDiagnosticsKey] = useState(0);
@@ -38,7 +38,7 @@ export function ReminderPreferences({ onApplied }: ReminderPreferencesProps) {
     setNotificationSettings(next);
     setApplyingSettings(true);
     try {
-      await rescheduleAllReminders(scheduledWorkouts, workoutId => getWorkoutById(workoutId)?.title);
+      await rescheduleAllReminders(scheduledWorkouts, workoutId => getWorkoutById(workoutId)?.title, sessions);
       await onApplied?.(next);
       setDiagnosticsKey(key => key + 1);
       toast.success('Notification settings updated');

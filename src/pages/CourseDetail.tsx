@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import CourseScheduleModal from '@/components/CourseScheduleModal';
+import { CourseWorkoutPreview } from '@/components/CourseWorkoutPreview';
 import { sortCourseItems } from '@/lib/courseSchedule';
 
 const CourseDetail = () => {
@@ -31,6 +32,7 @@ const CourseDetail = () => {
   const { 
     getCourseById, 
     getWorkoutById, 
+    getExerciseById,
     coursesLoading,
     getCourseProgress,
     getNextWorkoutInCourse,
@@ -259,6 +261,9 @@ const CourseDetail = () => {
                       )}
                     </div>
                   </div>
+                  {!isRest && workout && (
+                    <CourseWorkoutPreview workout={workout} getExerciseById={getExerciseById} />
+                  )}
                 </CardContent>
               </Card>
             );

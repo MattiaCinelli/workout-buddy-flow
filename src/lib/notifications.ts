@@ -2,7 +2,9 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { addDays, format, isAfter, isSameDay, parseISO, set, subMinutes } from 'date-fns';
 import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
+import type { WorkoutSession } from '@/data/workoutSessions';
 import { getNotificationSettings } from '@/lib/notificationSettings';
+import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
 
 export const WORKOUT_NOTIFICATION_ACTION_TYPE = 'WORKOUT_REMINDER';
 export const WORKOUT_NOTIFICATION_START_ACTION = 'START_WORKOUT';
@@ -65,7 +67,11 @@ export const cancelWorkoutReminders = async (scheduleId: string) => {
   if (matching.length) await LocalNotifications.cancel({ notifications: matching.map(item => ({ id: item.id })) });
 };
 
-export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, workoutTitle: string) => {
+export const scheduleWorkoutReminders = async (
+  schedule: ScheduledWorkout,
+  workoutTitle: string,
+  sessions: WorkoutSession[] = [],
+) => {
   if (!Capacitor.isNativePlatform()) return;
   await registerWorkoutNotificationActions();
   await cancelWorkoutReminders(schedule.id);
@@ -79,6 +85,14 @@ export const scheduleWorkoutReminders = async (schedule: ScheduledWorkout, worko
   const permission = await LocalNotifications.requestPermissions();
   if (permission.display !== 'granted') return;
   const notifications = occurrences(schedule)
+    // Use the exact same completion rule as Today's Focus. A workout already
+    // completed for this occurrence must not retain (or regain after an app
+    // refresh) an OS-level reminder later that day.
+    .filter(at => !isScheduledOccurrenceCompleted({
+      id: schedule.id,
+      workoutId: schedule.workoutId,
+      displayDate: format(at, 'yyyy-MM-dd'),
+    }, sessions))
     .map((at, index) => ({ at, fireAt: subMinutes(at, settings.leadMinutes), index }))
     // A long lead time on a near-term occurrence (e.g. a 60-minute lead
     // just enabled for a workout starting in 10 minutes) can push the
@@ -129,12 +143,13 @@ export const snoozeWorkoutReminder = async (extra: unknown, workoutTitle: string
 // themselves.
 export const rescheduleAllReminders = async (
   scheduledWorkouts: ScheduledWorkout[],
-  getWorkoutTitle: (workoutId: string) => string | undefined
+  getWorkoutTitle: (workoutId: string) => string | undefined,
+  sessions: WorkoutSession[] = [],
 ) => {
   if (!Capacitor.isNativePlatform()) return;
   for (const schedule of scheduledWorkouts) {
     if (schedule.deletedAt) continue;
-    await scheduleWorkoutReminders(schedule, getWorkoutTitle(schedule.workoutId) ?? 'Workout');
+    await scheduleWorkoutReminders(schedule, getWorkoutTitle(schedule.workoutId) ?? 'Workout', sessions);
   }
 };
 
@@ -143,6 +158,7 @@ export const rescheduleAllReminders = async (
 export const replaceAllWorkoutReminders = async (
   scheduledWorkouts: ScheduledWorkout[],
   getWorkoutTitle: (workoutId: string) => string | undefined,
+  sessions: WorkoutSession[] = [],
 ) => {
   if (!Capacitor.isNativePlatform()) return;
   const pending = await LocalNotifications.getPending();
@@ -150,5 +166,5 @@ export const replaceAllWorkoutReminders = async (
   if (appNotifications.length) {
     await LocalNotifications.cancel({ notifications: appNotifications.map(item => ({ id: item.id })) });
   }
-  await rescheduleAllReminders(scheduledWorkouts, getWorkoutTitle);
+  await rescheduleAllReminders(scheduledWorkouts, getWorkoutTitle, sessions);
 };

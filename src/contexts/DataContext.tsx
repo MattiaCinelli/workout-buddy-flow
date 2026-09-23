@@ -255,7 +255,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const createScheduledWorkout = async (data: Omit<ScheduledWorkout, 'id' | 'createdAt'>) => {
     const created = await createScheduledWorkoutRaw(data);
     const title = workouts.find(workout => workout.id === created.workoutId)?.title || 'Workout';
-    try { await scheduleWorkoutReminders(created, title); }
+    try { await scheduleWorkoutReminders(created, title, sessions); }
     catch (error) { console.warn('Workout saved, but its reminder could not be scheduled:', error); }
     return created;
   };
@@ -264,7 +264,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updated = await updateScheduledWorkoutRaw(id, updates);
     if (updated) {
       const title = workouts.find(workout => workout.id === updated.workoutId)?.title || 'Workout';
-      try { await scheduleWorkoutReminders(updated, title); }
+      try { await scheduleWorkoutReminders(updated, title, sessions); }
       catch (error) { console.warn('Schedule updated, but its reminder could not be updated:', error); }
     }
     return updated;
@@ -282,7 +282,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const restoreScheduledWorkout = async (schedule: ScheduledWorkout) => {
     const restored = await restoreScheduledWorkoutRaw(schedule);
     const title = workouts.find(workout => workout.id === restored.workoutId)?.title || 'Workout';
-    try { await scheduleWorkoutReminders(restored, title); }
+    try { await scheduleWorkoutReminders(restored, title, sessions); }
     catch (error) { console.warn('Schedule restored, but its reminder could not be recreated:', error); }
     return restored;
   };

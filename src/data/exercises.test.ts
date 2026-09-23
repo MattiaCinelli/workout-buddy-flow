@@ -93,6 +93,23 @@ describe('starter exercise image privacy', () => {
   });
 });
 
+describe('Single Leg Standing Hamstring Stretch', () => {
+  it('prescribes three 30-second holds for both sides', () => {
+    const exercise = exerciseList.find(item => item.id === 'mobility-single-leg-standing-hamstring-stretch');
+    expect(exercise).toMatchObject({
+      name: 'Single Leg Standing Hamstring Stretch',
+      category: 'flexibility',
+      logType: 'time',
+      defaultSets: 3,
+      defaultDuration: 30,
+      executionDirections: ['left', 'right'],
+      imageUrl: 'private-exercise:mobility-single-leg-standing-hamstring-stretch.jpg',
+    });
+    expect(exercise?.muscleGroups).toContain('Hamstrings');
+    expect(exercise?.instructions).toMatch(/neutral spine/i);
+  });
+});
+
 describe('getExerciseImageUrl', () => {
   const exercise = {
     imageUrl: '/default.jpg',

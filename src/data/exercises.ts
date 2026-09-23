@@ -744,6 +744,21 @@ export const exerciseList: Exercise[] = [
     imageUrl: 'private-exercise:mobility-single-leg-deadlift-stretch.jpg'
   },
   {
+    id: 'mobility-single-leg-standing-hamstring-stretch',
+    name: 'Single Leg Standing Hamstring Stretch',
+    aliases: ['Standing Single-Leg Hamstring Stretch', 'Standing Heel Hamstring Stretch'],
+    category: 'flexibility',
+    muscleGroups: ['Hamstrings', 'Calves', 'Hips'],
+    equipment: ['Bodyweight', 'Mat'],
+    difficulty: 'beginner',
+    logType: 'time',
+    defaultSets: 3,
+    defaultDuration: 30,
+    executionDirections: ['left', 'right'],
+    instructions: 'Stand tall with your feet beneath your hips. Extend one leg forward, place its heel on the floor and point the toes upward; keep that leg straight without locking the knee and soften the supporting knee. Push your hips back and hinge forward with a long neutral spine until you feel a gentle stretch behind the forward thigh. Keep your hips square, avoid rounding your back or pulling on your toes, and hold for 30 seconds before standing tall and switching legs.',
+    imageUrl: 'private-exercise:mobility-single-leg-standing-hamstring-stretch.jpg'
+  },
+  {
     id: 'mobility-reclined-hamstring-strap',
     name: 'Reclined Hamstring Stretch with Strap',
     category: 'flexibility',

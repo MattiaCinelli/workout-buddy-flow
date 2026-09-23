@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduledWorkout } from '@/data/scheduledWorkouts';
+import type { WorkoutSession } from '@/data/workoutSessions';
 
 interface ScheduledNotification {
   id: number;
@@ -32,6 +33,14 @@ const schedule = (over: Partial<ScheduledWorkout> = {}): ScheduledWorkout => ({
   id: 's1', workoutId: 'w1',
   startDate: '2026-06-01', startTime: '08:00', recurrence: 'none',
   createdAt: '2026-05-01T00:00:00.000Z', updatedAt: '2026-05-01T00:00:00.000Z',
+  ...over,
+});
+
+const completedSession = (over: Partial<WorkoutSession> = {}): WorkoutSession => ({
+  id: 'session-1', workoutId: 'w1', completedAt: '2026-06-01T06:00:00.000Z',
+  date: '2026-06-01T06:00:00.000Z', title: 'Leg Day', duration: 20,
+  plannedDuration: 30, category: 'strength', sets: [],
+  scheduledWorkoutId: 's1', scheduledDate: '2026-06-01',
   ...over,
 });
 
@@ -100,6 +109,24 @@ describe('scheduleWorkoutReminders', () => {
     const { notifications } = notif.schedule.mock.calls[0][0];
     // Mon 1, Wed 3 (skipped), Mon 8, Wed 10 -> 3 remain
     expect(notifications).toHaveLength(3);
+  });
+
+  it('does not notify for a completed occurrence but keeps later occurrences', async () => {
+    await scheduleWorkoutReminders(schedule({
+      recurrence: 'daily', endRecurrenceDate: '2026-06-03',
+    }), 'Leg Day', [completedSession()]);
+
+    const { notifications } = notif.schedule.mock.calls[0][0];
+    expect(notifications.map(item => item.extra.scheduledDate)).toEqual(['2026-06-02', '2026-06-03']);
+  });
+
+  it('uses the legacy same-workout/date completion rule shared with Today’s Focus', async () => {
+    await scheduleWorkoutReminders(schedule(), 'Leg Day', [completedSession({
+      scheduledWorkoutId: undefined,
+      scheduledDate: undefined,
+    })]);
+
+    expect(notif.schedule).not.toHaveBeenCalled();
   });
 
   it('drops an occurrence whose lead-adjusted fire time is already past', async () => {

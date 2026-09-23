@@ -12,7 +12,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { ArrowLeft, Copy, Play, Search, Minus, Plus, ChevronUp, ChevronDown, Share2, Trash2, Loader2, Star, Image as ImageIcon, GripVertical, Info } from 'lucide-react';
 import { Exercise, getExerciseImageUrl, getLogType, getExecutionDirections } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
@@ -71,6 +71,7 @@ const WorkoutDetail = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [startPreviewOpen, setStartPreviewOpen] = useState(false);
+  const [instructionsExercise, setInstructionsExercise] = useState<Exercise | null>(null);
   const [loadedWorkoutId, setLoadedWorkoutId] = useState<string | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const touchReorder = useTouchReorder(selectedExercises, setSelectedExercises, item => item.occurrenceId);
@@ -552,7 +553,17 @@ const WorkoutDetail = () => {
                                 </h3>
                                 {getExecutionDirections(selectedEx.exercise).length > 0 && <UnilateralSetNote exercise={selectedEx.exercise} />}
                                 {selectedEx.exercise.instructions && (
-                                  <p className="text-xs text-muted-foreground max-w-md">{selectedEx.exercise.instructions}</p>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-1 h-7 px-2 text-xs text-muted-foreground"
+                                    onClick={() => setInstructionsExercise(selectedEx.exercise)}
+                                    aria-label={`View instructions for ${selectedEx.exercise.name}`}
+                                  >
+                                    <Info className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                                    Instructions
+                                  </Button>
                                 )}
                               </div>
                             </div>
@@ -771,6 +782,23 @@ const WorkoutDetail = () => {
               <Play className="mr-2 h-4 w-4" />Start workout
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={instructionsExercise !== null}
+        onOpenChange={open => {
+          if (!open) setInstructionsExercise(null);
+        }}
+      >
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{instructionsExercise?.name}</DialogTitle>
+            <DialogDescription>Exercise instructions</DialogDescription>
+          </DialogHeader>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+            {instructionsExercise?.instructions}
+          </p>
         </DialogContent>
       </Dialog>
 
