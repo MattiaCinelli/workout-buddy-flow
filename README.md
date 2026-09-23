@@ -28,13 +28,17 @@ from Settings before an update is still recommended.
 - **Guided workout mode** — preserves authored circuit/superset order, walks through
   sets and rest periods, and records an immutable session on completion.
 - **Calendar** — weekly and monthly views, scheduling with time slots and daily/weekly
-  recurrence.
+  recurrence. Completed workouts are marked done, and a workout you did without
+  scheduling still appears on the day you did it.
 - **Structured courses** — organize repeatable workouts and recovery days by week/day,
   with goals, difficulty, prerequisites and per-session guidance.
 - **Course scheduling** — place every workout in a course onto the calendar from one
   program start date.
 - **History & progress** — filterable session history, streaks, weekly goal and charts,
   plus a "clear all history" reset.
+- **My Records** — log anything you measure yourself (a toe-touch gap, a plank hold, a
+  lift) as dated values with a name and description, choose whether lower or higher is
+  better, and see your latest, best and trend. Synced and included in backups.
 - **Mobile reliability** — resumable guided workouts, deadline-based timers, screen
   wake lock, local reminders and JSON backup/restore.
 - **Performance logging** — record actual sets, skipped work, perceived exertion and

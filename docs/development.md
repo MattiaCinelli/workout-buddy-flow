@@ -117,7 +117,9 @@ workout templates are editable plans while workout sessions are historical snaps
 **A new page**
 1. Create it in `src/pages/`.
 2. Register the route in `src/App.tsx` *above* the `*` catch-all.
-3. Add a link in `src/components/Navbar.tsx` if it is a primary destination.
+3. Add it to the `TRAIN` or `TRACK` list in `src/components/Navbar.tsx` if it is a primary
+   destination (or to the top-level items if it stands alone). Those lists feed both the
+   desktop bar and the phone drawer.
 
 ## Conventions
 

@@ -46,6 +46,7 @@ with all data stored on the device.
 | **Workout** | A reusable, named and ordered collection of planned sets. |
 | **Workout Session** | An immutable completion record created by guided mode, including actual elapsed time and optional course/calendar links. |
 | **Scheduled Workout** | A workout placed on a date/time in the calendar, optionally recurring daily or on a weekday. |
+| **My Record (Measurement)** | A value the user measures themselves — a toe-touch gap, a plank hold, a lift — logged with a date. Values of the same thing are grouped into one record with a history and a best. Independent of workouts. |
 | **Course** | A week/day program of repeatable workout sessions and recovery days, with goals, difficulty, prerequisites and per-day instructions. |
 
 ## The main user journeys
@@ -72,6 +73,8 @@ Workout Session  ->  snapshot actual completion and elapsed time
        |
        v
 History / Progress -> filter completed sessions, see streaks/charts, clear history
+                      (workouts done without being scheduled also appear on the calendar)
+My Records         -> log things you measure yourself and watch them improve
 ```
 
 ## Non-goals

@@ -94,6 +94,29 @@ while history, courses or calendar records reference it. This prevents dangling 
 
 `useData()` throws if used outside the provider, which keeps mistakes loud.
 
+## Navigation (`src/components/Navbar.tsx`)
+
+The desktop bar has six items: Dashboard, Workouts, Exercises, Courses, **Track** and
+Settings. Track is a menu (Radix `DropdownMenu`) holding Calendar, History and Progress,
+and shows as current on any of those pages. Below 1024 px wide the bar shows named
+icons only. On a phone the same pages appear in a drawer, grouped under **Train** and
+**Track** headings instead of a nested menu. The groups are the `TRAIN` and `TRACK`
+lists at the top of the file — a new primary page is added to one of them (a route alone
+is not enough; see `docs/development.md`). The nav's theme-specific colours live in
+`src/index.css` (`.lcars-nav`, `.nav-desktop-link`); the open Track trigger has its own
+rule per theme, because the starship themes render hovered/open items as a filled pill.
+
+## Overlays and the Back button (`src/hooks/useBackDismiss.ts`)
+
+Dialogs, alert dialogs and drawers each push one same-URL history entry while open, so
+the browser Back button and the Android Back button close the topmost overlay before the
+route changes. `history.back()` is asynchronous while `pushState` is immediate, so an
+overlay that closes in the same tap that opens another (the drawer's Reminders button)
+used to have its cleanup undo the *new* overlay's entry, dismissing it a moment after it
+opened. All push and pop operations now go through one queue and run strictly in order —
+a pop finishes before the next push. Behaviour is verified in a real browser
+(`e2e/mobile-navigation.spec.ts`); jsdom does not reproduce the history timing.
+
 ## Domain hooks
 
 - **`useExercises`** — loads the library; if the store is empty it seeds it with
@@ -133,10 +156,10 @@ while history, courses or calendar records reference it. This prevents dangling 
 | `/workouts` | All saved workouts |
 | `/workouts/:id` | Workout detail (edit / delete / start) |
 | `/workouts/:id/session` | Full-screen guided workout presentation |
-| `/calendar` | Weekly & monthly scheduling views |
+| `/calendar` | Weekly & monthly scheduling views; completed workouts are marked done, and workouts done without being scheduled are listed on their day |
 | `/courses`, `/courses/:id`, `/courses/:id/edit` | Course list, detail, editor |
-| `/history` | Filterable past sessions |
-| `/progress` | Charts, streaks, clear-history action |
+| `/history` | Filterable past sessions; `?date=YYYY-MM-DD` opens it filtered to one day (used by the calendar) |
+| `/progress` | Charts, streaks, My Records, body weight, the collapsed automatic exercise records, clear-history action |
 | `/settings` | Sync, account, reminders, appearance, backup/restore and app information |
 | `/workout/:id`, `/workout/:id/start` | Legacy aliases of the two `/workouts/:id…` routes, kept for old bookmarks and schedules |
 | `*` | Not found |

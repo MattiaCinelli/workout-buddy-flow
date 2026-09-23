@@ -9,11 +9,13 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-23
+
 ### Added
 
 - **Course workout previews** — every workout in a course can now be expanded in place, including locked and completed sessions, to show its exercises in authored order with thumbnails, set targets and directions.
 - **Single Leg Standing Hamstring Stretch** — added a beginner standing hamstring stretch with three 30-second holds per side, complete technique guidance and a new private instructional photograph.
-- **My Records** — a new card at the top of Progress for anything you measure yourself, such as the gap between your fingers and toes in a toe touch. Each record has a name, an optional description, a value in length (cm, negative values allowed for reaching past the target), weight (kg) or time (seconds or m:ss), and a date; log new values whenever you like to see the latest, best and first values, whether the last change was an improvement, a "New best" badge and a trend chart. You choose per record whether lower (a gap, a race time) or higher (a hold, a lift) is better. Records sync between devices (each logged value is its own record, so two devices adding values never overwrite each other), are included in backups, and are removed with the account. Restoring a backup made before this feature leaves your records untouched.
+- **My Records** — a new card at the top of Progress for anything you measure yourself, such as the gap between your fingers and toes in a toe touch. Each record has a name, an optional description, a value in length (cm, negative values allowed for reaching past the target), weight (kg) or time (seconds or m:ss), and a date; log new values whenever you like to see the latest, best and first values, whether the last change was an improvement, a "New best" badge and a trend chart. You choose per record whether lower (a gap, a race time) or higher (a hold, a lift) is better. Records sync between devices (each logged value is its own record, so two devices adding values never overwrite each other), are included in backups, and are removed with the account. Restoring a backup made before this feature leaves your records untouched. Sync-server owners: restart the updated server once — it adds the new table automatically (migration 030) and leaves existing data untouched.
 
 ### Changed
 
@@ -256,7 +258,11 @@ First release. The app was usable and offline-capable throughout development; th
 - Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.10...v1.1.0
+[1.0.10]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.9...v1.0.10
+[1.0.9]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.5...v1.0.6

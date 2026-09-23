@@ -374,12 +374,12 @@ src/
   hooks/                One hook per data collection, all built on useIndexedDBCollection:
     useIndexedDBCollection.ts   The generic load/create/update/remove/clearAll machine.
     useExercises.ts  useWorkouts.ts  useWorkoutSessions.ts  useScheduledWorkouts.ts
-    useCourses.ts  useMuscleGroups.ts  useBodyMetrics.ts
+    useCourses.ts  useMuscleGroups.ts  useBodyMetrics.ts  useMeasurements.ts
     useTheme.ts  useWorkoutMusic.ts  useAutoSync.ts  use-mobile.tsx  use-toast.ts
 
   data/                TYPES + SEED DATA only. No logic.
     exercises.ts  workoutHistory.ts (WorkoutEntry/WorkoutSet)  workoutSessions.ts
-    scheduledWorkouts.ts  courses.ts  muscleGroups.ts  bodyMetrics.ts
+    scheduledWorkouts.ts  courses.ts  muscleGroups.ts  bodyMetrics.ts  measurements.ts
 
   lib/                  Pure-ish logic + integrations, each with a sibling *.test.ts:
     db.ts                     IndexedDB open + typed CRUD wrappers.
@@ -591,10 +591,11 @@ export interface WorkoutBuddyDB {
   workoutSessions: WorkoutSession;
   muscleGroups: MuscleGroup;
   bodyMetrics: BodyMetric;
+  measurements: Measurement;
 }
 ```
 
-Seven object stores, each **keyed by `id`** (a `crypto.randomUUID()` string).
+Eight object stores, each **keyed by `id`** (a `crypto.randomUUID()` string).
 
 ### Opening the database
 
@@ -656,7 +657,7 @@ against it — it's just `store.getAll()`.
 ## 10. The generic collection hook (the heart of the app)
 
 `src/hooks/useIndexedDBCollection.ts` is ~155 lines and is the piece most worth reading
-closely. All seven domain hooks are a thin call to it.
+closely. All eight domain hooks are a thin call to it.
 
 ### What a domain hook looks like
 
@@ -732,7 +733,7 @@ them. TypeScript enforces the "don't set these yourself" rule for you.
 
 **Try it:** pick any two domain hooks and diff them in your head. Everything they don't
 share is the collection's genuine domain logic; everything they do share is in the
-generic hook. This is the codebase's core idea — one abstraction, seven small
+generic hook. This is the codebase's core idea — one abstraction, eight small
 specialisations.
 
 ---
@@ -750,6 +751,7 @@ MuscleGroup ──tagged on──►  Exercise  ──referenced by──►  Wo
                           (also in)          ScheduledWorkout  CourseWorkout  WorkoutSession
                           WorkoutSession       (calendar rule)  (program item)  (history snapshot)
 BodyMetric  (standalone: dated body-weight readings)
+Measurement (standalone: one logged value of something the user measures themselves)
 ```
 
 | Entity | File | One-line role | Lifecycle |
@@ -763,6 +765,7 @@ BodyMetric  (standalone: dated body-weight readings)
 | **Course** | `data/courses.ts` | A multi-week program: metadata (goal, difficulty, prerequisites, `durationWeeks`) + `CourseWorkout[]`. | `startCourse` stamps `startedAt`; completion is per-item. |
 | **CourseWorkout** | same file | One explicit program slot: `type` `workout`\|`rest`, optional `workoutId`, `week`, `day` (1–7), `order`, `instructions`, `completed`/`completedAt`. Multiple workouts may share a day and run in order; absent days remain empty. Its **own `id`** is what completion is keyed on (so the same workout can appear twice). | |
 | **BodyMetric** | `data/bodyMetrics.ts` | A dated body-weight reading, kept sorted for the progress chart. | Standalone. |
+| **Measurement** | `data/measurements.ts` | One logged value (cm, kg or seconds) of a self-measured record such as a toe-touch gap; values of the same thing share a `measurementId` and are grouped into a history with a best by `groupMeasurements`. | Standalone; one record per value so two devices never overwrite each other. |
 
 ### Design decisions worth internalising
 
@@ -831,7 +834,7 @@ Key points:
   after it is dead. There's a literal comment marking the spot.
 - **`:id` is a URL parameter.** Inside the page: `const { id } = useParams()`.
 - **Navigation:** `const navigate = useNavigate(); navigate('/workouts/' + id)`. Links
-  in the nav drawer live in `src/components/Navbar.tsx`.
+  in the nav bar and phone drawer live in `src/components/Navbar.tsx`.
 
 ### The anatomy of a page
 
@@ -1099,7 +1102,7 @@ from the Exercises page — you'll get the block message naming the workout.
 Files: `src/lib/backup.ts`, `src/lib/importSchemas.ts`.
 
 - **Backup** = a **versioned JSON document**. **Version 3** carries the full state: all
-  seven collections + a whitelist of `localStorage` `preferences` (theme, weekly goal,
+  eight collections + a whitelist of `localStorage` `preferences` (theme, weekly goal,
   accessibility, reminders, height, plate-bar — **sync credentials and seed markers are
   deliberately excluded**) + the optional custom audio track as a data URL. Legacy v1/v2
   files still restore.
@@ -1264,7 +1267,8 @@ that won't have it — you'd need a migration to backfill, which this app avoids
    <Route path="/goals" element={<GoalsPage />} />          // ABOVE the "*" catch-all
    ```
 3. **Navigation** — if it's a primary destination, add a link in
-   `src/components/Navbar.tsx` (there's a list of nav items with a lucide icon each).
+   `src/components/Navbar.tsx` (the `TRAIN` / `TRACK` lists and top-level items, each with a
+   lucide icon).
 4. **Test** — an e2e spec in `e2e/` for the main flow, following an existing one's shape.
 
 ## 25. Recipe: add or restyle a UI component
@@ -1354,7 +1358,7 @@ schema and status: `docs/self-hosted-sync.md`. Summary:
 - **Stack:** Node + TypeScript, **Fastify** for HTTP, **better-sqlite3** for storage
   (one `.sqlite` file), `node:test` via `tsx` for tests.
 - **Schema:** `server/src/db/migrations/*.sql`, applied in numeric order at startup
-  (001_init … 015_user_settings). Mirrors the seven client collections plus users,
+  (001_init … 030_measurements). Mirrors the eight client collections plus users,
   sessions and user settings.
 - **Auth:** accounts are **admin-created only** — there is no public signup. CLI:
   `server/src/cli/create-user.ts`, `reset-password.ts`. Passwords hashed
@@ -1608,7 +1612,7 @@ skill set, learned on a real codebase instead of a toy.
 | **PWA** | Progressive Web App: installable, offline-capable web app (service worker + manifest). |
 | **Service worker** | A script the browser runs in the background to intercept network requests and serve cached assets. Enables offline. Here: generated by Workbox, only in the build. |
 | **IndexedDB** | The browser's built-in object database. The app's source of truth. |
-| **Object store** | An IndexedDB "table". Seven here, keyed by `id`. |
+| **Object store** | An IndexedDB "table". Eight here, keyed by `id`. |
 | **`idb`** | The small promise wrapper over IndexedDB used in `db.ts`. |
 | **Hook** | A `useX` function sharing stateful logic. |
 | **Context** | React's mechanism for whole-tree shared state. One here: `DataContext`. |
