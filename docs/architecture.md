@@ -65,7 +65,10 @@ and on next load each device additively inserts any default id it has never seen
 never touches a record the user edited or deleted — a deleted seed item leaves a
 tombstone row, and `SEED_IDS` keeps sync from compacting that tombstone away.
 
-### Demo mode
+### Guest profile ("demo mode" in code)
+
+Shown to users as **Guest profile** (Settings → Guest profile, banner "Back to my
+profile"); the code keeps the name demo mode.
 
 `src/lib/demoMode.ts` keeps a `workout-buddy-demo-mode` flag in localStorage. While
 it is set, `getDB()` opens a separate database, `workout-buddy-demo-db`, and fills it

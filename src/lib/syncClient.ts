@@ -164,7 +164,7 @@ interface SyncedRecord {
 }
 
 const authorizedRequest = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  if (isDemoMode()) throw new Error('Sync is paused while demo mode is on.');
+  if (isDemoMode()) throw new Error('Sync is paused while the guest profile is in use.');
   const url = localStorage.getItem(serverUrlKey);
   const token = localStorage.getItem(tokenKey);
   if (!url || !token) throw new Error('Not connected to a sync server. Log in first.');
