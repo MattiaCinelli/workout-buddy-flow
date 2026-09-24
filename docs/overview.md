@@ -23,7 +23,7 @@ with all data stored on the device.
    workouts with their own sets, reps, durations and rest times.
 3. **From planning to doing.** The three loops of training are all covered:
    *plan* (calendar, courses) → *do* (full-screen workout presentation with timers) →
-   *review* (history, progress charts, streaks).
+   *review* (history, progress charts, records).
 4. **Reliable during a real session.** Guided workouts use absolute deadlines so
    timers catch up after backgrounding, request a screen wake lock, and persist the
    active step locally for resume after interruption.
@@ -72,7 +72,7 @@ Start Workout    ->  full-screen guided run preserving authored set order
 Workout Session  ->  snapshot actual completion and elapsed time
        |
        v
-History / Progress -> filter completed sessions, see streaks/charts, clear history
+History / Progress -> filter completed sessions, see stats/charts, clear history
                       (workouts done without being scheduled also appear on the calendar)
 My Records         -> log things you measure yourself and watch them improve
 ```

@@ -84,7 +84,7 @@ src/
   pages/         one file per route (see docs/architecture.md)
   components/    shared UI
     calendar/    monthly & weekly views, schedule modals
-    dashboard/   calendar preview, today's focus, streak, weekly goal, quick stats
+    dashboard/   calendar preview, today's focus, quick stats
     ui/          shadcn/ui primitives (generated — avoid hand-editing)
   contexts/      DataContext: the single app-wide state provider
   hooks/         one hook per domain collection, including completed sessions

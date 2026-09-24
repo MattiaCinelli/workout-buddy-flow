@@ -18,6 +18,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 - **Compact exercise cards in workouts** — on a workout's page each exercise is now one short card: thumbnail, name and a summary such as "3 sets · 10 reps · 12 kg". Tap the arrow to edit its sets. Set rows are about half as tall (reps or time, kg and rest on one line, direction, Warm-up and AMRAP on the next), Duplicate, Remove and Instructions are icons on phones, and the distance field appears only for cardio exercises or sets that already have a distance. A workout page no longer runs wider than a phone screen. Exercises just added in Create Workout open with their sets showing.
 
+### Removed
+
+- **Workout Streak and Weekly Goal cards** — the dashboard now shows Today's Focus with the quick stats beside it (below it on a phone), then the week's calendar. The weekly goal is no longer saved in backups; older backups that contain it restore normally.
+
 ## [1.1.1] - 2026-09-23
 
 ### Added

@@ -200,7 +200,7 @@ see a name in the code you know what it is and where to learn more.
 | **idb** | A tiny Promise-based wrapper over the raw IndexedDB API (which is famously awkward). | `src/lib/db.ts` |
 | **react-hook-form** + **@hookform/resolvers** | Manages form state (values, touched, errors) efficiently. | Create/edit modals |
 | **zod** | A schema/validation library. You describe the shape of data once; zod both **validates** at runtime and **infers the TypeScript type**. | `src/lib/importSchemas.ts` (validating imported backups), forms |
-| **date-fns (v3)** | Date maths done with plain functions (`addDays`, `isSameDay`, `format`). No global "moment" object. | Calendar, recurrence, streaks. Split into its own bundle chunk. |
+| **date-fns (v3)** | Date maths done with plain functions (`addDays`, `isSameDay`, `format`). No global "moment" object. | Calendar, recurrence, weekly trends. Split into its own bundle chunk. |
 | **Recharts** | React charting library. | Progress screens. **Lazy-loaded** — it's the biggest dependency, so it only downloads when you open a chart page. |
 
 ### Native packaging
@@ -363,7 +363,7 @@ src/
 
   components/           Shared UI used by multiple pages.
     calendar/           MonthlyCalendar, WeeklyCalendar, the schedule modals.
-    dashboard/          The dashboard cards (streak, weekly goal, quick stats, today's focus…).
+    dashboard/          The dashboard cards (today's focus, quick stats, calendar preview…).
     ui/                 shadcn/ui primitives. GENERATED — you own them but avoid hand-editing
                         unless you mean to. button.tsx, dialog.tsx, select.tsx, form.tsx, …
 
@@ -490,7 +490,7 @@ This app has exactly **one** app-data context, `DataContext`, created in
 That's it. No Redux, no Zustand, no React Query. If you understand the six ideas above
 you can read every component in this repo.
 
-**Try it:** open `src/components/dashboard/WorkoutStreak.tsx`. Identify: the props (if
+**Try it:** open `src/components/dashboard/QuickStats.tsx`. Identify: the props (if
 any), the `useData()` call, any `useMemo`, and the JSX it returns. That's a
 representative component.
 
@@ -760,7 +760,7 @@ Measurement (standalone: one logged value of something the user measures themsel
 | **MuscleGroup** | `data/muscleGroups.ts` | An editable tag (`Chest`, `Quads`). IDs stay stable when renamed. | Seeded; editable. |
 | **WorkoutEntry** | `data/workoutHistory.ts` | A reusable **template**: a title, a category, and a **flat ordered `WorkoutSet[]`**. "3×12 bench" = three sets with the same `exerciseId`. | Editable plan. Editing it never touches history. |
 | **WorkoutSet** | same file | One visible block of work: `reps`+`weight` **or** `duration`/`distance`, optional `direction`, `restAfter`, flags `warmup` / `amrap`. | Part of a template or a session. |
-| **WorkoutSession** | `data/workoutSessions.ts` | An **immutable snapshot** written when guided mode finishes: it `extends WorkoutEntry` and adds `workoutId`, `completedAt`, `plannedDuration`, optional `courseId`/`courseItemId`/`scheduledWorkoutId`, `actualSets` (per-set results + RPE), `perceivedExertion`, `completionNotes`. | Append-only (the History correction dialog is the one exception). History, streaks, charts read **only** this. |
+| **WorkoutSession** | `data/workoutSessions.ts` | An **immutable snapshot** written when guided mode finishes: it `extends WorkoutEntry` and adds `workoutId`, `completedAt`, `plannedDuration`, optional `courseId`/`courseItemId`/`scheduledWorkoutId`, `actualSets` (per-set results + RPE), `perceivedExertion`, `completionNotes`. | Append-only (the History correction dialog is the one exception). History, stats and charts read **only** this. |
 | **ScheduledWorkout** | `data/scheduledWorkouts.ts` | A calendar **rule**, not a list of dates: `workoutId`, `startDate`, `startTime`, `recurrence` (`none`/`daily`/`weekly`), `recurrenceDays[]`, `endRecurrenceDate`, `skippedDates[]`; course-created entries also retain `courseId`/`courseItemId`. | Editing/deleting the rule changes the whole series. |
 | **Course** | `data/courses.ts` | A multi-week program: metadata (goal, difficulty, prerequisites, `durationWeeks`) + `CourseWorkout[]`. | `startCourse` stamps `startedAt`; completion is per-item. |
 | **CourseWorkout** | same file | One explicit program slot: `type` `workout`\|`rest`, optional `workoutId`, `week`, `day` (1–7), `order`, `instructions`, `completed`/`completedAt`. Multiple workouts may share a day and run in order; absent days remain empty. Its **own `id`** is what completion is keyed on (so the same workout can appear twice). | |
@@ -1007,7 +1007,7 @@ way as the button — see `docs/workout-audio.md`.
 
 The player writes exactly **one** `WorkoutSession` (via `createSession` from
 `useData()`), carrying `actualSets`, elapsed duration, and any course/schedule links.
-That write is what advances a linked course item and what History/streaks/charts read.
+That write is what advances a linked course item and what History, stats and charts read.
 
 **Try it:** `src/lib/workoutRuntime.test.ts` is the best spec of this behaviour. Read
 the test names — they enumerate every rule above. Then build a 2-exercise circuit in
@@ -1104,7 +1104,7 @@ from the Exercises page — you'll get the block message naming the workout.
 Files: `src/lib/backup.ts`, `src/lib/importSchemas.ts`.
 
 - **Backup** = a **versioned JSON document**. **Version 3** carries the full state: all
-  eight collections + a whitelist of `localStorage` `preferences` (theme, weekly goal,
+  eight collections + a whitelist of `localStorage` `preferences` (theme,
   accessibility, reminders, height, plate-bar — **sync credentials and seed markers are
   deliberately excluded**) + the optional custom audio track as a data URL. Legacy v1/v2
   files still restore.
@@ -1556,7 +1556,7 @@ to extend with an LLM — and what you should preserve:
 
 - A component importing from `src/lib/db.ts` directly (should be `useData()`).
 - A hook that both pushes locally *and* refetches (→ duplicate items).
-- History/streak code reading `workouts` instead of `sessions`.
+- History or stats code reading `workouts` instead of `sessions`.
 - Course completion keyed on `workoutId` instead of `courseItemId`.
 - Hardcoded colours.
 - A `new Date()` arithmetic instead of `date-fns`.

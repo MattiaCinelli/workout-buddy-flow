@@ -12,7 +12,7 @@ const STEPS = [
   { icon: Dumbbell, title: 'Exercises', text: '38 are built in with form notes and diagrams — add your own any time, photos included.' },
   { icon: ListChecks, title: 'Workouts', text: 'Three starter workouts are ready to run. Build your own from sets of reps or timed holds.' },
   { icon: CalendarDays, title: 'Plan it', text: 'Put workouts on the calendar, or follow the “Strength & Stretch Starter” course over four weeks.' },
-  { icon: TrendingUp, title: 'Run & review', text: 'Full-screen guided mode counts you through. History, per-exercise trends and streaks build up as you go.' },
+  { icon: TrendingUp, title: 'Run & review', text: 'Full-screen guided mode counts you through. History, per-exercise trends and records build up as you go.' },
   { icon: ShieldCheck, title: 'Your data', text: 'Changes save locally first. The phone app keeps a recovery snapshot; portable encrypted backups and optional self-hosted sync are available in Settings.' },
   { icon: Bell, title: 'Reminders', text: 'Notification permission is optional. If enabled, reminders can start, snooze, or skip a scheduled workout.' },
   { icon: Image, title: 'Exercise pictures', text: 'Pictures stay on your device or behind your authenticated sync account and are included in new portable backups.' },

@@ -6,7 +6,7 @@
 - **React Router** for page routing
 - **Tailwind CSS + shadcn/ui** for styling and components (semantic design tokens in `src/index.css`)
 - **idb** (IndexedDB wrapper) as the persistence layer
-- **date-fns** for date maths (calendar, recurrence, streaks)
+- **date-fns** for date maths (calendar, recurrence, weekly trends)
 - **Recharts** for progress charts
 - **Capacitor** for packaging the same build as an Android app
 
@@ -137,7 +137,7 @@ a pop finishes before the next push. Behaviour is verified in a real browser
 - **`useWorkouts`** — owns reusable workout templates and exposes template CRUD plus
   `fetchWorkoutById` for pages that need a fresh DB value.
 - **`useWorkoutSessions`** — owns completed-session snapshots. Guided mode writes one
-  session after the final step; history, streaks, goals and progress charts consume
+  session after the final step; history, dashboard stats and progress charts consume
   this collection. `clearAllSessions` clears history without deleting templates.
 - **`useScheduledWorkouts`** — stores *rules*, not occurrences. A record has a
   `startDate`, `recurrence` (`none` / `daily` / `weekly`), optional `recurrenceDays`
@@ -163,7 +163,7 @@ a pop finishes before the next push. Behaviour is verified in a real browser
 
 | Route | Screen |
 | --- | --- |
-| `/` | Dashboard (calendar preview, today's focus, streak, weekly goal, stats) |
+| `/` | Dashboard (today's focus, quick stats, calendar preview) |
 | `/exercises` | Exercise library management |
 | `/exercises/:id/progress` | Per-exercise progress (history, records, progression) |
 | `/workouts` | All saved workouts |
@@ -172,7 +172,7 @@ a pop finishes before the next push. Behaviour is verified in a real browser
 | `/calendar` | Weekly & monthly scheduling views; completed workouts are marked done, and workouts done without being scheduled are listed on their day |
 | `/courses`, `/courses/:id`, `/courses/:id/edit` | Course list, detail, editor |
 | `/history` | Filterable past sessions; `?date=YYYY-MM-DD` opens it filtered to one day (used by the calendar) |
-| `/progress` | Charts, streaks, My Records, body weight, the collapsed automatic exercise records, clear-history action |
+| `/progress` | Charts, My Records, body weight, the collapsed automatic exercise records, clear-history action |
 | `/settings` | Sync, account, reminders, appearance, backup/restore and app information |
 | `/workout/:id`, `/workout/:id/start` | Legacy aliases of the two `/workouts/:id…` routes, kept for old bookmarks and schedules |
 | `*` | Not found |
@@ -253,5 +253,5 @@ Workout template / course item / calendar entry
         WorkoutSession written to IndexedDB
           |                         |
           v                         v
- History, charts, streaks     Exact course item completed
+ History, stats, charts       Exact course item completed
 ```

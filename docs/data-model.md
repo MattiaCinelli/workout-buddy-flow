@@ -134,7 +134,7 @@ interface WorkoutSession extends WorkoutEntry {
 
 `WorkoutSession` snapshots the performed template (title, category and sets), records
 the actual completion timestamp and elapsed duration, and optionally links back to a
-course item or scheduled workout. History, streaks, weekly goals and progress charts
+course item or scheduled workout. History, dashboard stats and progress charts
 read only from sessions. Its inherited `date` is the completion timestamp and its
 inherited `duration` is the actual elapsed time in minutes. The snapshot is normally
 append-only, but the History correction dialog can update its timestamp, duration,
@@ -146,7 +146,7 @@ a session linked to a course also reopens that exact course item.
 Backups are versioned JSON documents. **Version 3** carries the full app state: all
 eight object-store collections (exercises, workout templates, workout sessions,
 schedules, courses, muscle groups, body metrics, My Records), plus `preferences` (a whitelist of
-device `localStorage` keys — theme, weekly goal, accessibility, reminders, height,
+device `localStorage` keys — theme, accessibility, reminders, height,
 plate-calculator bar; sync credentials and seed markers are deliberately excluded) and
 the optional custom workout `audioTrack` as a data URL. Restore validates each record
 against a Zod schema (`src/lib/importSchemas.ts`) — malformed records and duplicate ids

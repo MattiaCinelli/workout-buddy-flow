@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import CalendarPreview from '@/components/dashboard/CalendarPreview';
 import TodaysFocus from '@/components/dashboard/TodaysFocus';
-import WorkoutStreak from '@/components/dashboard/WorkoutStreak';
-import WeeklyGoal from '@/components/dashboard/WeeklyGoal';
 import QuickStats from '@/components/dashboard/QuickStats';
 import { OnboardingDialog } from '@/components/OnboardingDialog';
 import { useData } from '@/contexts/useData';
@@ -62,13 +60,10 @@ const Index = () => {
             <div className="lg:col-span-5">
               <TodaysFocus />
             </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:col-span-7">
-              <WorkoutStreak />
-              <WeeklyGoal />
+            <div className="lg:col-span-7">
+              <QuickStats />
             </div>
           </div>
-
-          <QuickStats />
 
           <CalendarPreview onStartWorkout={(schedule) => navigate(scheduledWorkoutSessionUrl(schedule))} />
         </div>

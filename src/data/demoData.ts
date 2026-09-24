@@ -1,7 +1,7 @@
 // Sample content for demo mode (see src/lib/demoMode.ts). Nothing here is
 // ever written to the real database: it seeds the separate demo database
 // the moment that database is created. Dates are generated relative to
-// "now" so the streak, calendar and progress charts look alive whenever
+// "now" so the dashboard, calendar and progress charts look alive whenever
 // the demo is started.
 import { addDays, format, startOfDay, subDays } from 'date-fns';
 import type { Exercise } from './exercises';
@@ -145,8 +145,8 @@ export const buildDemoData = (now: Date = new Date()): DemoData => {
   const workouts = buildWorkouts(created).map(workout => ({ ...workout, ...stamp }));
   const byId = new Map(workouts.map(workout => [workout.id, workout]));
 
-  // Eight weeks of two to four sessions a week, building up, and ending in a
-  // four-day streak yesterday so today's scheduled workout is still to do.
+  // Eight weeks of two to four sessions a week, building up, and ending
+  // yesterday so today's scheduled workout is still to do.
   const perWeek = [2, 2, 3, 3, 2, 3, 3];
   const daysAgo = [
     ...perWeek.flatMap((count, week) => [0, 2, 4, 5].slice(0, count).map(offset => 56 - week * 7 - offset)),

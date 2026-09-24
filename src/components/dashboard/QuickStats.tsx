@@ -83,14 +83,14 @@ const QuickStats: React.FC = () => {
   ];
 
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="grid grid-cols-2 p-0 lg:grid-cols-4">
+    <Card className="h-full overflow-hidden">
+      <CardContent className="grid h-full grid-cols-2 p-0">
         {stats.map((stat, idx) => (
           <div
             key={stat.label}
             className={`group p-4 transition-colors hover:bg-muted/35 sm:p-5 ${
               idx % 2 ? 'border-l' : ''
-            } ${idx >= 2 ? 'border-t lg:border-t-0' : ''} ${idx > 0 ? 'lg:border-l' : ''}`}
+            } ${idx >= 2 ? 'border-t' : ''}`}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-muted-foreground">{stat.label}</span>

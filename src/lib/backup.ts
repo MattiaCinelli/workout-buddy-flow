@@ -26,7 +26,6 @@ import {
 // credentials/watermarks, seed-version markers, in-progress workout state.
 export const BACKUP_PREFERENCE_KEYS = [
   'theme',
-  'workout-weekly-goal',
   'workout-buddy-accessibility-settings',
   'workout-buddy-notification-settings',
   'workout-buddy-body-profile',

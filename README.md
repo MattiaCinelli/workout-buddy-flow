@@ -34,7 +34,7 @@ from Settings before an update is still recommended.
   with goals, difficulty, prerequisites and per-session guidance.
 - **Course scheduling** — place every workout in a course onto the calendar from one
   program start date.
-- **History & progress** — filterable session history, streaks, weekly goal and charts,
+- **History & progress** — filterable session history, quick stats and charts,
   plus a "clear all history" reset.
 - **My Records** — log anything you measure yourself (a toe-touch gap, a plank hold, a
   lift) as dated values with a name and description, choose whether lower or higher is
