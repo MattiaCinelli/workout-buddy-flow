@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isConnected } from '@/lib/syncClient';
 import { isLiveRecord } from '@/lib/softDelete';
+import { isDemoMode } from '@/lib/demoMode';
 import { getSeedVersion, pendingSeedAdditions, SEED_VERSION, setSeedVersion } from '@/lib/seedVersion';
 
 export interface IndexedDBCollectionConfig<T extends { id: string }, StampedKeys extends keyof T = never> {
@@ -52,7 +53,10 @@ export function useIndexedDBCollection<T extends { id: string }, StampedKeys ext
   const hasLoadedOnceRef = useRef(false);
 
   const load = useCallback(async () => {
-    const { getAll, bulkSave, defaults, seedKey, seedUpdates, errorMessage, transform } = configRef.current;
+    const { getAll, bulkSave, errorMessage, transform } = configRef.current;
+    // The demo database arrives fully seeded (src/lib/db.ts); the regular
+    // starter content must never be mixed into it.
+    const { defaults, seedKey, seedUpdates } = isDemoMode() ? {} as Partial<typeof configRef.current> : configRef.current;
     const isFirstLoad = !hasLoadedOnceRef.current;
     try {
       if (isFirstLoad) setIsLoading(true);

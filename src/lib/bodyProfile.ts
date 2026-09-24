@@ -2,6 +2,8 @@
 // (there's no synced user profile in this app). Used only to turn logged
 // body-weight entries into a BMI.
 
+import { demoScopedKey } from './demoMode';
+
 const STORAGE_KEY = 'workout-buddy-body-profile';
 
 export interface BodyProfile {
@@ -10,7 +12,7 @@ export interface BodyProfile {
 
 export const getBodyProfile = (): BodyProfile => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<BodyProfile>;
+    const parsed = JSON.parse(localStorage.getItem(demoScopedKey(STORAGE_KEY)) ?? '{}') as Partial<BodyProfile>;
     return { heightCm: typeof parsed.heightCm === 'number' && parsed.heightCm > 0 ? parsed.heightCm : undefined };
   } catch {
     return {};
@@ -18,7 +20,7 @@ export const getBodyProfile = (): BodyProfile => {
 };
 
 export const setBodyProfile = (profile: BodyProfile): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  localStorage.setItem(demoScopedKey(STORAGE_KEY), JSON.stringify(profile));
 };
 
 // BMI = kg / m², rounded to one decimal. Null when either input is missing

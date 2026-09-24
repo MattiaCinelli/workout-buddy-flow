@@ -8,6 +8,7 @@ import { BodyMetric } from '@/data/bodyMetrics';
 import { Measurement } from '@/data/measurements';
 import { SEED_IDS } from './seedVersion';
 import { normalizeHttpsUrl } from './url';
+import { isDemoMode } from './demoMode';
 import { addConflicts, clearBaselines, clearConflicts, detectOverwrites, getBaseline, setBaseline } from './syncConflicts';
 import {
   applyRemoteSettings, clearSettingsSnapshot, collectLocalSettings, getSettingsSnapshot,
@@ -47,7 +48,10 @@ export const getLoggedInEmail = (): string | null => localStorage.getItem(emailK
 // Falls back to the email in the UI when unset — this is purely cosmetic,
 // there's always an email underneath as the actual login identifier.
 export const getDisplayName = (): string | null => localStorage.getItem(displayNameKey);
-export const isConnected = (): boolean => !!(localStorage.getItem(serverUrlKey) && localStorage.getItem(tokenKey));
+// Demo mode reads a throwaway database; reporting "not connected" keeps it
+// from ever being pushed to (or merged with) the real account.
+export const isConnected = (): boolean =>
+  !isDemoMode() && !!(localStorage.getItem(serverUrlKey) && localStorage.getItem(tokenKey));
 // Persisted (not just component state) so a background sync — which runs
 // independent of whatever page/dialog happens to be mounted — still shows
 // up next time the sync UI is opened, rather than only reflecting whichever
@@ -160,6 +164,7 @@ interface SyncedRecord {
 }
 
 const authorizedRequest = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+  if (isDemoMode()) throw new Error('Sync is paused while demo mode is on.');
   const url = localStorage.getItem(serverUrlKey);
   const token = localStorage.getItem(tokenKey);
   if (!url || !token) throw new Error('Not connected to a sync server. Log in first.');

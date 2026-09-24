@@ -15,6 +15,7 @@ import ReminderRefresh from "@/components/ReminderRefresh";
 import NotificationActionHandler from "@/components/NotificationActionHandler";
 import AutoBackup from "@/components/AutoBackup";
 import { DataRecoveryGate } from "@/components/DataRecoveryGate";
+import { DemoModeBanner } from "@/components/DemoMode";
 
 // Every route past the dashboard is code-split so the initial load only
 // ships the landing screen. The Suspense fallback covers the fetch.
@@ -67,6 +68,7 @@ const App = () => (
           <NotificationActionHandler />
           <DataRecoveryGate>
           <div className="lcars-app">
+          <DemoModeBanner />
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />

@@ -1,4 +1,5 @@
 import { getDB } from './db';
+import { isDemoMode } from './demoMode';
 import { Exercise } from '@/data/exercises';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import { WorkoutSession } from '@/data/workoutSessions';
@@ -253,7 +254,8 @@ export const getLastExportedBackupAt = (): string | null => localStorage.getItem
 // This protects against a damaged IndexedDB database, while a manual export
 // or server sync is still required to survive uninstalling or losing a phone.
 export const createAutomaticBackup = async (): Promise<boolean> => {
-  if (!Capacitor.isNativePlatform()) return false;
+  // A demo session must never replace the real recovery snapshot.
+  if (!Capacitor.isNativePlatform() || isDemoMode()) return false;
   const backup = await createBackup();
   await Filesystem.writeFile({
     path: AUTOMATIC_BACKUP_PATH,

@@ -9,6 +9,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 ## [Unreleased]
 
+### Added
+
+- **Demo mode** — Settings → Demo mode shows the app to other people without exposing your own data. The app reloads with six cartoon exercises, three sample workouts, eight weeks of made-up history, a schedule, a short course and some body-weight and record entries, all dated relative to today. Your real workouts, pictures and history stay on the device untouched in their own database and return when you tap **Exit demo** in the banner at the top. Sync, the automatic phone snapshot and reminders are paused during a demo, and each demo starts fresh.
+
 ## [1.1.1] - 2026-09-23
 
 ### Added

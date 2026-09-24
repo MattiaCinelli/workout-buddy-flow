@@ -30,6 +30,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useTouchReorder } from '@/hooks/useTouchReorder';
+import { demoScopedKey } from '@/lib/demoMode';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ interface SelectedExercise {
   sets: WorkoutSet[];
 }
 
-const CREATE_WORKOUT_DRAFT_KEY = 'workout-buddy-draft:create-workout';
+const CREATE_WORKOUT_DRAFT_KEY = demoScopedKey('workout-buddy-draft:create-workout');
 interface CreateWorkoutDraft {
   title: string; category: string; folder: string; description: string; notes: string;
   restBetweenSets: number; restBetweenExercises: number;

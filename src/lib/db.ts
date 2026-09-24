@@ -7,6 +7,8 @@ import { WorkoutSession } from '@/data/workoutSessions';
 import { MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
 import { Measurement } from '@/data/measurements';
+import { buildDemoData } from '@/data/demoData';
+import { DEMO_DB_NAME, isDemoMode } from './demoMode';
 
 const DB_NAME = 'workout-buddy-db';
 const DB_VERSION = 7;
@@ -26,8 +28,9 @@ let dbPromise: Promise<IDBPDatabase<WorkoutBuddyDB>> | null = null;
 
 export const getDB = () => {
   if (!dbPromise) {
-    dbPromise = openDB<WorkoutBuddyDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+    const demo = isDemoMode();
+    dbPromise = openDB<WorkoutBuddyDB>(demo ? DEMO_DB_NAME : DB_NAME, DB_VERSION, {
+      upgrade(db, oldVersion, _newVersion, tx) {
         // Create exercises store
         if (!db.objectStoreNames.contains('exercises')) {
           db.createObjectStore('exercises', { keyPath: 'id' });
@@ -58,6 +61,17 @@ export const getDB = () => {
         // Create measurements store (added in v7)
         if (!db.objectStoreNames.contains('measurements')) {
           db.createObjectStore('measurements', { keyPath: 'id' });
+        }
+        // A brand-new demo database is filled inside this same upgrade
+        // transaction, so the app never sees it empty and never falls back
+        // to the regular seed data (whose pictures are private).
+        if (demo && oldVersion === 0) {
+          // Synchronous puts only: awaiting anything else here would let the
+          // upgrade transaction auto-commit before the seed is written.
+          const seed = buildDemoData();
+          (Object.keys(seed) as Array<keyof typeof seed>).forEach(store => {
+            (seed[store] as Array<WorkoutBuddyDB[typeof store]>).forEach(record => { void tx.objectStore(store).put(record); });
+          });
         }
       },
     });

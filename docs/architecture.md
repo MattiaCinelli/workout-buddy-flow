@@ -65,6 +65,19 @@ and on next load each device additively inserts any default id it has never seen
 never touches a record the user edited or deleted — a deleted seed item leaves a
 tombstone row, and `SEED_IDS` keeps sync from compacting that tombstone away.
 
+### Demo mode
+
+`src/lib/demoMode.ts` keeps a `workout-buddy-demo-mode` flag in localStorage. While
+it is set, `getDB()` opens a separate database, `workout-buddy-demo-db`, and fills it
+from `src/data/demoData.ts` inside the upgrade transaction that creates it (cartoon
+images live in `public/demo/`). The real database is never opened. `useIndexedDBCollection`
+ignores `defaults`/`seedKey` in demo mode, `isConnected()` reports false and authorised
+sync requests throw, the automatic phone snapshot and native reminders are skipped, and
+device preferences that could reveal personal data (workout folders, height, the
+create-workout draft) are read through `demoScopedKey`. Entering deletes any old demo
+database first; entering and exiting both reload the app, because the DB connection is
+memoised.
+
 ### Soft delete under sync
 
 When a sync server is connected, `remove`/`clearAll` write a `deletedAt` tombstone

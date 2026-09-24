@@ -30,6 +30,8 @@ import { useData } from '@/contexts/useData';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { AccessibilityPreferences } from '@/components/AccessibilityPreferences';
+import { DemoModeCard } from '@/components/DemoMode';
+import { isDemoMode } from '@/lib/demoMode';
 
 const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -46,6 +48,7 @@ const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
   const { interfaceStyle, setInterfaceStyle } = useInterfaceStyle();
   const data = useData();
+  const demo = isDemoMode();
   const [connected, setConnected] = useState(isConnected());
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -176,6 +179,9 @@ const SettingsPage = () => {
         </div>
 
         <div className="grid gap-5">
+          {/* In demo mode everything tied to the real account or device data is hidden. */}
+          {demo && <DemoModeCard />}
+          {!demo && <>
           <Card id="sync">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Cloud className="h-5 w-5" />Sync</CardTitle>
@@ -208,6 +214,7 @@ const SettingsPage = () => {
               <Button variant="outline" onClick={() => setRemindersOpen(true)}>View upcoming reminders</Button>
             </CardContent>
           </Card>
+          </>}
 
           <Card id="appearance">
             <CardHeader>
@@ -271,7 +278,7 @@ const SettingsPage = () => {
             </CardContent>
           </Card>
 
-          <Card id="data">
+          {!demo && <Card id="data">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Data and backup</CardTitle>
               <CardDescription>Your workout data is stored locally on this device.</CardDescription>
@@ -334,7 +341,9 @@ const SettingsPage = () => {
                   void selectBackup(file);
                 }} />
             </CardContent>
-          </Card>
+          </Card>}
+
+          {!demo && <DemoModeCard />}
 
           <Card id="about">
             <CardHeader>

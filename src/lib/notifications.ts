@@ -5,6 +5,7 @@ import { ScheduledWorkout, getDayOfWeek } from '@/data/scheduledWorkouts';
 import type { WorkoutSession } from '@/data/workoutSessions';
 import { getNotificationSettings } from '@/lib/notificationSettings';
 import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
+import { isDemoMode } from './demoMode';
 
 export const WORKOUT_NOTIFICATION_ACTION_TYPE = 'WORKOUT_REMINDER';
 export const WORKOUT_NOTIFICATION_START_ACTION = 'START_WORKOUT';
@@ -61,7 +62,7 @@ const occurrences = (schedule: ScheduledWorkout) => {
 };
 
 export const cancelWorkoutReminders = async (scheduleId: string) => {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || isDemoMode()) return;
   const pending = await LocalNotifications.getPending();
   const matching = pending.notifications.filter(item => item.extra?.scheduleId === scheduleId);
   if (matching.length) await LocalNotifications.cancel({ notifications: matching.map(item => ({ id: item.id })) });
@@ -72,7 +73,7 @@ export const scheduleWorkoutReminders = async (
   workoutTitle: string,
   sessions: WorkoutSession[] = [],
 ) => {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || isDemoMode()) return;
   await registerWorkoutNotificationActions();
   await cancelWorkoutReminders(schedule.id);
 
@@ -121,7 +122,7 @@ export const scheduleWorkoutReminders = async (
 };
 
 export const snoozeWorkoutReminder = async (extra: unknown, workoutTitle: string): Promise<boolean> => {
-  if (!Capacitor.isNativePlatform() || !extra || typeof extra !== 'object') return false;
+  if (!Capacitor.isNativePlatform() || isDemoMode() || !extra || typeof extra !== 'object') return false;
   const values = extra as Record<string, unknown>;
   if (typeof values.workoutId !== 'string') return false;
   await registerWorkoutNotificationActions();
@@ -146,7 +147,7 @@ export const rescheduleAllReminders = async (
   getWorkoutTitle: (workoutId: string) => string | undefined,
   sessions: WorkoutSession[] = [],
 ) => {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || isDemoMode()) return;
   for (const schedule of scheduledWorkouts) {
     if (schedule.deletedAt) continue;
     await scheduleWorkoutReminders(schedule, getWorkoutTitle(schedule.workoutId) ?? 'Workout', sessions);
@@ -160,7 +161,7 @@ export const replaceAllWorkoutReminders = async (
   getWorkoutTitle: (workoutId: string) => string | undefined,
   sessions: WorkoutSession[] = [],
 ) => {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || isDemoMode()) return;
   const pending = await LocalNotifications.getPending();
   const appNotifications = pending.notifications.filter(item => typeof item.extra?.scheduleId === 'string');
   if (appNotifications.length) {
