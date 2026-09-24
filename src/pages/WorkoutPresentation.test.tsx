@@ -4,7 +4,8 @@ import { act, render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 // --- mock the whole environment the page pulls in -------------------------
 
-const { speak, ttsStop, navigate, toast, createSession, workouts, exercises } = vi.hoisted(() => ({
+const { speak, ttsStop, navigate, toast, createSession, workouts, exercises, voice } = vi.hoisted(() => ({
+  voice: { onCommand: null as null | (() => void), active: false, isSpeaking: null as null | (() => boolean) },
   speak: vi.fn(async (_opts: { text: string }) => {}),
   ttsStop: vi.fn(async () => {}),
   navigate: vi.fn(),
@@ -28,11 +29,21 @@ vi.mock('@capacitor/haptics', () => ({
 }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 vi.mock('@/hooks/useWorkoutMusic', () => ({ useWorkoutMusic: vi.fn() }));
+vi.mock('@/hooks/useVoiceCommand', () => ({
+  isVoiceControlSupported: () => true,
+  ensureMicrophonePermission: async () => 'granted',
+  useVoiceCommand: (options: { onCommand: () => void; active: boolean; isSpeaking: () => boolean }) => {
+    voice.onCommand = options.onCommand;
+    voice.active = options.active;
+    voice.isSpeaking = options.isSpeaking;
+    return { status: 'listening' };
+  },
+}));
 vi.mock('@/lib/completionSound', () => ({ playCompletionChime: vi.fn() }));
 vi.mock('@/lib/diagnosticLog', () => ({ logDiagnostic: vi.fn() }));
 vi.mock('@/lib/accessibilitySettings', () => ({
   getAccessibilitySettings: () => ({
-    voiceCues: true, haptics: false, backgroundMusic: false, musicVolume: 0.5,
+    voiceCues: true, haptics: false, backgroundMusic: false, musicVolume: 0.5, voiceControl: true, voiceCommandWord: 'next',
     textSize: 'standard', motion: 'system',
   }),
   setAccessibilitySettings: vi.fn(),
@@ -84,6 +95,45 @@ afterEach(() => {
   cleanup();
   vi.runOnlyPendingTimers();
   vi.useRealTimers();
+});
+
+describe('WorkoutPresentation — voice command', () => {
+  const sayNext = () => act(() => { voice.onCommand?.(); });
+
+  it('moves on from a rep set and skips a rest, just like the button', async () => {
+    setExercises([ex({ id: 'pushup', name: 'Push-up', logType: 'reps', secondsPerRep: 3 })]);
+    setWorkout([{ exerciseId: 'pushup', reps: 10 }, { exerciseId: 'pushup', reps: 12 }]);
+
+    await startAndSkipPrep();
+    expect(screen.getByText(/10 reps/)).toBeInTheDocument();
+    expect(voice.active).toBe(true);
+
+    await sayNext();
+    expect(screen.getByRole('button', { name: /Skip rest/ })).toBeInTheDocument();
+    expect(screen.getByText(/Heard “next”/)).toBeInTheDocument();
+
+    await sayNext();
+    expect(screen.getByText(/12 reps/)).toBeInTheDocument();
+
+    await sayNext();
+    expect(voice.active).toBe(false); // completion dialog open — stop listening
+  });
+
+  it("treats the app's own voice cue as speaking", async () => {
+    setExercises([ex({ id: 'pushup', name: 'Push-up', logType: 'reps', secondsPerRep: 3 })]);
+    setWorkout([{ exerciseId: 'pushup', reps: 10 }]);
+    let finish: () => void = () => undefined;
+    speak.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+
+    render(<WorkoutPresentation />);
+    await act(async () => { await Promise.resolve(); });
+    expect(voice.isSpeaking?.()).toBe(true);
+
+    await act(async () => { finish(); await Promise.resolve(); });
+    expect(voice.isSpeaking?.()).toBe(true); // short echo tail
+    await advance(700);
+    expect(voice.isSpeaking?.()).toBe(false);
+  });
 });
 
 describe('WorkoutPresentation — guided run', () => {

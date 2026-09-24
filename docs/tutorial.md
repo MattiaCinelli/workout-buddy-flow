@@ -1000,6 +1000,8 @@ A reps-based exercise step (has `secondsPerRep`) is **self-paced**: no ticking c
 auto-advance — you do your reps and press Next. Everything else (rests, prep/switch,
 genuinely timed exercises) runs a real countdown and auto-advances at zero. There's a
 comment block in `workoutRuntime.ts` spelling this out.
+With voice control on (Android app), saying the command word advances any step the same
+way as the button — see `docs/workout-audio.md`.
 
 ### On completion
 

@@ -11,6 +11,7 @@ together — a single tag `vX.Y.Z` releases both.
 
 ### Added
 
+- **Voice control in guided workouts (Android app)** — say "next" (or a word you choose, in your phone's language) to move the workout on without touching the phone: it finishes a rep set, skips a rest or the get-ready pause, and finishes the workout, exactly like the green button. Turn it on in Settings → Accessibility → Voice control or with the new microphone button on the workout screen; it asks for microphone access, listens only during a workout, ignores the app's own spoken cues, and confirms with a short vibration and a "Heard …" label. Not available in the browser, where speech recognition would send your voice to an online service. Some phones play a short sound each time listening restarts.
 - **Demo mode** — Settings → Demo mode shows the app to other people without exposing your own data. The app reloads with six cartoon exercises, three sample workouts, eight weeks of made-up history, a schedule, a short course and some body-weight and record entries, all dated relative to today. Your real workouts, pictures and history stay on the device untouched in their own database and return when you tap **Exit demo** in the banner at the top. Sync, the automatic phone snapshot and reminders are paused during a demo, and each demo starts fresh.
 
 ### Changed

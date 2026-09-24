@@ -19,6 +19,7 @@
         "release:check": "npm run lint && npm run typecheck && npm run test:unit && npm run build && npm --prefix server run build && npm --prefix server test && npm run test:e2e"
     },
     "dependencies": {
+        "@capacitor-community/speech-recognition": "^7.0.1",
         "@capacitor-community/text-to-speech": "^8.0.2",
         "@capacitor/android": "^8.0.1",
         "@capacitor/core": "^8.0.1",

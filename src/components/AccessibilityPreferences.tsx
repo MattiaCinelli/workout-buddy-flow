@@ -3,6 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { ensureMicrophonePermission, isVoiceControlSupported } from '@/hooks/useVoiceCommand';
+import { isValidCommandWord, normalizeSpeech } from '@/lib/voiceCommand';
 import { AccessibilitySettings, getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { CustomMusicPicker } from '@/components/CustomMusicPicker';
 import { cn } from '@/lib/utils';
@@ -12,6 +16,28 @@ export function AccessibilityPreferences() {
   const change = (updates: Partial<AccessibilitySettings>) => {
     const next = { ...settings, ...updates };
     setSettings(next); setAccessibilitySettings(next);
+  };
+  const voiceControlSupported = isVoiceControlSupported();
+  const [commandDraft, setCommandDraft] = useState(settings.voiceCommandWord);
+  const commandDraftValid = isValidCommandWord(commandDraft);
+
+  const changeVoiceControl = async (checked: boolean) => {
+    if (!checked) { change({ voiceControl: false }); return; }
+    const permission = await ensureMicrophonePermission();
+    if (permission === 'granted') { change({ voiceControl: true }); return; }
+    toast.error(permission === 'denied'
+      ? 'Microphone access was not allowed. Allow it for Workout Buddy in your phone settings to use voice control.'
+      : 'This phone has no speech recognition service, so voice control cannot be used.');
+  };
+
+  const commitCommandWord = () => {
+    if (commandDraftValid) {
+      const word = normalizeSpeech(commandDraft);
+      setCommandDraft(word);
+      if (word !== settings.voiceCommandWord) change({ voiceCommandWord: word });
+    } else {
+      setCommandDraft(settings.voiceCommandWord);
+    }
   };
 
   return <div className="space-y-6">
@@ -35,6 +61,31 @@ export function AccessibilityPreferences() {
     <div className="flex items-center justify-between gap-4"><div><Label htmlFor="accessibility-voice">Voice cues</Label>
       <p className="text-sm text-muted-foreground">Speak steps, reps, and countdowns during guided workouts.</p></div>
       <Switch id="accessibility-voice" checked={settings.voiceCues} onCheckedChange={checked => change({ voiceCues: checked })} />
+    </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-4"><div><Label htmlFor="accessibility-voice-control">Voice control</Label>
+        <p className="text-sm text-muted-foreground">
+          {voiceControlSupported
+            ? 'Say a word to move a guided workout on, including skipping a rest, without touching the phone. Uses the microphone only during a workout.'
+            : 'Available in the Android app. Browsers would send your voice to an online service, so it is turned off here.'}
+        </p></div>
+        <Switch id="accessibility-voice-control" checked={voiceControlSupported && settings.voiceControl}
+          disabled={!voiceControlSupported} onCheckedChange={checked => void changeVoiceControl(checked)} />
+      </div>
+      {voiceControlSupported && settings.voiceControl && (
+        <div className="space-y-1.5">
+          <Label htmlFor="accessibility-command-word">Command word</Label>
+          <Input id="accessibility-command-word" value={commandDraft} maxLength={24} autoComplete="off" autoCapitalize="none"
+            aria-invalid={!commandDraftValid} aria-describedby="accessibility-command-word-help"
+            onChange={event => setCommandDraft(event.target.value)} onBlur={commitCommandWord}
+            onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); commitCommandWord(); } }} />
+          <p id="accessibility-command-word-help" className={cn('text-xs', commandDraftValid ? 'text-muted-foreground' : 'text-destructive')}>
+            {commandDraftValid
+              ? 'One to three words in your phone’s language, e.g. “next” or “avanti”. Pick something you would not say by accident, and avoid words the app says, like “begin”, “rest” or numbers.'
+              : 'Use one to three words made of letters only.'}
+          </p>
+        </div>
+      )}
     </div>
     <div className="flex items-center justify-between gap-4"><div><Label htmlFor="accessibility-haptics">Haptic cues</Label>
       <p className="text-sm text-muted-foreground">Vibrate when workout steps change.</p></div>

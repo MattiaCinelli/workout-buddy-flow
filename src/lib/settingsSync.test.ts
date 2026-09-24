@@ -67,7 +67,7 @@ describe('collect / apply round-trip', () => {
       theme: 'dark',
       accessibility: {
         textSize: 'large', motion: 'reduced', haptics: false, voiceCues: false,
-        backgroundMusic: true, musicVolume: 0.8,
+        backgroundMusic: true, musicVolume: 0.8, voiceControl: true, voiceCommandWord: 'avanti',
       },
       bodyProfile: { heightCm: 175 },
       workoutFolders: ['Mobility', 'Strength / Upper Body'],

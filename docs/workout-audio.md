@@ -119,3 +119,52 @@ OpenGameArt CC0 music.
   unit-tested (consistent with other Web-Audio/DOM code). `createFilePlayer`
   guards `typeof Audio` and `ambientAudio` guards `typeof window` so
   importing the modules under Node/SSR is safe.
+
+## Voice control ("next")
+
+Optional and **off by default**: saying a command word moves a guided
+workout on, on every step — it does exactly what the green button does
+(Next, Skip rest, I'm ready, Skip, Finish). Meant for flowing sessions such
+as warm-ups where reaching for the phone breaks the rhythm.
+
+**Using it:** Settings → Accessibility → **Voice control**, or the
+microphone button in the guided screen's header. Turning it on asks for
+microphone access. The **Command word** (default "next") can be any one to
+three words, in the phone's language — e.g. "avanti" on an Italian phone.
+Like the other accessibility settings it is stored on the device and carried
+by settings sync; a browser receiving it simply keeps the feature off.
+
+**Android app only.** Android's built-in speech recogniser is used through
+`@capacitor-community/speech-recognition`. Browsers are deliberately left
+out: Chrome's speech recognition sends the audio to Google's servers, which
+would break the app's promise that nothing leaves the device.
+
+| File | Responsibility |
+| --- | --- |
+| `src/lib/voiceCommand.ts` | `normalizeSpeech`, `matchesCommand` (whole words, any alternative transcript), `isValidCommandWord`. |
+| `src/hooks/useVoiceCommand.ts` | Permission, the listening session and its keep-alive, match → `onCommand`. |
+| `src/pages/WorkoutPresentation.tsx` | Header toggle, "Heard …" label, haptic confirmation, wiring to `nextStep`. |
+| `src/components/AccessibilityPreferences.tsx` | The switch and command word input. |
+
+How the listening works:
+
+- Android's recogniser listens in short sessions and ends after a pause or a
+  few seconds of silence. With partial results on, the plugin never reports
+  those silent endings to JavaScript, so the hook polls `isListening()`
+  every 500 ms and starts a new session one second after the last one ended
+  (the delay lets a final result arrive). Sessions that end almost
+  immediately count as failures and back off; after ten in a row the hook
+  gives up and the guided screen shows a toast.
+- One spoken word produces several partial results, so after a match the
+  session is stopped and a 1.5 s cooldown applies.
+- **The app must not hear itself.** Matches are ignored while a voice cue is
+  playing and for 600 ms after (`SPEECH_ECHO_TAIL_MS`) — the cue "Rest,
+  changing exercise. Next up: …" contains "next".
+- Listening stops while the completion, exit or restart dialog is open and
+  while the app is in the background.
+- Confirmation is a light vibration and a brief "Heard …" label, never
+  speech, which the microphone would pick up.
+
+Known limits: some phones play a short sound each time a listening session
+starts; loud music or gym noise lowers accuracy; working offline depends on
+the phone having its offline speech language pack installed.

@@ -39,3 +39,9 @@ test('interface preference survives a direct reload outside settings', async ({ 
   await page.getByRole('group', { name: 'Interface style' }).getByRole('button', { name: /Classic/ }).click();
   await expect(page.locator('html')).not.toHaveClass(/starship/);
 });
+
+test('voice control is offered only in the Android app', async ({ page }) => {
+  await page.goto('/settings');
+  await expect(page.getByRole('switch', { name: 'Voice control' })).toBeDisabled();
+  await expect(page.getByText('Available in the Android app.', { exact: false })).toBeVisible();
+});

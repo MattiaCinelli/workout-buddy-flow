@@ -1,3 +1,5 @@
+import { DEFAULT_VOICE_COMMAND_WORD, isValidCommandWord, normalizeSpeech } from './voiceCommand';
+
 export type TextSizePreference = 'standard' | 'large';
 export type MotionPreference = 'system' | 'reduced' | 'full';
 
@@ -12,6 +14,11 @@ export interface AccessibilitySettings {
   // 0–1. 0.5 is the comfortable default; the players scale it so 1.0 is as
   // loud as each source should reasonably go.
   musicVolume: number;
+  // Hands-free "next": saying the command word advances the guided workout
+  // (Android app only — see src/hooks/useVoiceCommand.ts). Off by default
+  // because it needs the microphone.
+  voiceControl: boolean;
+  voiceCommandWord: string;
 }
 
 const STORAGE_KEY = 'workout-buddy-accessibility-settings';
@@ -19,6 +26,7 @@ export const ACCESSIBILITY_CHANGE_EVENT = 'workout-buddy-accessibility-change';
 
 export const ACCESSIBILITY_DEFAULTS: AccessibilitySettings = {
   textSize: 'standard', motion: 'system', haptics: true, voiceCues: true, backgroundMusic: false, musicVolume: 0.5,
+  voiceControl: false, voiceCommandWord: DEFAULT_VOICE_COMMAND_WORD,
 };
 const defaults = ACCESSIBILITY_DEFAULTS;
 
@@ -34,6 +42,9 @@ export const getAccessibilitySettings = (): AccessibilitySettings => {
       backgroundMusic: typeof parsed.backgroundMusic === 'boolean' ? parsed.backgroundMusic : false,
       musicVolume: typeof parsed.musicVolume === 'number' && parsed.musicVolume >= 0 && parsed.musicVolume <= 1
         ? parsed.musicVolume : 0.5,
+      voiceControl: typeof parsed.voiceControl === 'boolean' ? parsed.voiceControl : false,
+      voiceCommandWord: typeof parsed.voiceCommandWord === 'string' && isValidCommandWord(parsed.voiceCommandWord)
+        ? normalizeSpeech(parsed.voiceCommandWord) : DEFAULT_VOICE_COMMAND_WORD,
     };
   } catch { return defaults; }
 };

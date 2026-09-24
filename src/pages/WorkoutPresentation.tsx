@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, CheckCircle2, ChevronLeft, Dumbbell, Info, Minus, Music, Pause, Play, Plus, RotateCcw, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, CheckCircle2, ChevronLeft, Dumbbell, Info, Mic, MicOff, Minus, Music, Pause, Play, Plus, RotateCcw, SkipForward, Timer, Video, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -26,12 +26,17 @@ import { suggestNextSet } from '@/lib/progression';
 import { ToastAction } from '@/components/ui/toast';
 import { getAccessibilitySettings, setAccessibilitySettings } from '@/lib/accessibilitySettings';
 import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
+import { ensureMicrophonePermission, isVoiceControlSupported, useVoiceCommand } from '@/hooks/useVoiceCommand';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { normalizeHttpsUrl } from '@/lib/url';
 import { getNextSameDayWorkout } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
 import { getExerciseImageUrl } from '@/data/exercises';
 import { buildExerciseTrial } from '@/lib/exerciseTrial';
+
+// How long after a voice cue ends before the voice command listens again, so
+// the tail of the app's own speech is not taken for the user.
+const SPEECH_ECHO_TAIL_MS = 600;
 
 const PR_UNIT: Record<PRKind, string> = { weight: 'kg', reps: 'reps', duration: 'sec', distance: 'm' };
 const PR_LABEL: Record<PRKind, string> = { weight: 'weight', reps: 'reps', duration: 'time', distance: 'distance' };
@@ -103,6 +108,12 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
   const [voiceEnabled, setVoiceEnabled] = useState(() => getAccessibilitySettings().voiceCues);
   const [musicEnabled, setMusicEnabled] = useState(() => getAccessibilitySettings().backgroundMusic);
   const musicVolume = useRef(getAccessibilitySettings().musicVolume).current;
+  const [voiceControlEnabled, setVoiceControlEnabled] = useState(() => getAccessibilitySettings().voiceControl);
+  const commandWord = useRef(getAccessibilitySettings().voiceCommandWord).current;
+  const [heardCommand, setHeardCommand] = useState(false);
+  // Until when the app's own voice counts as "speaking" — the voice command
+  // must not hear its own cues ("…Next up: Squat" contains "next").
+  const speakingUntilRef = useRef(0);
   const lastSpokenCountdownRef = useRef<number | null>(null);
   // Guard against the per-step voice cue / vibration firing more than once
   // for the same step: `steps`/`exercises` get fresh array identities on an
@@ -143,7 +154,10 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
   // watchdog timers required, unlike the raw Web Speech API.
   const speak = useCallback((text: string) => {
     if (!voiceEnabled) return;
-    TextToSpeech.speak({ text, rate: 1.15 }).catch((error: unknown) => {
+    speakingUntilRef.current = Number.POSITIVE_INFINITY;
+    TextToSpeech.speak({ text, rate: 1.15 }).finally(() => {
+      speakingUntilRef.current = Date.now() + SPEECH_ECHO_TAIL_MS;
+    }).catch((error: unknown) => {
       // Every new cue interrupts whatever's still speaking (QueueStrategy's
       // default, Flush) — on web that surfaces as the PREVIOUS call's
       // promise rejecting with error "interrupted". That's this function
@@ -161,6 +175,26 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
       if (!next) void TextToSpeech.stop().catch(() => undefined);
       return next;
     });
+  };
+
+  const toggleVoiceControl = async () => {
+    if (voiceControlEnabled) {
+      setVoiceControlEnabled(false);
+      setAccessibilitySettings({ ...getAccessibilitySettings(), voiceControl: false });
+      return;
+    }
+    const permission = await ensureMicrophonePermission();
+    if (permission !== 'granted') {
+      toast({
+        title: 'Voice control is unavailable',
+        description: permission === 'denied'
+          ? 'Allow microphone access for Workout Buddy in your phone settings to use it.'
+          : 'This phone has no speech recognition service.',
+      });
+      return;
+    }
+    setVoiceControlEnabled(true);
+    setAccessibilitySettings({ ...getAccessibilitySettings(), voiceControl: true });
   };
 
   const toggleMusic = () => {
@@ -348,6 +382,35 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
     }
     startStep(next);
   }, [activeStep, steps.length, startStep, stopActiveClock]);
+
+  // Saying the command word does exactly what the green button does on any
+  // step: Next, Skip rest, I'm ready, Skip or Finish. The confirmation is a
+  // buzz and a brief label, never speech, which the microphone would hear.
+  const handleVoiceCommand = useCallback(() => {
+    vibrate(ImpactStyle.Light);
+    setHeardCommand(true);
+    nextStep();
+  }, [nextStep, vibrate]);
+  useEffect(() => {
+    if (!heardCommand) return;
+    const timer = window.setTimeout(() => setHeardCommand(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, [heardCommand]);
+  const isSpeaking = useCallback(() => Date.now() < speakingUntilRef.current, []);
+  const { status: voiceCommandStatus } = useVoiceCommand({
+    enabled: voiceControlEnabled,
+    active: restored && !completionOpen && !exitConfirmOpen && !restartConfirmOpen,
+    word: commandWord, onCommand: handleVoiceCommand, isSpeaking,
+  });
+  useEffect(() => {
+    if (voiceCommandStatus !== 'denied' && voiceCommandStatus !== 'error') return;
+    toast({
+      title: 'Voice control stopped',
+      description: voiceCommandStatus === 'denied'
+        ? 'Microphone access was not allowed. Use the buttons, or allow it in your phone settings.'
+        : 'Speech recognition kept failing on this phone. Use the buttons to continue.',
+    });
+  }, [voiceCommandStatus, toast]);
 
   const previousStep = () => {
     if (activeStep === 0) return;
@@ -581,12 +644,24 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
         <Button variant="ghost" size="icon" className={`hidden h-10 w-10 rounded-full text-white sm:inline-flex ${musicEnabled ? '' : 'opacity-40'}`} onClick={toggleMusic} aria-label={musicEnabled ? 'Turn off background music' : 'Turn on background music'} aria-pressed={musicEnabled}>
           <Music className="h-5 w-5" />
         </Button>
+        {isVoiceControlSupported() && (
+          <Button variant="ghost" size="icon" onClick={() => void toggleVoiceControl()} aria-pressed={voiceControlEnabled}
+            aria-label={voiceControlEnabled ? `Turn off voice control (say “${commandWord}”)` : 'Turn on voice control'}
+            className={`h-10 w-10 rounded-full hover:bg-white/10 hover:text-white ${voiceCommandStatus === 'listening' ? 'text-workout-green motion-safe:animate-pulse' : 'text-white/80'}`}>
+            {voiceControlEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={toggleVoice} aria-label={voiceEnabled ? 'Mute workout voice' : 'Unmute workout voice'}>
           {voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
         </Button>
         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/80 hover:bg-white/10 hover:text-white" onClick={() => setRestartConfirmOpen(true)} aria-label={trialMode ? 'Restart trial' : 'Restart workout'}><RotateCcw className="h-4 w-4" /></Button>
       </div>
     </header>
+    {heardCommand && (
+      <p role="status" className="pointer-events-none fixed left-1/2 top-[max(3.5rem,calc(var(--app-safe-area-top)+3rem))] z-50 -translate-x-1/2 rounded-full bg-workout-green px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
+        Heard “{commandWord}”
+      </p>
+    )}
     <section className="space-y-2 px-4 pb-2" aria-label={trialMode ? 'Exercise trial progress' : 'Workout progress'}>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : restKindLabel(current)}.
