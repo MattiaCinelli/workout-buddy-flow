@@ -13,6 +13,10 @@ together — a single tag `vX.Y.Z` releases both.
 
 - **Demo mode** — Settings → Demo mode shows the app to other people without exposing your own data. The app reloads with six cartoon exercises, three sample workouts, eight weeks of made-up history, a schedule, a short course and some body-weight and record entries, all dated relative to today. Your real workouts, pictures and history stay on the device untouched in their own database and return when you tap **Exit demo** in the banner at the top. Sync, the automatic phone snapshot and reminders are paused during a demo, and each demo starts fresh.
 
+### Changed
+
+- **Compact exercise cards in workouts** — on a workout's page each exercise is now one short card: thumbnail, name and a summary such as "3 sets · 10 reps · 12 kg". Tap the arrow to edit its sets. Set rows are about half as tall (reps or time, kg and rest on one line, direction, Warm-up and AMRAP on the next), Duplicate, Remove and Instructions are icons on phones, and the distance field appears only for cardio exercises or sets that already have a distance. A workout page no longer runs wider than a phone screen. Exercises just added in Create Workout open with their sets showing.
+
 ## [1.1.1] - 2026-09-23
 
 ### Added

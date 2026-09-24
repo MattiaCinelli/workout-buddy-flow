@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { exercise } = vi.hoisted(() => ({
@@ -72,7 +72,7 @@ describe('CreateWorkoutModal selected exercises', () => {
     expect(screen.getByRole('tab', { name: 'Selected Exercises (1)' })).toHaveAttribute('data-state', 'active');
   });
 
-  it('shows the exercise thumbnail above its remove button', () => {
+  it('shows the exercise thumbnail, a set summary and its sets', () => {
     render(<CreateWorkoutModal isOpen onClose={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: `Add ${exercise.name}` }));
@@ -81,11 +81,11 @@ describe('CreateWorkoutModal selected exercises', () => {
       ctrlKey: false,
     });
 
-    const thumbnail = screen.getByAltText(`${exercise.name} thumbnail`);
-    const actions = thumbnail.closest('[data-selected-exercise-actions]');
-    expect(actions).not.toBeNull();
-    expect(actions).toHaveClass('flex-col');
-    expect(within(actions as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(screen.getByAltText(`${exercise.name} thumbnail`)).toBeInTheDocument();
+    expect(screen.getByText('2 sets · 30s')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Remove ${exercise.name}` })).toBeInTheDocument();
+    // A freshly added exercise opens its sets straight away for editing.
+    expect(screen.getAllByLabelText('Time (s)')).toHaveLength(2);
   });
 
   it('shows the exercise position beside its name', () => {
@@ -114,7 +114,7 @@ describe('CreateWorkoutModal selected exercises', () => {
 
     expect(screen.getByRole('heading', { name: `1. ${exercise.name}` })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: `2. ${exercise.name}` })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: `Remove ${exercise.name}` })).toHaveLength(2);
   });
 
   it('duplicates an exercise immediately with all of its set settings', () => {
@@ -125,11 +125,11 @@ describe('CreateWorkoutModal selected exercises', () => {
       button: 0,
       ctrlKey: false,
     });
-    fireEvent.change(screen.getAllByLabelText('Duration (sec):')[0], { target: { value: '45' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
+    fireEvent.change(screen.getAllByLabelText('Time (s)')[0], { target: { value: '45' } });
+    fireEvent.click(screen.getByRole('button', { name: `Duplicate ${exercise.name}` }));
 
     expect(screen.getByRole('heading', { name: `2. ${exercise.name}` })).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Duration (sec):').map(input => (input as HTMLInputElement).value))
+    expect(screen.getAllByLabelText('Time (s)').map(input => (input as HTMLInputElement).value))
       .toEqual(['45', '30', '45', '30']);
   });
 });

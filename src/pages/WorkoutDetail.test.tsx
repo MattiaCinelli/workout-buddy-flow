@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { navigate, toast, updateWorkout } = vi.hoisted(() => ({
@@ -87,14 +87,19 @@ describe('WorkoutDetail', () => {
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Error' }));
   });
 
-  it('shows each exercise position and thumbnail above its remove button', async () => {
+  it('shows each exercise compactly, with its sets behind a toggle', async () => {
     render(<WorkoutDetail />);
 
     expect(await screen.findByRole('heading', { name: '1. Stretch' })).toBeInTheDocument();
-    const thumbnail = screen.getByAltText('Stretch thumbnail');
-    const actions = thumbnail.closest('[data-selected-exercise-actions]');
-    expect(actions).not.toBeNull();
-    expect(within(actions as HTMLElement).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(screen.getByAltText('Stretch thumbnail')).toBeInTheDocument();
+    expect(screen.getByText('1 set · 30s')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove Stretch' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Time (s)')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit sets for Stretch' }));
+
+    expect(screen.getByLabelText('Time (s)')).toHaveValue(30);
+    expect(screen.getByRole('button', { name: 'Hide sets for Stretch' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('keeps exercise instructions collapsed until requested', async () => {

@@ -12,16 +12,14 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Exercise, getExerciseImageUrl, getLogType, getExecutionDirections } from '@/data/exercises';
+import { Exercise, getLogType } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
-import ExerciseImage from './ExerciseImage';
-import { UnilateralSetNote } from './UnilateralSetNote';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Minus, Plus, Loader2, ChevronUp, ChevronDown, Copy, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { useData } from '@/contexts/useData';
 import { DEFAULT_REST_BETWEEN_SETS, DEFAULT_REST_BETWEEN_EXERCISES } from '@/lib/workoutRuntime';
-import { expandSetForExercise, WORKOUT_SET_DIRECTIONS, workoutDirectionLabel } from '@/lib/workoutDirections';
+import { expandSetForExercise } from '@/lib/workoutDirections';
 import { useWorkoutFolders } from '@/hooks/useWorkoutFolders';
 import { exerciseMatchesSearchQuery } from '@/lib/exerciseLibrary';
 import { workoutDurationMinutes } from '@/lib/workoutRuntime';
@@ -31,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useTouchReorder } from '@/hooks/useTouchReorder';
 import { demoScopedKey } from '@/lib/demoMode';
+import { SelectedExerciseCard, type SelectedExercise } from '@/components/SelectedExerciseCard';
 
 interface CreateWorkoutModalProps {
   isOpen: boolean;
@@ -38,11 +37,6 @@ interface CreateWorkoutModalProps {
   onCreated?: (workout: WorkoutEntry) => void;
 }
 
-interface SelectedExercise {
-  occurrenceId: string;
-  exercise: Exercise;
-  sets: WorkoutSet[];
-}
 
 const CREATE_WORKOUT_DRAFT_KEY = demoScopedKey('workout-buddy-draft:create-workout');
 interface CreateWorkoutDraft {
@@ -294,19 +288,6 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     setSelectedExercises(updatedExercises);
   };
 
-  const updateSetValue = (
-    exerciseIndex: number,
-    setIndex: number,
-    field: keyof WorkoutSet,
-    value: number | undefined
-  ) => {
-    const updatedExercises = [...selectedExercises];
-    updatedExercises[exerciseIndex].sets[setIndex] = {
-      ...updatedExercises[exerciseIndex].sets[setIndex],
-      [field]: value
-    };
-    setSelectedExercises(updatedExercises);
-  };
 
   const patchSet = (exerciseIndex: number, setIndex: number, patch: Partial<WorkoutSet>) => {
     const updatedExercises = [...selectedExercises];
@@ -358,7 +339,7 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
           if (target.type === 'number' && document.activeElement === target) target.blur();
         }}>
           {isDirty && <p className="mb-2 text-xs text-muted-foreground" role="status">{draftSaved ? 'Draft saved on this device' : 'Saving draft…'}</p>}
-          <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-1 gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="workout-title" className="text-right">
                 Title
@@ -521,249 +502,25 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
                       Start by adding exercises from the Exercise Library.
                     </div>
                   ) : (
-                    <div className="space-y-6 max-h-[300px] overflow-y-auto py-2">
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto py-2">
                       {selectedExercises.map((selectedEx, exIndex) => (
-                        <div key={selectedEx.occurrenceId} data-reorder-id={selectedEx.occurrenceId}
-                          className={`border rounded-md p-4 ${touchReorder.draggingId === selectedEx.occurrenceId ? 'border-primary bg-primary/5 shadow-lg' : ''}`}>
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex min-w-0 flex-1 items-center gap-1">
-                              <button type="button" aria-label={`Hold and drag ${selectedEx.exercise.name}`}
-                                className="touch-none rounded p-1 text-muted-foreground md:hidden" {...touchReorder.bind(selectedEx.occurrenceId)}>
-                                <GripVertical className="h-5 w-5" />
-                              </button>
-                              <div className="flex flex-col -my-1">
-                                <Button
-                                  variant="ghost" size="icon" type="button" className="h-5 w-6"
-                                  onClick={() => handleMoveExercise(exIndex, -1)}
-                                  disabled={isSubmitting || exIndex === 0}
-                                  aria-label="Move exercise up"
-                                >
-                                  <ChevronUp className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost" size="icon" type="button" className="h-5 w-6"
-                                  onClick={() => handleMoveExercise(exIndex, 1)}
-                                  disabled={isSubmitting || exIndex === selectedExercises.length - 1}
-                                  aria-label="Move exercise down"
-                                >
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                              <div className="min-w-0">
-                                <h3 className="flex items-baseline gap-1.5 font-medium text-base break-words">
-                                  <span
-                                    className="shrink-0 font-semibold text-primary"
-                                  >
-                                    {exIndex + 1}.
-                                  </span>
-                                  <span>{selectedEx.exercise.name}</span>
-                                </h3>
-                                {getExecutionDirections(selectedEx.exercise).length > 0 && <UnilateralSetNote exercise={selectedEx.exercise} />}
-                              </div>
-                            </div>
-                            <div className="flex w-40 shrink-0 flex-col items-end gap-2" data-selected-exercise-actions>
-                              <div className="flex h-16 w-20 items-center justify-center overflow-hidden rounded-md bg-muted">
-                                {getExerciseImageUrl(selectedEx.exercise) ? (
-                                  <ExerciseImage
-                                    imageUrl={getExerciseImageUrl(selectedEx.exercise)!}
-                                    alt={`${selectedEx.exercise.name} thumbnail`}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <ImageIcon className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-                                )}
-                              </div>
-                              <div className="flex w-full gap-1.5">
-                                <Button variant="outline" size="sm" type="button"
-                                  onClick={() => handleDuplicateExercise(exIndex)} className="h-8 flex-1 px-2 text-xs"
-                                  disabled={isSubmitting}>
-                                  <Copy className="mr-1 h-3.5 w-3.5" />Duplicate
-                                </Button>
-                                <Button variant="outline" size="sm" type="button"
-                                  onClick={() => handleRemoveExercise(selectedEx.occurrenceId)} className="h-8 flex-1 px-2 text-xs"
-                                  disabled={isSubmitting}>Remove</Button>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-3 mt-3">
-                            {selectedEx.sets.map((set, setIndex) => (
-                              <div key={setIndex} className={`flex flex-wrap items-center gap-2 p-2 rounded-md ${set.warmup ? 'bg-amber-400/10 border border-amber-400/30' : 'bg-muted/40'}`}>
-                                <div className="font-medium min-w-[80px]">
-                                  Set {setIndex + 1}
-                                </div>
-
-                                <Select
-                                  value={set.direction ?? 'none'}
-                                  onValueChange={value => patchSet(exIndex, setIndex, { direction: value as WorkoutSet['direction'] })}
-                                  disabled={isSubmitting}
-                                >
-                                  <SelectTrigger className="h-8 w-[125px]" aria-label={`Direction for set ${setIndex + 1}`}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {WORKOUT_SET_DIRECTIONS.map(direction => (
-                                      <SelectItem key={direction} value={direction}>{workoutDirectionLabel(direction)}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-
-                                <Button
-                                  type="button" size="sm" className="h-7 px-2 text-xs"
-                                  variant={set.warmup ? 'default' : 'outline'} aria-pressed={!!set.warmup}
-                                  onClick={() => patchSet(exIndex, setIndex, { warmup: set.warmup ? undefined : true })}
-                                  disabled={isSubmitting}
-                                >
-                                  Warm-up
-                                </Button>
-                                {getLogType(selectedEx.exercise) === 'reps' && (
-                                  <Button
-                                    type="button" size="sm" className="h-7 px-2 text-xs"
-                                    variant={set.amrap ? 'default' : 'outline'} aria-pressed={!!set.amrap}
-                                    onClick={() => patchSet(exIndex, setIndex, { amrap: set.amrap ? undefined : true })}
-                                    disabled={isSubmitting}
-                                  >
-                                    AMRAP
-                                  </Button>
-                                )}
-
-                                {getLogType(selectedEx.exercise) === 'reps' ? (
-                                  <div className="flex items-center">
-                                    <Label htmlFor={`reps-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                      Reps:
-                                    </Label>
-                                    <Input
-                                      id={`reps-${exIndex}-${setIndex}`}
-                                      type="number"
-                                      min="1"
-                                      max="1000"
-                                      className="h-8 w-16"
-                                      value={set.reps || ''}
-                                      onChange={(e) => updateSetValue(
-                                        exIndex,
-                                        setIndex,
-                                        'reps',
-                                        e.target.value ? Number(e.target.value) : undefined
-                                      )}
-                                      disabled={isSubmitting}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center">
-                                    <Label htmlFor={`duration-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                      Duration (sec):
-                                    </Label>
-                                    <Input
-                                      id={`duration-${exIndex}-${setIndex}`}
-                                      type="number"
-                                      min="1"
-                                      max="86400"
-                                      className="h-8 w-16"
-                                      value={set.duration || ''}
-                                      onChange={(e) => updateSetValue(
-                                        exIndex,
-                                        setIndex,
-                                        'duration',
-                                        e.target.value ? Number(e.target.value) : undefined
-                                      )}
-                                      disabled={isSubmitting}
-                                    />
-                                  </div>
-                                )}
-
-                                <div className="flex items-center">
-                                  <Label htmlFor={`weight-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                    Weight (kg, optional):
-                                  </Label>
-                                  <Input
-                                    id={`weight-${exIndex}-${setIndex}`}
-                                    type="number"
-                                    min="0"
-                                    max="1000"
-                                    step="0.5"
-                                    className="h-8 w-16"
-                                    value={set.weight || ''}
-                                    onChange={(e) => updateSetValue(
-                                      exIndex,
-                                      setIndex,
-                                      'weight',
-                                      e.target.value ? Number(e.target.value) : undefined
-                                    )}
-                                    disabled={isSubmitting}
-                                  />
-                                </div>
-
-                                <div className="flex items-center">
-                                  <Label htmlFor={`distance-${exIndex}-${setIndex}`} className="mr-2 text-xs">
-                                    Distance (m, optional):
-                                  </Label>
-                                  <Input
-                                    id={`distance-${exIndex}-${setIndex}`}
-                                    type="number"
-                                    min="0"
-                                    max="1000000"
-                                    step="100"
-                                    className="h-8 w-20"
-                                    value={set.distance || ''}
-                                    onChange={(e) => updateSetValue(
-                                      exIndex,
-                                      setIndex,
-                                      'distance',
-                                      e.target.value ? Number(e.target.value) : undefined
-                                    )}
-                                    disabled={isSubmitting}
-                                  />
-                                </div>
-
-                                <div className="flex items-center">
-                                  <Label htmlFor={`rest-${exIndex}-${setIndex}`} className="mr-2 text-xs">Rest (sec):</Label>
-                                  <Input
-                                    id={`rest-${exIndex}-${setIndex}`}
-                                    type="number"
-                                    min="0"
-                                    max="3600"
-                                    className="h-8 w-20"
-                                    // This set's own rest comes next in the sequence — if it's not
-                                    // the last set of this exercise, the following set is another
-                                    // set of the SAME exercise (restBetweenSets); otherwise it's
-                                    // whatever exercise comes next (restBetweenExercises).
-                                    value={set.restAfter ?? (setIndex < selectedEx.sets.length - 1 ? restBetweenSets : restBetweenExercises)}
-                                    onChange={(e) => updateSetValue(
-                                      exIndex,
-                                      setIndex,
-                                      'restAfter',
-                                      e.target.value ? Number(e.target.value) : undefined
-                                    )}
-                                    disabled={isSubmitting}
-                                  />
-                                </div>
-                                
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 ml-auto"
-                                  onClick={() => handleRemoveSet(exIndex, setIndex)}
-                                  disabled={isSubmitting}
-                                  aria-label={`Remove set ${setIndex + 1} from ${selectedEx.exercise.name}`}
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="w-full flex items-center justify-center gap-1 mt-2"
-                              onClick={() => handleAddSet(exIndex)}
-                              disabled={isSubmitting}
-                            >
-                              <Plus className="h-4 w-4" /> Add Set
-                            </Button>
-                          </div>
-                        </div>
+                        <SelectedExerciseCard
+                          key={selectedEx.occurrenceId}
+                          selected={selectedEx}
+                          index={exIndex}
+                          count={selectedExercises.length}
+                          disabled={isSubmitting}
+                          dragging={touchReorder.draggingId === selectedEx.occurrenceId}
+                          dragHandleProps={touchReorder.bind(selectedEx.occurrenceId)} defaultExpanded
+                          restBetweenSets={restBetweenSets}
+                          restBetweenExercises={restBetweenExercises}
+                          onMove={direction => handleMoveExercise(exIndex, direction)}
+                          onDuplicate={() => handleDuplicateExercise(exIndex)}
+                          onRemove={() => handleRemoveExercise(selectedEx.occurrenceId)}
+                          onPatchSet={(setIndex, patch) => patchSet(exIndex, setIndex, patch)}
+                          onRemoveSet={setIndex => handleRemoveSet(exIndex, setIndex)}
+                          onAddSet={() => handleAddSet(exIndex)}
+                        />
                       ))}
                     </div>
                   )}
