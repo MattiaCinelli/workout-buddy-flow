@@ -62,9 +62,10 @@ const App = () => (
         <AccessibilityController />
         <AppearanceController />
         <PwaUpdatePrompt />
-        <Toaster />
         <Sonner />
         <BrowserRouter>
+          {/* Inside the router: it moves toasts clear of the workout controls. */}
+          <Toaster />
           <NotificationActionHandler />
           <DataRecoveryGate>
           <div className="lcars-app">

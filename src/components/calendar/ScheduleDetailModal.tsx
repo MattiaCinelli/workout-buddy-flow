@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { Ban, Calendar, CalendarClock, CheckCircle2, Clock, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
+import { Ban, Calendar, CalendarClock, CheckCircle2, Clock, Info, Repeat, Trash2, Play, Loader2, Pencil } from 'lucide-react';
 import { useData } from '@/contexts/useData';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { scheduledWorkoutSessionUrl } from '@/lib/workoutSessionUrl';
@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { isScheduledOccurrenceCompleted } from '@/lib/scheduleCompletion';
 import { ToastAction } from '@/components/ui/toast';
+import { useMarkWorkoutDone } from '@/hooks/useMarkWorkoutDone';
 
 interface ScheduleDetailModalProps {
   isOpen: boolean;
@@ -55,12 +56,17 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   const { toast } = useToast();
   const { workouts, sessions, scheduledWorkouts, createScheduledWorkout, updateScheduledWorkout, deleteScheduledWorkout, restoreScheduledWorkout } = useData();
   const navigate = useNavigate();
+  const { markDone, savingKey } = useMarkWorkoutDone();
 
   if (!schedule) return null;
 
   const workout = workouts.find(w => w.id === schedule.workoutId);
   const completed = isScheduledOccurrenceCompleted(schedule, sessions);
   const missed = !schedule.skipped && !completed && schedule.displayDate < format(new Date(), 'yyyy-MM-dd');
+  // Today or earlier only: a workout can't be done ahead of its day. A
+  // skipped one is unskipped first, so the two states never overlap.
+  const canMarkDone = !!workout && !completed && !schedule.skipped
+    && schedule.displayDate <= format(new Date(), 'yyyy-MM-dd');
   const matchingCourseOccurrences = schedule.courseId
     ? scheduledWorkouts.filter(item => item.courseId === schedule.courseId && item.workoutId === schedule.workoutId)
     : [];
@@ -136,6 +142,10 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
     navigate(scheduledWorkoutSessionUrl(schedule));
   };
 
+  const handleMarkDone = async () => {
+    if (await markDone(schedule)) onClose();
+  };
+
   const handleViewWorkout = () => {
     onClose();
     navigate(`/workouts/${schedule.workoutId}`);
@@ -190,7 +200,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                   {workout.category}
                 </Badge>
               )}
-              {schedule.skipped && <Badge variant="secondary">Skipped</Badge>}
+              {schedule.skipped && <Badge className="bg-amber-500 text-white hover:bg-amber-500">Skipped</Badge>}
               {completed && <Badge className="bg-workout-green text-white">Done</Badge>}
               {missed && <Badge variant="destructive">Missed</Badge>}
             </DialogTitle>
@@ -245,31 +255,10 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
             )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={isDeleting}
-              className="sm:mr-auto"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setMoveDate(schedule.displayDate); setMoveOpen(true); }} disabled={recovering}>
-                <CalendarClock className="h-4 w-4 sm:mr-2" /><span className="sr-only sm:not-sr-only">Move</span>
-              </Button>
-              <Button variant="outline" onClick={() => void toggleSkipped()} disabled={recovering}>
-                <Ban className="h-4 w-4 sm:mr-2" /><span className="sr-only sm:not-sr-only">{schedule.skipped ? 'Unskip' : 'Skip'}</span>
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => onEdit(schedule)} aria-label="Edit schedule">
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" onClick={handleViewWorkout}>
-                View Details
-              </Button>
+          <div className="space-y-2">
+            <div className={`grid gap-2 ${canMarkDone ? 'grid-cols-2' : 'grid-cols-1'}`}>
               <Button
-                className={completed ? undefined : 'bg-workout-green hover:bg-green-600'}
+                className={completed ? undefined : 'bg-workout-green text-white hover:bg-green-600'}
                 variant={completed ? 'outline' : 'default'}
                 disabled={completed}
                 onClick={handleStartWorkout}
@@ -279,8 +268,38 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                   : <Play className="h-4 w-4 mr-2" />}
                 {completed ? 'Done' : 'Start'}
               </Button>
+              {canMarkDone && (
+                <Button variant="outline" onClick={() => void handleMarkDone()} disabled={savingKey !== null}>
+                  {savingKey !== null
+                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    : <CheckCircle2 className="h-4 w-4 mr-2 text-workout-green" />}
+                  Mark done
+                </Button>
+              )}
             </div>
-          </DialogFooter>
+            {/* Secondary actions as labelled icons: five fit the narrowest
+                phone without the row scrolling sideways. */}
+            <div className="grid grid-cols-5 gap-1.5">
+              {[
+                { label: 'Move', icon: CalendarClock, onClick: () => { setMoveDate(schedule.displayDate); setMoveOpen(true); }, disabled: recovering },
+                { label: schedule.skipped ? 'Unskip' : 'Skip', icon: Ban, onClick: () => void toggleSkipped(), disabled: recovering },
+                { label: 'Edit', icon: Pencil, onClick: () => onEdit(schedule) },
+                { label: 'Details', icon: Info, onClick: handleViewWorkout },
+                { label: 'Delete', icon: Trash2, onClick: () => setShowDeleteConfirm(true), disabled: isDeleting, destructive: true },
+              ].map(({ label, icon: Icon, onClick, disabled, destructive }) => (
+                <Button
+                  key={label}
+                  variant="outline"
+                  onClick={onClick}
+                  disabled={disabled}
+                  className={`h-auto min-w-0 flex-col gap-1 px-1 py-2 text-xs ${destructive ? 'text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400' : ''}`}
+                >
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

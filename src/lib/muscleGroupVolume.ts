@@ -1,5 +1,7 @@
 import { Exercise } from '@/data/exercises';
 import { WorkoutSession, WorkoutSetResult } from '@/data/workoutSessions';
+import { MUSCLE_REGIONS, type MuscleGroup, type MuscleRegionId } from '@/data/muscleGroups';
+import { regionsOfExercise } from '@/lib/muscleRegions';
 
 export interface MuscleGroupLoad {
   muscleGroupId: string;
@@ -40,4 +42,41 @@ export const muscleGroupLoad = (
   }
 
   return [...byGroup.values()].sort((a, b) => b.sets - a.sets || b.volume - a.volume);
+};
+
+export interface MuscleRegionLoad {
+  region: MuscleRegionId;
+  sets: number;
+  volume: number;
+}
+
+// Same as muscleGroupLoad, one level up. A set counts once per region it
+// works, however many of that region's muscles the exercise is tagged with:
+// a squat tagged Quadriceps and Hamstrings is one Legs & Feet set, not two.
+export const regionLoad = (
+  sessions: WorkoutSession[],
+  exercises: Exercise[],
+  muscleGroups: MuscleGroup[],
+  sinceIso?: string,
+): MuscleRegionLoad[] => {
+  const since = sinceIso ? new Date(sinceIso).getTime() : Number.NEGATIVE_INFINITY;
+  const byRegion = new Map<MuscleRegionId, MuscleRegionLoad>();
+
+  for (const session of sessions) {
+    if (new Date(session.date).getTime() < since) continue;
+    for (const set of completedSetsOf(session)) {
+      const exercise = exercises.find(item => item.id === set.exerciseId);
+      if (!exercise) continue;
+      const volume = set.weight !== undefined && set.reps !== undefined ? set.weight * set.reps : 0;
+      for (const region of regionsOfExercise(exercise, muscleGroups)) {
+        const entry = byRegion.get(region) ?? { region, sets: 0, volume: 0 };
+        entry.sets += 1;
+        entry.volume += volume;
+        byRegion.set(region, entry);
+      }
+    }
+  }
+
+  const order = MUSCLE_REGIONS.map(region => region.id);
+  return [...byRegion.values()].sort((a, b) => b.sets - a.sets || order.indexOf(a.region) - order.indexOf(b.region));
 };

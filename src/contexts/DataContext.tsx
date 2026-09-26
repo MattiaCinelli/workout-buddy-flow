@@ -18,6 +18,7 @@ import { useMeasurements } from '@/hooks/useMeasurements';
 import { useWorkoutSessions } from '@/hooks/useWorkoutSessions';
 import { cancelWorkoutReminders, scheduleWorkoutReminders } from '@/lib/notifications';
 import { checkExerciseDeletion, checkWorkoutDeletion } from '@/lib/referentialIntegrity';
+import { getNextCourseItem, getSkippedCourseItemIds } from '@/lib/courseSchedule';
 
 /** The eight synced collections, as named by the sync layer. */
 export type SyncedCollection =
@@ -80,8 +81,12 @@ export interface DataContextType {
   restartCourse: (id: string) => Promise<Course | null>;
   completeWorkoutInCourse: (courseId: string, courseItemId: string) => Promise<Course | null>;
   uncompleteWorkoutInCourse: (courseId: string, courseItemId: string) => Promise<Course | null>;
+  /** First slot neither done nor skipped in the calendar. */
   getNextWorkoutInCourse: (courseId: string) => CourseWorkout | null;
+  /** Ids of the course's slots whose calendar entries were all skipped. */
+  getSkippedCourseItemIds: (courseId: string) => Set<string>;
   getCourseById: (id: string) => Course | undefined;
+  /** Percentage of slots done or skipped in the calendar. */
   getCourseProgress: (courseId: string) => number;
   refreshCourses: () => Promise<void>;
 
@@ -172,11 +177,26 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     restartCourse,
     completeWorkoutInCourse,
     uncompleteWorkoutInCourse,
-    getNextWorkoutInCourse,
     getCourseById,
-    getCourseProgress,
     refreshCourses
   } = useCourses();
+
+  // A slot skipped in the calendar (a holiday, say) no longer holds the
+  // course up: the next workout is the first one neither done nor skipped.
+  const getSkippedCourseItemIdsFor = (courseId: string) => getSkippedCourseItemIds(courseId, scheduledWorkouts);
+  const getNextWorkoutInCourse = (courseId: string): CourseWorkout | null => {
+    const course = courses.find(item => item.id === courseId);
+    return course ? getNextCourseItem(course.workouts, getSkippedCourseItemIds(courseId, scheduledWorkouts)) : null;
+  };
+  // Skipped slots count toward progress like done ones: the course is
+  // finished once every slot is either done or deliberately skipped.
+  const getCourseProgress = (courseId: string): number => {
+    const course = courses.find(item => item.id === courseId);
+    if (!course || course.workouts.length === 0) return 0;
+    const skipped = getSkippedCourseItemIds(courseId, scheduledWorkouts);
+    const settled = course.workouts.filter(item => item.completed || skipped.has(item.id)).length;
+    return Math.round((settled / course.workouts.length) * 100);
+  };
 
   const {
     muscleGroups,
@@ -376,6 +396,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     completeWorkoutInCourse,
     uncompleteWorkoutInCourse,
     getNextWorkoutInCourse,
+    getSkippedCourseItemIds: getSkippedCourseItemIdsFor,
     getCourseById,
     getCourseProgress,
     refreshCourses,

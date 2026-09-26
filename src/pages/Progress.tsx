@@ -43,7 +43,8 @@ import { describeSeries } from '@/lib/chartA11y';
 import { BodyWeightCard } from '@/components/dashboard/BodyWeightCard';
 import { PersonalRecordsCard } from '@/components/dashboard/PersonalRecordsCard';
 import { MeasurementsCard } from '@/components/dashboard/MeasurementsCard';
-import { muscleGroupLoad } from '@/lib/muscleGroupVolume';
+import { muscleGroupLoad, regionLoad } from '@/lib/muscleGroupVolume';
+import { muscleTagName, regionName } from '@/lib/muscleRegions';
 
 const ProgressPage = () => {
   const navigate = useNavigate();
@@ -124,14 +125,16 @@ const ProgressPage = () => {
       }));
   }, [filteredWorkouts]);
 
-  const muscleData = useMemo(() => {
-    const groupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
-    return muscleGroupLoad(filteredWorkouts, exercises).map(row => ({
-      name: groupName(row.muscleGroupId),
-      sets: row.sets,
-      volume: row.volume,
-    }));
-  }, [filteredWorkouts, exercises, muscleGroups]);
+  // Regions give the overview; muscles the detail. Region sets are not the
+  // sum of the muscle rows: a set counts once per region (see regionLoad).
+  const [muscleView, setMuscleView] = useState<'region' | 'muscle'>('region');
+  const muscleData = useMemo(() => muscleView === 'region'
+    ? regionLoad(filteredWorkouts, exercises, muscleGroups).map(row => ({
+      name: regionName(row.region), sets: row.sets, volume: row.volume,
+    }))
+    : muscleGroupLoad(filteredWorkouts, exercises).map(row => ({
+      name: muscleTagName(row.muscleGroupId, muscleGroups), sets: row.sets, volume: row.volume,
+    })), [filteredWorkouts, exercises, muscleGroups, muscleView]);
 
   // Duration trend data
   const durationTrend = useMemo(() => {
@@ -249,7 +252,9 @@ const ProgressPage = () => {
         {/* Charts */}
         {filteredWorkouts.length > 0 ? (
           <Tabs defaultValue="frequency" className="space-y-4">
-            <TabsList>
+            {/* Four tabs are wider than a phone: the bar scrolls on its own
+                rather than pushing the whole page sideways. */}
+            <TabsList className="max-w-full justify-start overflow-x-auto">
               <TabsTrigger value="frequency">Workout Frequency</TabsTrigger>
               <TabsTrigger value="duration">Duration Trend</TabsTrigger>
               <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -361,8 +366,20 @@ const ProgressPage = () => {
             <TabsContent value="muscles">
               <Card>
                 <CardHeader>
-                  <CardTitle>Muscle Group Volume</CardTitle>
-                  <CardDescription>Completed working sets per muscle group in this period</CardDescription>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <CardTitle>Muscle Group Volume</CardTitle>
+                      <CardDescription>Completed working sets per {muscleView === 'region' ? 'body region' : 'muscle group'} in this period</CardDescription>
+                    </div>
+                    <div className="flex rounded-md border p-0.5" role="group" aria-label="Group sets by">
+                      {(['region', 'muscle'] as const).map(view => (
+                        <Button key={view} type="button" size="sm" variant={muscleView === view ? 'secondary' : 'ghost'}
+                          className="h-7 px-2.5 text-xs" aria-pressed={muscleView === view} onClick={() => setMuscleView(view)}>
+                          {view === 'region' ? 'By region' : 'By muscle'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {muscleData.length === 0 ? (
@@ -376,7 +393,7 @@ const ProgressPage = () => {
                         <BarChart accessibilityLayer data={muscleData} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis type="number" allowDecimals={false} className="text-xs" />
-                          <YAxis dataKey="name" type="category" className="text-xs" width={90} />
+                          <YAxis dataKey="name" type="category" className="text-xs" width={muscleView === 'region' ? 118 : 90} />
                           <Tooltip
                             contentStyle={{
                               backgroundColor: 'hsl(var(--card))',

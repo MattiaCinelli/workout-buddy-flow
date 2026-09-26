@@ -36,3 +36,13 @@ const ensureWorkingStorage = (name: 'localStorage' | 'sessionStorage') => {
 
 ensureWorkingStorage('localStorage');
 ensureWorkingStorage('sessionStorage');
+
+// jsdom has no ResizeObserver; Radix controls such as Checkbox measure
+// themselves with it. A no-op keeps components that render them testable.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() { /* no layout in jsdom */ }
+    unobserve() { /* no layout in jsdom */ }
+    disconnect() { /* no layout in jsdom */ }
+  };
+}

@@ -11,6 +11,7 @@ import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABEL
 import { shareExercise } from '@/lib/backup';
 import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/useData';
+import { describeMuscleTags } from '@/lib/muscleRegions';
 import ExerciseImage from '@/components/ExerciseImage';
 
 interface ExerciseDetailModalProps {
@@ -67,9 +68,8 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: 
   // The link is only ever offered as a plain https URL, whatever is stored
   // (a synced or older record could hold a javascript: URL).
   const videoUrl = normalizeHttpsUrl(exercise.videoUrl);
-  const muscleGroupNames = exercise.muscleGroups
-    .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
-    .join(', ');
+  // Region first, then the specific muscles: "Legs & Feet · Quadriceps".
+  const muscleGroupNames = describeMuscleTags(exercise.muscleGroups, muscleGroups);
 
   const setSummary = () => {
     const sets = exercise.defaultSets ?? 1;
@@ -88,6 +88,7 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: 
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             {exercise.name}
             <Badge className={getCategoryColor(exercise.category)}>{exercise.category}</Badge>
+            {exercise.warmup && <Badge variant="outline" className="border-workout-orange/60 text-workout-orange">Warm-up</Badge>}
             <Badge variant="outline" className={getDifficultyColor(exercise.difficulty)}>{exercise.difficulty}</Badge>
             {getExecutionDirections(exercise).length > 0 && (
               <Badge variant="outline" className="border-workout-green/50 text-workout-green">

@@ -5,7 +5,7 @@ import { WorkoutEntry } from '@/data/workoutHistory';
 import { WorkoutSession } from '@/data/workoutSessions';
 import { ScheduledWorkout } from '@/data/scheduledWorkouts';
 import { Course } from '@/data/courses';
-import { MuscleGroup } from '@/data/muscleGroups';
+import { MUSCLE_REGIONS, MuscleGroup } from '@/data/muscleGroups';
 import { BodyMetric } from '@/data/bodyMetrics';
 import { Measurement } from '@/data/measurements';
 import { Capacitor } from '@capacitor/core';
@@ -661,7 +661,9 @@ export const importShare = async (share: WorkoutBuddyShare, deps: ShareImportDep
   for (const group of share.data.muscleGroups) {
     const existing = muscleGroups.find(item => normalizeName(item.name) === normalizeName(group.name));
     if (existing) { groupIdMap.set(group.id, existing.id); continue; }
-    const created = await createMuscleGroup({ name: group.name });
+    // Carry the sender's region when it is one this app knows.
+    const region = MUSCLE_REGIONS.find(item => item.id === group.region)?.id;
+    const created = await createMuscleGroup(region ? { name: group.name, region } : { name: group.name });
     groupIdMap.set(group.id, created.id);
     newMuscleGroups += 1;
   }

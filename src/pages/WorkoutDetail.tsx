@@ -72,7 +72,6 @@ const WorkoutDetail = () => {
   const baselineDraft = useRef('');
   const { folders } = useWorkoutFolders((workouts ?? []).map(item => item.folder));
 
-  const muscleGroupName = (groupId: string) => muscleGroups.find(group => group.id === groupId)?.name ?? groupId;
 
   // Loads the workout's current data into the form once (not on every
   // `workouts` update) — otherwise a background sync mid-edit would
@@ -160,7 +159,7 @@ const WorkoutDetail = () => {
   }
 
   const filteredExercises = exercises.filter(exercise =>
-    exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroupName)
+    exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroups)
   );
   const previewSeconds = workoutDurationSeconds(workout, exercises);
   const previewDuration = previewSeconds < 60 ? `${previewSeconds} seconds`

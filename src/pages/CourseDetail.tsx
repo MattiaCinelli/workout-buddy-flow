@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, ArrowLeft, Play, RotateCcw, CheckCircle2, Pencil, Trash2, Calendar } from 'lucide-react';
+import { Loader2, ArrowLeft, Play, RotateCcw, CheckCircle2, Pencil, Trash2, Calendar, SkipForward } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useData } from '@/contexts/useData';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ const CourseDetail = () => {
     coursesLoading,
     getCourseProgress,
     getNextWorkoutInCourse,
+    getSkippedCourseItemIds,
     completeWorkoutInCourse,
     restartCourse,
     deleteCourse,
@@ -49,6 +50,8 @@ const CourseDetail = () => {
   const isCompleted = progress === 100;
   const isStarted = !!course?.startedAt;
   const nextWorkout = course ? getNextWorkoutInCourse(course.id) : null;
+  const skippedIds = course ? getSkippedCourseItemIds(course.id) : new Set<string>();
+  const skippedCount = course ? course.workouts.filter(item => !item.completed && skippedIds.has(item.id)).length : 0;
 
   if (coursesLoading) {
     return (
@@ -149,7 +152,8 @@ const CourseDetail = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium">Course Progress</span>
               <span className="text-sm text-muted-foreground">
-                {sortedWorkouts.filter(w => w.completed).length}/{sortedWorkouts.length} sessions
+                {sortedWorkouts.filter(w => w.completed || skippedIds.has(w.id)).length}/{sortedWorkouts.length} sessions
+                {skippedCount > 0 && <span className="text-amber-600 dark:text-amber-400"> ({skippedCount} skipped)</span>}
               </span>
             </div>
             <Progress value={progress} className="h-3" />
@@ -187,8 +191,10 @@ const CourseDetail = () => {
           {sortedWorkouts.map((courseWorkout, index) => {
             const workout = courseWorkout.workoutId ? getWorkoutById(courseWorkout.workoutId) : undefined;
             const isRest = courseWorkout.type === 'rest';
-            const isNext = nextWorkout?.id === courseWorkout.id;
-            const isLocked = !isStarted || (!courseWorkout.completed && !isNext);
+            // Nothing is "next" until the course starts: before that every
+            // slot looks the same and Start Course is the only action.
+            const isNext = isStarted && nextWorkout?.id === courseWorkout.id;
+            const isSkipped = !courseWorkout.completed && skippedIds.has(courseWorkout.id);
             
             if (!workout && !isRest) return null;
             
@@ -198,9 +204,11 @@ const CourseDetail = () => {
                 className={`transition-all ${
                   courseWorkout.completed 
                     ? 'bg-green-500/10 border-green-500/30' 
-                    : isNext 
-                      ? 'border-primary shadow-md' 
-                      : 'opacity-60'
+                    : isSkipped
+                      ? 'bg-amber-500/10 border-amber-500/40'
+                      : isNext 
+                        ? 'border-primary shadow-md' 
+                        : isStarted ? 'opacity-60' : ''
                 }`}
               >
                 <CardContent className="py-4">
@@ -208,12 +216,16 @@ const CourseDetail = () => {
                     <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
                       courseWorkout.completed 
                         ? 'bg-green-500 text-white' 
-                        : isNext 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-muted-foreground'
+                        : isSkipped
+                          ? 'bg-amber-500 text-white'
+                          : isNext 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted text-muted-foreground'
                     }`}>
                       {courseWorkout.completed ? (
                         <CheckCircle2 className="completion-check h-5 w-5" />
+                      ) : isSkipped ? (
+                        <SkipForward className="h-5 w-5" aria-hidden="true" />
                       ) : (
                         <span className="font-bold">{index + 1}</span>
                       )}
@@ -232,7 +244,11 @@ const CourseDetail = () => {
                         <Badge variant="outline" className="text-green-500 border-green-500">
                           Done
                         </Badge>
-                      ) : isNext && isStarted ? (
+                      ) : isSkipped ? (
+                        <Badge variant="outline" className="border-amber-500 text-amber-600 dark:text-amber-400">
+                          Skipped
+                        </Badge>
+                      ) : isNext ? (
                         <>
                           {!isRest && <Button
                             size="sm" 
@@ -254,11 +270,11 @@ const CourseDetail = () => {
                             {isRest ? 'Finish Rest Day' : 'Start'}
                           </Button>
                         </>
-                      ) : (
+                      ) : isStarted ? (
                         <Badge variant="outline" className="text-muted-foreground">
-                          {isLocked ? 'Locked' : 'Pending'}
+                          Locked
                         </Badge>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   {!isRest && workout && (

@@ -3,6 +3,7 @@ import { Db } from './index';
 export interface SyncedMuscleGroup {
   id: string;
   name: string;
+  region?: string;
   updatedAt: string;
   deletedAt?: string;
 }
@@ -10,6 +11,7 @@ export interface SyncedMuscleGroup {
 interface MuscleGroupRow {
   id: string;
   name: string;
+  region: string | null;
   updated_at: string;
   deleted_at: string | null;
 }
@@ -17,6 +19,7 @@ interface MuscleGroupRow {
 const fromRow = (row: MuscleGroupRow): SyncedMuscleGroup => ({
   id: row.id,
   name: row.name,
+  region: row.region ?? undefined,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at ?? undefined,
 });
@@ -35,10 +38,11 @@ export const listChangedSince = (db: Db, userId: string, since?: string): Synced
 export const upsertMuscleGroup = (db: Db, userId: string, item: SyncedMuscleGroup): SyncedMuscleGroup => {
   const syncedAt = new Date().toISOString();
   db.prepare(`
-    INSERT INTO muscle_groups (id, user_id, name, updated_at, deleted_at, synced_at)
-    VALUES (@id, @userId, @name, @updatedAt, @deletedAt, @syncedAt)
+    INSERT INTO muscle_groups (id, user_id, name, region, updated_at, deleted_at, synced_at)
+    VALUES (@id, @userId, @name, @region, @updatedAt, @deletedAt, @syncedAt)
     ON CONFLICT(id, user_id) DO UPDATE SET
       name = excluded.name,
+      region = excluded.region,
       updated_at = excluded.updated_at,
       deleted_at = excluded.deleted_at,
       synced_at = excluded.synced_at
@@ -47,6 +51,7 @@ export const upsertMuscleGroup = (db: Db, userId: string, item: SyncedMuscleGrou
     id: item.id,
     userId,
     name: item.name,
+    region: item.region ?? null,
     updatedAt: item.updatedAt,
     deletedAt: item.deletedAt ?? null,
     syncedAt,

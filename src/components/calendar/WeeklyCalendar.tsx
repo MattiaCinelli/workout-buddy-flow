@@ -2,7 +2,7 @@ import React from 'react';
 import { format, startOfWeek, addDays, isToday } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Check, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Plus, Repeat, SkipForward } from 'lucide-react';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import type { WorkoutSession } from '@/data/workoutSessions';
@@ -122,14 +122,18 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                       onClick={() => onScheduleClick(schedule)}
                       className={cn(
                         "w-full text-left p-1.5 rounded border text-xs transition-colors hover:opacity-80",
-                        getCategoryColor(workout.category), schedule.skipped && "line-through opacity-50"
+                        schedule.skipped
+                          ? "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                          : getCategoryColor(workout.category)
                       )}
                       aria-label={`${workout.title}${schedule.skipped ? ', skipped' : isCompleted(schedule) ? ', done' : ''}`}
                     >
                       <div className="font-medium truncate flex items-center gap-1">
                         {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0" />}
                         <span className="truncate">{workout.title}</span>
-                        {!schedule.skipped && isCompleted(schedule) && <Check className="ml-auto h-3 w-3 flex-shrink-0" aria-hidden="true" />}
+                        {schedule.skipped
+                          ? <SkipForward className="ml-auto h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                          : isCompleted(schedule) && <Check className="ml-auto h-3 w-3 flex-shrink-0" aria-hidden="true" />}
                       </div>
                       <div className="text-[10px] opacity-70">{schedule.startTime}</div>
                     </button>

@@ -29,7 +29,7 @@ import { useWorkoutMusic } from '@/hooks/useWorkoutMusic';
 import { ensureMicrophonePermission, isVoiceControlSupported, useVoiceCommand } from '@/hooks/useVoiceCommand';
 import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { normalizeHttpsUrl } from '@/lib/url';
-import { getNextSameDayWorkout } from '@/lib/courseSchedule';
+import { getNextSameDayWorkout, getSkippedCourseItemIds } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
 import { getExerciseImageUrl } from '@/data/exercises';
 import { buildExerciseTrial } from '@/lib/exerciseTrial';
@@ -520,7 +520,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
       const courseItemId = searchParams.get('courseItemId') || undefined;
       const course = courseId ? courses.find(item => item.id === courseId) : undefined;
       const nextSameDay = course && courseItemId
-        ? getNextSameDayWorkout(course.workouts, courseItemId)
+        ? getNextSameDayWorkout(course.workouts, courseItemId, getSkippedCourseItemIds(course.id, scheduledWorkouts))
         : undefined;
       const activeDuration = activeElapsedMs.current
         + (activeSince.current === null ? 0 : Math.max(0, Date.now() - activeSince.current));

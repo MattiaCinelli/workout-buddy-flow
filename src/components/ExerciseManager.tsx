@@ -1,3 +1,5 @@
+import { MUSCLE_REGIONS } from '@/data/muscleGroups';
+import { effectiveMuscleFilter, regionOfTag, regionTag } from '@/lib/muscleRegions';
 import React, { useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -79,11 +81,11 @@ const ExerciseManager: React.FC = () => {
 
   const filteredExercises = useMemo(() => filterExerciseLibrary(exercises, {
     searchQuery,
-    muscleGroupIds: selectedMuscles,
+    muscleGroupIds: effectiveMuscleFilter(selectedMuscles, muscleGroups),
     equipment: selectedEquipment,
     category: categoryFilter,
     difficulty: difficultyFilter,
-  }, id => muscleGroups.find(group => group.id === id)?.name ?? id),
+  }, muscleGroups),
   [exercises, searchQuery, selectedMuscles, selectedEquipment, categoryFilter, difficultyFilter, muscleGroups]);
   const hasActiveFilters = !!searchQuery.trim() || selectedMuscles.length > 0
     || selectedEquipment.length > 0
@@ -336,6 +338,7 @@ const ExerciseManager: React.FC = () => {
               <SelectItem value="cardio">Cardio</SelectItem>
               <SelectItem value="flexibility">Flexibility</SelectItem>
               <SelectItem value="balance">Balance</SelectItem>
+              <SelectItem value="warmup">Warm-up</SelectItem>
             </SelectContent>
           </Select>
           <Select value={difficultyFilter} onValueChange={value => setDifficultyFilter(value as ExerciseDifficultyFilter)}>
@@ -363,18 +366,46 @@ const ExerciseManager: React.FC = () => {
                 <Settings2 className="h-3 w-3" /> Manage
               </button>
             </div>
+            {/* Regions first; picking one reveals its muscles to narrow it down.
+                Groups without a region (and Full Body) sit after the regions. */}
             <ToggleGroup
               type="multiple"
               value={selectedMuscles}
-              onValueChange={(value) => setSelectedMuscles(value)}
+              onValueChange={(value) => {
+                // Deselecting a region also clears the muscles picked inside it.
+                const openRegions = new Set(value.map(regionOfTag).filter(Boolean));
+                setSelectedMuscles(value.filter(tag => {
+                  const region = muscleGroups.find(group => group.id === tag)?.region;
+                  return !region || openRegions.has(region);
+                }));
+              }}
               className="max-w-full justify-start flex-nowrap overflow-x-auto pb-1"
             >
-              {muscleGroups.map((group) => (
-                <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
-                  {group.name}
+              {[
+                ...MUSCLE_REGIONS.map(region => ({ tag: regionTag(region.id), label: region.name })),
+                ...muscleGroups.filter(group => !group.region).map(group => ({ tag: group.id, label: group.name })),
+              ].map(({ tag, label }) => (
+                <ToggleGroupItem key={tag} value={tag} aria-label={label} className="h-8 shrink-0 rounded-full border border-border/60 bg-muted/45 px-3 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                  {label}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
+            {MUSCLE_REGIONS.filter(region => selectedMuscles.includes(regionTag(region.id))).map(region => (
+              <ToggleGroup
+                key={region.id}
+                type="multiple"
+                aria-label={`${region.name} muscles`}
+                value={selectedMuscles}
+                onValueChange={setSelectedMuscles}
+                className="mt-1.5 max-w-full justify-start flex-nowrap overflow-x-auto border-l-2 border-primary/30 pb-1 pl-2"
+              >
+                {muscleGroups.filter(group => group.region === region.id).map(group => (
+                  <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-7 shrink-0 rounded-full border border-border/60 bg-transparent px-2.5 text-xs data-[state=on]:border-primary/25 data-[state=on]:bg-primary/10 data-[state=on]:text-primary">
+                    {group.name}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ))}
           </div>
 
           <div className="min-w-0 md:pl-4">

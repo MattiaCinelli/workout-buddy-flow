@@ -30,6 +30,28 @@ const courseExerciseIds = new Set([
   'mobility-overhead-reach',
 ]);
 
+// Built-in instructions rewritten since earlier releases, keyed by the text
+// they replace. An install still holding the old wording gets the new one;
+// instructions the user edited no longer match and are left alone.
+const revisedInstructions: Record<string, string> = {
+  '37': 'Facing a wall, step one foot well back with the heel down and knee straight. Lean into the wall until you feel a stretch in the back-leg calf, then switch sides.',
+  'mobility-bent-knee-soleus-stretch': 'Face a wall with both hands supported and step one foot behind you. Keep the back heel down and toes pointing forward, then bend both knees and gently sink forward until you feel the stretch lower in the back calf. Keep the rear arch lifted and do not let the knee collapse inward.',
+};
+
+// A pre-release build tagged these built-ins as warm-ups on its own. The
+// tags are cleared once per device; after that only the user sets the tag.
+const autoTaggedWarmupIds = new Set([
+  '8', '32', '38', 'mobility-open-book-rotations', 'mobility-knee-to-wall', 'mobility-downward-dog-heel-pumps',
+  'mobility-90-90-hip-switches', 'mobility-elephant-walks', 'mobility-wall-angels', 'mobility-towel-shoulder-pass-through',
+]);
+const autoWarmupsClearedKey = 'workout-buddy-auto-warmups-cleared';
+const autoWarmupsCleared = () => {
+  try { return localStorage.getItem(autoWarmupsClearedKey) === 'true'; } catch { return true; }
+};
+const markAutoWarmupsCleared = () => {
+  try { localStorage.setItem(autoWarmupsClearedKey, 'true'); } catch { /* storage off: nothing to remember */ }
+};
+
 export const useExercises = () => {
   const { items, isLoading, error, load, create, update, remove, restore, getById } =
     useIndexedDBCollection<Exercise>({
@@ -40,11 +62,20 @@ export const useExercises = () => {
       defaults: exerciseList,
       seedKey: 'exercises',
       seedUpdates: (stored, defaults) => {
+        const clearAutoWarmups = !autoWarmupsCleared();
+        if (clearAutoWarmups) markAutoWarmupsCleared();
         const defaultsById = new Map(defaults.map(item => [item.id, item]));
         return stored.flatMap(item => {
           const replacement = defaultsById.get(item.id);
           if (replacement?.imageUrl && courseExerciseIds.has(item.id) && !item.imageUrl && !item.deletedAt) {
             return [{ ...item, imageUrl: replacement.imageUrl, updatedAt: new Date().toISOString() }];
+          }
+          if (replacement?.instructions && !item.deletedAt
+            && revisedInstructions[item.id] !== undefined && item.instructions === revisedInstructions[item.id]) {
+            return [{ ...item, instructions: replacement.instructions, updatedAt: new Date().toISOString() }];
+          }
+          if (clearAutoWarmups && autoTaggedWarmupIds.has(item.id) && item.warmup && !item.deletedAt) {
+            return [{ ...item, warmup: false, updatedAt: new Date().toISOString() }];
           }
           const publicPhoto = replacement?.imageUrl?.startsWith('private-exercise:')
             ? `/exercises/${replacement.imageUrl.slice('private-exercise:'.length)}`

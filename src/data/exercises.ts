@@ -25,6 +25,11 @@ export interface Exercise {
   name: string;
   aliases?: string[]; // Alternative searchable names, without creating duplicate exercise records
   category: 'strength' | 'cardio' | 'flexibility' | 'balance';
+  // Used to prepare for harder work (neck rolls, arm circles) — a role, not
+  // a movement type, so it sits beside the category rather than replacing
+  // it: a warm-up is still a flexibility or cardio move. Only the user sets
+  // it; no built-in exercise is tagged.
+  warmup?: boolean;
   muscleGroups: string[]; // MuscleGroup ids — see src/data/muscleGroups.ts
   equipment?: string[];
   collectionId?: string;
@@ -574,7 +579,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 2,
     defaultDuration: 30,
     executionDirections: ['left', 'right'],
-    instructions: 'Facing a wall, step one foot well back with the heel down and knee straight. Lean into the wall until you feel a stretch in the back-leg calf, then switch sides.',
+    instructions: 'Stretches the upper calf (gastrocnemius), the large muscle that runs from above the knee to the heel. Stand facing a wall with both hands on it at shoulder height. Step one foot a full stride back, toes pointing straight ahead and the whole heel pressed into the floor. Keep the back knee locked straight and your body in one line from head to back heel, then bend the front knee and move your hips toward the wall until you feel a stretch in the middle and upper back calf. Hold without bouncing, breathing slowly, then switch sides. The back knee must stay straight: once it bends, this muscle goes slack. For the lower calf, follow with the Bent-Knee Soleus Stretch.',
     videoUrl: 'https://www.merckmanuals.com/professional/multimedia/video/standing-gastrocnemius-stretch',
     imageUrl: 'private-exercise:mobility-standing-calf.jpg'
   },
@@ -839,7 +844,7 @@ export const exerciseList: Exercise[] = [
     defaultSets: 2,
     defaultDuration: 30,
     executionDirections: ['left', 'right'],
-    instructions: 'Face a wall with both hands supported and step one foot behind you. Keep the back heel down and toes pointing forward, then bend both knees and gently sink forward until you feel the stretch lower in the back calf. Keep the rear arch lifted and do not let the knee collapse inward.',
+    instructions: 'Stretches the lower calf (soleus), the deeper muscle under the upper calf that stiffens ankles and limits how far your knee travels forward in a squat or lunge. Stand facing a wall with both hands on it. Step one foot only half a stride back, shorter than for the Standing Calf Stretch, toes pointing straight ahead and heel on the floor. Bend both knees and sink your hips straight down, as if starting to sit, until you feel the stretch low in the back calf, just above the heel and Achilles tendon. Keep the back heel down, the arch of the foot lifted and the knee over the toes rather than collapsing inward. Hold without bouncing, then switch sides. Bending the knee is the point: it slackens the upper calf so the stretch reaches this muscle. For the upper calf, do the Standing Calf Stretch.',
     videoUrl: 'https://www.merckmanuals.com/en-ca/home/multimedia/video/standing-soleus-stretch',
     imageUrl: 'private-exercise:mobility-bent-knee-soleus.jpg'
   },

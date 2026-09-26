@@ -71,6 +71,22 @@ test('an exercise keeps its directional settings through push and pull', async (
   assert.deepEqual(pull.json().exercises[0].executionDirections, ['left-forward', 'right-forward', 'left-backward', 'right-backward']);
 });
 
+test('an exercise keeps its warm-up tag, and an untick, through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  const tagged = await app.inject({ method: 'POST', url: '/sync/exercises', headers, payload: { exercises: [exercise({ warmup: true })] } });
+  assert.equal(tagged.json().exercises[0].warmup, true);
+  assert.equal((await app.inject({ method: 'GET', url: '/sync/exercises', headers })).json().exercises[0].warmup, true);
+
+  const unticked = await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ warmup: false, updatedAt: new Date(Date.now() + 1000).toISOString() })] },
+  });
+  assert.equal(unticked.json().exercises[0].warmup, false);
+  assert.equal((await app.inject({ method: 'GET', url: '/sync/exercises', headers })).json().exercises[0].warmup, false);
+});
+
 test('an exercise keeps direction-specific images through push and pull', async () => {
   const { app, aliceToken } = await setup();
   const headers = { authorization: `Bearer ${aliceToken}` };
@@ -326,4 +342,22 @@ test('workout favorite flag round-trips through push and pull', async () => {
 
   const pull = await app.inject({ method: 'GET', url: '/sync/workouts', headers });
   assert.equal(pull.json().workouts[0].favorite, true);
+});
+
+test('a muscle group keeps its body region through push and pull, and older ones have none', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/muscleGroups', headers,
+    payload: { muscleGroups: [
+      { id: 'wrist', name: 'Wrist', region: 'arms-hands', updatedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'legacy', name: 'Arm', updatedAt: '2026-01-01T00:00:00.000Z' },
+    ] },
+  });
+
+  const pulled = (await app.inject({ method: 'GET', url: '/sync/muscleGroups', headers })).json().muscleGroups;
+  const byId = Object.fromEntries(pulled.map((group: { id: string }) => [group.id, group]));
+  assert.equal(byId.wrist.region, 'arms-hands');
+  assert.equal(byId.legacy.region, undefined);
 });

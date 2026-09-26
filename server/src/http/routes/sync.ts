@@ -48,6 +48,7 @@ const exerciseSchema = {
     defaultDistance: { type: 'number' },
     secondsPerRep: { type: 'number' },
     unilateral: { type: 'boolean' },
+    warmup: { type: 'boolean' },
     executionDirections: {
       type: 'array',
       items: { type: 'string', enum: ['left', 'right', 'alternate', 'forward', 'backward', 'left-forward', 'right-forward', 'left-backward', 'right-backward'] },
@@ -223,6 +224,7 @@ const muscleGroupSchema = {
   properties: {
     id: { type: 'string', minLength: 1 },
     name: { type: 'string' },
+    region: { type: 'string' },
     updatedAt: { type: 'string' },
     deletedAt: { type: 'string' },
   },

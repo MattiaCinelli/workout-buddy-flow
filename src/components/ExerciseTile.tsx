@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import ExerciseImage from '@/components/ExerciseImage';
 import { Exercise, getLogType } from '@/data/exercises';
 import { useData } from '@/contexts/useData';
+import { describeMuscleTags } from '@/lib/muscleRegions';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 
@@ -15,9 +16,8 @@ interface ExerciseTileProps {
 
 const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
   const { muscleGroups } = useData();
-  const muscleNames = exercise.muscleGroups
-    .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
-    .join(', ');
+  // Region first, then the specific muscles: "Legs & Feet · Quadriceps".
+  const muscleNames = describeMuscleTags(exercise.muscleGroups, muscleGroups);
   const logType = getLogType(exercise);
   const sets = exercise.defaultSets ?? 1;
   const target = logType === 'time'
@@ -44,12 +44,13 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
       >
         <div className="mb-3 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border bg-slate-50 dark:bg-muted sm:h-28">
           {exercise.imageUrl
-            ? <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-full w-full object-cover" />
+            ? <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-full w-full object-contain p-1" />
             : <Image className="h-8 w-8 text-muted-foreground" aria-hidden="true" />}
         </div>
         <h3 className="line-clamp-2 min-h-10 w-full text-sm font-semibold leading-5 tracking-tight">{exercise.name}</h3>
         <div className="mt-1 flex max-w-full flex-wrap gap-1">
           <Badge variant="secondary" className="h-5 max-w-full px-1.5 text-[10px] capitalize">{exercise.category}</Badge>
+          {exercise.warmup && <Badge variant="outline" className="h-5 max-w-full border-workout-orange/60 px-1.5 text-[10px] text-workout-orange">Warm-up</Badge>}
           <Badge variant="outline" className="h-5 max-w-full px-1.5 text-[10px] capitalize">{exercise.difficulty}</Badge>
         </div>
         <p className="mt-2 w-full truncate text-xs text-muted-foreground">{muscleNames || 'No muscle group'}</p>

@@ -78,7 +78,7 @@ export const SelectedExerciseCard = ({
 
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
           {imageUrl
-            ? <ExerciseImage imageUrl={imageUrl} alt={`${exercise.name} thumbnail`} className="h-full w-full object-cover" />
+            ? <ExerciseImage imageUrl={imageUrl} alt={`${exercise.name} thumbnail`} className="h-full w-full object-contain" />
             : <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />}
         </div>
 

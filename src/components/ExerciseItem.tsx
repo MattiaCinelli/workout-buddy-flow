@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABELS } from '@/data/exercises';
 import { Image, Edit, Repeat, Timer } from 'lucide-react';
 import { useData } from '@/contexts/useData';
+import { describeMuscleTags } from '@/lib/muscleRegions';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 import ExerciseImage from '@/components/ExerciseImage';
@@ -17,9 +18,8 @@ interface ExerciseItemProps {
 
 const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit }) => {
   const { muscleGroups } = useData();
-  const muscleGroupNames = exercise.muscleGroups
-    .map(id => muscleGroups.find(group => group.id === id)?.name ?? id)
-    .join(', ');
+  // Region first, then the specific muscles: "Legs & Feet · Quadriceps".
+  const muscleGroupNames = describeMuscleTags(exercise.muscleGroups, muscleGroups);
 
   const logType = getLogType(exercise);
   const sets = exercise.defaultSets ?? 1;
@@ -76,7 +76,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
               <ExerciseImage
                 imageUrl={exercise.imageUrl}
                 alt={exercise.name} 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
           ) : (
@@ -119,6 +119,11 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
           <Badge className={getCategoryColor()}>
             {exercise.category}
           </Badge>
+          {exercise.warmup && (
+            <Badge variant="outline" className="border-workout-orange/60 text-workout-orange">
+              Warm-up
+            </Badge>
+          )}
           <Badge variant="outline" className={getDifficultyColor()}>
             {exercise.difficulty}
           </Badge>

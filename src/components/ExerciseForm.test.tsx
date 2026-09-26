@@ -18,6 +18,32 @@ describe('ExerciseForm', () => {
   beforeEach(() => localStorage.clear());
   afterEach(cleanup);
 
+  it('turns a warm-up tag off with the whole-row button and saves the untick', async () => {
+    const onSubmit = vi.fn();
+    render(<ExerciseForm
+      exercise={{ id: 'neck', name: 'Neck rolls', category: 'flexibility', warmup: true, muscleGroups: ['neck'], difficulty: 'beginner' }}
+      onSubmit={onSubmit}
+      onCancel={vi.fn()}
+    />);
+
+    const toggle = screen.getByRole('button', { name: /Warm-up exercise/ });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Update' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ warmup: false })));
+  });
+
+  it('starts a new exercise at 2 sets of 13 reps, or 30 seconds when timed', async () => {
+    render(<ExerciseForm onSubmit={vi.fn()} onCancel={vi.fn()} />);
+
+    expect(screen.getByLabelText('Default sets')).toHaveValue(2);
+    expect(screen.getByLabelText('Default reps')).toHaveValue(13);
+    fireEvent.click(screen.getByText(/^Time/));
+    await waitFor(() => expect(screen.getByLabelText('Default duration (sec)')).toHaveValue(30));
+  });
+
   it('renders an existing exercise without crashing', () => {
     render(<ExerciseForm
       exercise={{

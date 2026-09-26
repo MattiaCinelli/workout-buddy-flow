@@ -8,9 +8,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Pencil, Trash2, Check, X, Plus } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Check, X, Plus, Merge } from 'lucide-react';
 import { useData } from '@/contexts/useData';
-import { MuscleGroup } from '@/data/muscleGroups';
+import { MUSCLE_REGIONS, MuscleGroup, type MuscleRegionId } from '@/data/muscleGroups';
+import { FULL_BODY_ID, mergeMuscleTags, muscleTagName, regionTag } from '@/lib/muscleRegions';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface ManageMuscleGroupsModalProps {
@@ -27,6 +29,11 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
   const { muscleGroups, exercises, createMuscleGroup, updateMuscleGroup, deleteMuscleGroup, restoreMuscleGroup, updateExercise } = useData();
 
   const [newName, setNewName] = useState('');
+  // A new group must go in a region, so the list can't sprawl flat again.
+  const [newRegion, setNewRegion] = useState<MuscleRegionId | ''>('');
+  const [pendingMerge, setPendingMerge] = useState<MuscleGroup | null>(null);
+  const [mergeTarget, setMergeTarget] = useState('');
+  const [isMerging, setIsMerging] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -41,14 +48,14 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
-    if (!trimmed) return;
+    if (!trimmed || !newRegion) return;
     if (nameTaken(trimmed)) {
       toast.error(`"${trimmed}" already exists`);
       return;
     }
     setIsAdding(true);
     try {
-      await createMuscleGroup({ name: trimmed });
+      await createMuscleGroup({ name: trimmed, region: newRegion });
       setNewName('');
       toast.success(`Added "${trimmed}"`);
     } catch (error) {
@@ -88,6 +95,62 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
     }
   };
 
+  const handleRegionChange = async (group: MuscleGroup, region: MuscleRegionId) => {
+    try {
+      await updateMuscleGroup(group.id, { region });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not move muscle group');
+    }
+  };
+
+  // Folds a group into another muscle or a whole region: every exercise
+  // tagged with it is re-tagged, then the group is deleted. Undo restores
+  // both. The delete runs first because it untags from the exercise list
+  // as of this render; the merged tags are written after it, so they win.
+  const handleMerge = async () => {
+    const group = pendingMerge;
+    if (!group || !mergeTarget) return;
+    setIsMerging(true);
+    try {
+      const affected = exercises.filter(exercise => exercise.muscleGroups.includes(group.id));
+      const deleted = await deleteMuscleGroup(group.id);
+      await Promise.all(affected.map(exercise => updateExercise(exercise.id, {
+        muscleGroups: mergeMuscleTags(exercise.muscleGroups, group.id, mergeTarget, muscleGroups),
+      })));
+      toast.success(`Merged "${group.name}" into "${muscleTagName(mergeTarget, muscleGroups)}"`, {
+        description: affected.length ? `${affected.length} exercise${affected.length === 1 ? '' : 's'} re-tagged.` : undefined,
+        action: deleted ? { label: 'Undo', onClick: () => void (async () => {
+          await restoreMuscleGroup(deleted);
+          await Promise.all(affected.map(exercise => updateExercise(exercise.id, { muscleGroups: exercise.muscleGroups })));
+        })() } : undefined,
+      });
+      setPendingMerge(null);
+      setMergeTarget('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not merge muscle group');
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  // Full Body belongs to every region by design, so it is never "unsorted".
+  const sections = [
+    { id: 'unsorted', name: 'Unsorted — pick a region', groups: muscleGroups.filter(group => !group.region && group.id !== FULL_BODY_ID) },
+    ...MUSCLE_REGIONS.map(region => ({ id: region.id, name: region.name, groups: muscleGroups.filter(group => group.region === region.id) })),
+    { id: 'whole', name: 'Whole body', groups: muscleGroups.filter(group => group.id === FULL_BODY_ID) },
+  ];
+
+  const regionSelect = (group: MuscleGroup, className: string) => (
+    <Select value={group.region ?? ''} onValueChange={value => void handleRegionChange(group, value as MuscleRegionId)}>
+      <SelectTrigger className={className} aria-label={`Region of ${group.name}`}>
+        <SelectValue placeholder="Pick region…" />
+      </SelectTrigger>
+      <SelectContent>
+        {MUSCLE_REGIONS.map(region => <SelectItem key={region.id} value={region.id}>{region.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+
   const handleDelete = async () => {
     if (!pendingDelete) return;
     setIsDeleting(true);
@@ -114,27 +177,38 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
           <DialogHeader>
             <DialogTitle>Manage Muscle Groups</DialogTitle>
             <DialogDescription>
-              Add your own, rename one, or remove one you don't use. Deleting a group just untags it
-              from any exercises — they aren't deleted.
+              Every muscle group sits in one of five body regions. Add your own, move, rename, merge
+              duplicates into another, or remove one. Exercises are never deleted.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
             <Input
               placeholder="New muscle group…"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void handleAdd(); } }}
               disabled={isAdding}
+              className="col-span-2"
             />
-            <Button onClick={handleAdd} disabled={isAdding || !newName.trim()}>
+            <Select value={newRegion} onValueChange={value => setNewRegion(value as MuscleRegionId)} disabled={isAdding}>
+              <SelectTrigger aria-label="Region for the new muscle group"><SelectValue placeholder="Choose its region" /></SelectTrigger>
+              <SelectContent>
+                {MUSCLE_REGIONS.map(region => <SelectItem key={region.id} value={region.id}>{region.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleAdd} disabled={isAdding || !newName.trim() || !newRegion} aria-label="Add muscle group">
               {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-1">
-            {muscleGroups.map(group => (
-              <div key={group.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/60">
+          <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-3">
+            {sections.map(section => section.groups.length > 0 && (
+              <section key={section.id} aria-label={section.name}>
+                <h3 className={`mb-1 px-2 text-xs font-semibold uppercase tracking-wide ${section.id === 'unsorted' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>{section.name}</h3>
+                <div className="space-y-0.5">
+            {section.groups.map(group => (
+              <div key={group.id} className="flex flex-wrap items-center gap-1 py-1 px-2 rounded-md hover:bg-muted/60">
                 {editingId === group.id ? (
                   <>
                     <Input
@@ -143,7 +217,7 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void handleRename(group); } if (e.key === 'Escape') cancelEditing(); }}
                       autoFocus
                       disabled={isSaving}
-                      className="h-8"
+                      className="h-8 min-w-0 flex-1"
                     />
                     <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => handleRename(group)} disabled={isSaving}>
                       <Check className="h-4 w-4" />
@@ -151,15 +225,20 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
                     <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={cancelEditing} disabled={isSaving}>
                       <X className="h-4 w-4" />
                     </Button>
+                    {group.id !== FULL_BODY_ID && regionSelect(group, 'mt-1 h-8 w-full text-xs')}
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 text-sm">{group.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">{group.name}</span>
                     {usageCount(group.id) > 0 && (
                       <span className="text-xs text-muted-foreground">{usageCount(group.id)}</span>
                     )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => startEditing(group)} aria-label={`Rename ${group.name}`}>
+                    {section.id === 'unsorted' && regionSelect(group, 'h-8 w-[7.5rem] shrink-0 text-xs')}
+                    <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => startEditing(group)} aria-label={`Edit ${group.name}`}>
                       <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0" onClick={() => { setMergeTarget(''); setPendingMerge(group); }} aria-label={`Merge ${group.name} into another`}>
+                      <Merge className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive"
@@ -171,9 +250,51 @@ export function ManageMuscleGroupsModal({ isOpen, onClose }: ManageMuscleGroupsM
                 )}
               </div>
             ))}
+                </div>
+              </section>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!pendingMerge} onOpenChange={open => !isMerging && !open && setPendingMerge(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Merge "{pendingMerge?.name}" into…</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMerge && usageCount(pendingMerge.id) > 0
+                ? `Its ${usageCount(pendingMerge.id)} exercise${usageCount(pendingMerge.id) === 1 ? '' : 's'} will be tagged with what you pick instead, and "${pendingMerge.name}" is removed.`
+                : `No exercises use it; "${pendingMerge?.name}" is just removed.`}
+              {' '}Pick a whole region to replace a general label like "Leg".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Select value={mergeTarget} onValueChange={setMergeTarget} disabled={isMerging}>
+            <SelectTrigger aria-label="Merge into"><SelectValue placeholder="Choose a region or muscle" /></SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Whole region</SelectLabel>
+                {MUSCLE_REGIONS.map(region => <SelectItem key={region.id} value={regionTag(region.id)}>{region.name}</SelectItem>)}
+              </SelectGroup>
+              {MUSCLE_REGIONS.map(region => {
+                const options = muscleGroups.filter(group => group.region === region.id && group.id !== pendingMerge?.id);
+                return options.length > 0 && (
+                  <SelectGroup key={region.id}>
+                    <SelectLabel>{region.name}</SelectLabel>
+                    {options.map(group => <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>)}
+                  </SelectGroup>
+                );
+              })}
+            </SelectContent>
+          </Select>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMerging}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={event => { event.preventDefault(); void handleMerge(); }} disabled={isMerging || !mergeTarget}>
+              {isMerging ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Merge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!pendingDelete} onOpenChange={open => !isDeleting && !open && setPendingDelete(null)}>
         <AlertDialogContent>

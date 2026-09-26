@@ -11,7 +11,7 @@ import {
   isToday,
 } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronLeft, ChevronRight, Plus, Repeat } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Plus, Repeat, SkipForward } from 'lucide-react';
 import { ExpandedScheduledWorkout } from '@/hooks/useScheduledWorkouts';
 import { WorkoutEntry } from '@/data/workoutHistory';
 import type { WorkoutSession } from '@/data/workoutSessions';
@@ -169,18 +169,20 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                           key={`${schedule.id}-${schedule.displayDate}`}
                           onClick={() => onScheduleClick(schedule)}
                           className={cn("w-full flex items-center gap-1 text-left text-xs p-0.5 rounded hover:bg-muted transition-colors",
-                            schedule.skipped && "line-through opacity-50")}
+                            schedule.skipped && "bg-amber-500/15 text-amber-700 dark:text-amber-300")}
                           aria-label={`${workout.title}${schedule.skipped ? ', skipped' : isCompleted(schedule) ? ', done' : ''}`}
                         >
                           <span
                             className={cn(
                               "w-2 h-2 rounded-full flex-shrink-0",
-                              getCategoryDot(workout.category)
+                              schedule.skipped ? "bg-amber-500" : getCategoryDot(workout.category)
                             )}
                           />
                           {schedule.recurrence !== 'none' && <Repeat className="h-2.5 w-2.5 flex-shrink-0 text-muted-foreground" />}
                           <span className="truncate">{workout.title}</span>
-                          {!schedule.skipped && isCompleted(schedule) && <Check className="ml-auto h-3 w-3 flex-shrink-0 text-muted-foreground" aria-hidden="true" />}
+                          {schedule.skipped
+                            ? <SkipForward className="ml-auto h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                            : isCompleted(schedule) && <Check className="ml-auto h-3 w-3 flex-shrink-0 text-muted-foreground" aria-hidden="true" />}
                         </button>
                       );
                     })}

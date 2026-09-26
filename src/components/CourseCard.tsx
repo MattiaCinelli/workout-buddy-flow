@@ -16,7 +16,7 @@ interface CourseCardProps {
 
 const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) => {
   const navigate = useNavigate();
-  const { getWorkoutById, getCourseProgress, getNextWorkoutInCourse } = useData();
+  const { getWorkoutById, getCourseProgress, getNextWorkoutInCourse, getSkippedCourseItemIds } = useData();
   
   const progress = getCourseProgress(course.id);
   const isCompleted = progress === 100;
@@ -24,7 +24,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
   const nextWorkout = getNextWorkoutInCourse(course.id);
   const nextWorkoutData = nextWorkout ? getWorkoutById(nextWorkout.workoutId) : null;
   
-  const completedCount = course.workouts.filter(w => w.completed).length;
+  const skippedIds = getSkippedCourseItemIds(course.id);
+  const skippedCount = course.workouts.filter(w => !w.completed && skippedIds.has(w.id)).length;
+  // Skipped days count toward the tally; the note says how many.
+  const completedCount = course.workouts.filter(w => w.completed).length + skippedCount;
   const totalCount = course.workouts.length;
 
   return (
@@ -66,7 +69,10 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onStart, onRestart }) =
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{completedCount}/{totalCount} program days</span>
+              <span className="font-medium">
+                {completedCount}/{totalCount} program days
+                {skippedCount > 0 && <span className="text-amber-600 dark:text-amber-400"> ({skippedCount} skipped)</span>}
+              </span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>

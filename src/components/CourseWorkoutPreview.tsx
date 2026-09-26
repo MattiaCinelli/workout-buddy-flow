@@ -81,7 +81,7 @@ export function CourseWorkoutPreview({ workout, getExerciseById }: CourseWorkout
                   <span className="w-5 shrink-0 text-center text-xs font-semibold text-muted-foreground">{index + 1}</span>
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                     {exercise?.imageUrl ? (
-                      <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-full w-full object-cover" />
+                      <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-full w-full object-contain" />
                     ) : (
                       <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
                     )}

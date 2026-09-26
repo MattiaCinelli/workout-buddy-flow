@@ -115,7 +115,7 @@ const ExerciseProgress = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           {exercise.imageUrl && (
-            <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-12 w-12 rounded-md object-cover" />
+            <ExerciseImage imageUrl={exercise.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-md bg-muted object-contain" />
           )}
           <div className="flex-1 min-w-0">
             <h1 className="truncate text-2xl font-bold">{exercise.name}</h1>

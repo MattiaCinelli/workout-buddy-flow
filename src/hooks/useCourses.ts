@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { Course, CourseWorkout, defaultCourses } from '@/data/courses';
 import { getAllCoursesFromDB, saveCourseToDB, deleteCourseFromDB, bulkSaveCoursesToDB } from '@/lib/db';
 import { useIndexedDBCollection } from './useIndexedDBCollection';
-import { normalizeCourseItemOrder, sortCourseItems } from '@/lib/courseSchedule';
+import { getNextCourseItem, normalizeCourseItemOrder } from '@/lib/courseSchedule';
 
 // Normalizes course records from earlier schema versions (unique item IDs,
 // week/day defaults) and keeps the list sorted newest-first.
@@ -93,8 +93,7 @@ export const useCourses = () => {
     const course = items.find(c => c.id === courseId);
     if (!course) return null;
 
-    const sortedWorkouts = sortCourseItems(course.workouts);
-    return sortedWorkouts.find(w => !w.completed) || null;
+    return getNextCourseItem(course.workouts);
   }, [items]);
 
   // Get course progress (percentage)

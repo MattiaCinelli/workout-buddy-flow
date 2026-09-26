@@ -64,10 +64,9 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
   const { toast } = useToast();
   const { exercises, workouts, createWorkout, muscleGroups } = useData();
   const { folders } = useWorkoutFolders((workouts ?? []).map(workout => workout.folder));
-  const muscleGroupName = (id: string) => muscleGroups.find(group => group.id === id)?.name ?? id;
   
   const filteredExercises = exercises.filter(exercise =>
-    exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroupName)
+    exerciseMatchesSearchQuery(exercise, searchQuery, muscleGroups)
   );
 
   const isDirty = !!title.trim() || !!category || folder !== 'none' || !!description.trim()

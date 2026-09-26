@@ -8,7 +8,7 @@ import {
   EXECUTION_DIRECTION_LABELS, getExecutionDirections, type ExecutionDirection,
 } from '@/data/exercises';
 import { combineExecutionDirections } from '@/lib/workoutDirections';
-import { Trash, FileImage, Loader2, Settings2 } from 'lucide-react';
+import { Trash, FileImage, Loader2, Settings2, Flame } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,6 +29,7 @@ import ExerciseImage from '@/components/ExerciseImage';
 import { normalizeExerciseAliases } from '@/lib/exerciseAliases';
 import { removeCachedPrivateExerciseImage } from '@/lib/exerciseMediaClient';
 import { useEquipment } from '@/hooks/useEquipment';
+import { MuscleTagPicker } from '@/components/MuscleTagPicker';
 import { readExerciseFormDraft, saveExerciseFormDraft } from '@/lib/exerciseDraft';
 
 const optionalNumber = (label: string, min: number, max: number) => z.string().optional().refine(value => {
@@ -52,6 +53,7 @@ const formSchema = z.object({
     return aliases.length <= 20 && aliases.every(alias => alias.length <= 100);
   }, 'Use at most 20 alternative names, each no longer than 100 characters.'),
   category: z.enum(['strength', 'cardio', 'flexibility', 'balance']),
+  warmup: z.boolean(),
   muscleGroups: z.array(z.string()).default([]),
   equipment: z.array(z.string()).default([]),
   collectionName: z.string().max(100).optional(),
@@ -131,6 +133,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       name: exercise?.name || "",
       aliases: exercise?.aliases?.join(', ') || "",
       category: exercise?.category || 'strength',
+      warmup: exercise?.warmup === true,
       muscleGroups: exercise?.muscleGroups || [],
       equipment: exercise?.equipment || [],
       collectionName: exercise?.collectionName || '',
@@ -138,9 +141,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       difficulty: exercise?.difficulty || 'beginner',
       logType: exercise ? getLogType(exercise) : 'reps',
       executionDirections: exercise ? combineExecutionDirections(getExecutionDirections(exercise)) : [],
-      defaultSets: exercise?.defaultSets?.toString() ?? '3',
-      defaultReps: exercise?.defaultReps?.toString() ?? '',
-      defaultDuration: exercise?.defaultDuration?.toString() ?? '',
+      // A brand-new exercise starts at 2 sets of 13 reps, or 30 seconds when
+      // timed; editing keeps whatever the exercise already has.
+      defaultSets: exercise ? exercise.defaultSets?.toString() ?? '3' : '2',
+      defaultReps: exercise ? exercise.defaultReps?.toString() ?? '' : '13',
+      defaultDuration: exercise ? exercise.defaultDuration?.toString() ?? '' : '30',
       defaultWeight: exercise?.defaultWeight?.toString() ?? '',
       defaultDistance: exercise?.defaultDistance?.toString() ?? '',
       secondsPerRep: exercise?.secondsPerRep?.toString() ?? '',
@@ -205,6 +210,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       name: values.name,
       aliases: aliases.length ? aliases : undefined,
       category: values.category,
+      warmup: values.warmup,
       muscleGroups: values.muscleGroups,
       equipment: values.equipment.length ? values.equipment : undefined,
       collectionId: values.collectionName?.trim() ? `collection:${values.collectionName.trim().toLocaleLowerCase()}` : undefined,
@@ -398,6 +404,32 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
 
         <FormField
           control={form.control}
+          name="warmup"
+          render={({ field }) => (
+            <FormItem className="space-y-0">
+              <FormControl>
+                {/* The whole row is the switch: easier to hit than a small tick box. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={field.value}
+                  disabled={isSubmitting}
+                  onClick={() => field.onChange(!field.value)}
+                  className={`h-12 w-full justify-start gap-3 ${field.value
+                    ? 'border-workout-orange bg-workout-orange/10 text-workout-orange hover:bg-workout-orange/15 hover:text-workout-orange'
+                    : 'text-muted-foreground'}`}
+                >
+                  <Flame className="h-5 w-5" aria-hidden="true" />
+                  <span className="flex-1 text-left font-medium">Warm-up exercise</span>
+                  <span className="text-xs">{field.value ? 'On' : 'Off'}</span>
+                </Button>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="equipment"
           render={({ field }) => (
             <FormItem className="grid gap-2">
@@ -421,19 +453,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             <FormItem className="grid gap-2">
               <FormLabel>Muscle Groups (optional)</FormLabel>
               <FormControl>
-                <ToggleGroup
-                  type="multiple"
-                  value={field.value}
-                  onValueChange={(value) => field.onChange(value)}
-                  className="justify-start flex-wrap"
-                  disabled={isSubmitting}
-                >
-                  {availableMuscleGroups.map((group) => (
-                    <ToggleGroupItem key={group.id} value={group.id} aria-label={group.name} className="h-8 px-2.5 text-xs">
-                      {group.name}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
+                <MuscleTagPicker groups={availableMuscleGroups} value={field.value} onChange={field.onChange} disabled={isSubmitting} />
               </FormControl>
             </FormItem>
           )}
