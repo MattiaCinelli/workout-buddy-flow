@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Copy, Play, Search, Share2, Trash2, Loader2, Star } from 'lucide-react';
-import { Exercise, getExerciseImageUrl, getLogType } from '@/data/exercises';
+import { Exercise, defaultSetTargets, getExerciseImageUrl } from '@/data/exercises';
 import { WorkoutSet, WorkoutEntry, WORKOUT_CATEGORIES, WORKOUT_CATEGORY_LABELS } from '@/data/workoutHistory';
 import { shareWorkout } from '@/lib/backup';
 import { useData } from '@/contexts/useData';
@@ -211,14 +211,14 @@ const WorkoutDetail = () => {
 
   const handleSelectExercise = (exercise: Exercise) => {
     const occurrenceId = crypto.randomUUID();
-    const isTimeBased = getLogType(exercise) === 'time';
+    const { reps, duration } = defaultSetTargets(exercise);
     const setCount = exercise.defaultSets ?? 1;
     const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
       occurrenceId,
-      reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
+      reps,
       weight: exercise.defaultWeight,
-      duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
+      duration,
       distance: exercise.defaultDistance,
       // Left undefined — the runtime picks between restBetweenSets/
       // restBetweenExercises dynamically based on same/different exercise.

@@ -21,7 +21,7 @@ export function PersonalRecordsCard() {
   const [open, setOpen] = useState(false);
 
   const rows = useMemo(() => {
-    const records = computePersonalRecords(sessions);
+    const records = computePersonalRecords(sessions, exercises);
     return [...records.values()]
       .map(record => ({ record, exercise: exercises.find(item => item.id === record.exerciseId) }))
       .filter(row => row.exercise)

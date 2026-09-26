@@ -1,5 +1,8 @@
 import { WorkoutEntry } from '@/data/workoutHistory';
-import { Exercise, getSecondsPerRep, type ExecutionDirection } from '@/data/exercises';
+import {
+  DEFAULT_HOLDS, DEFAULT_SECONDS_PER_HOLD, Exercise, getLogType, getSecondsBetweenHolds, getSecondsPerRep,
+  type ExecutionDirection,
+} from '@/data/exercises';
 import { isDirectional } from './workoutDirections';
 
 // Seconds given at the very start of a workout before the first exercise
@@ -26,14 +29,18 @@ export type WorkoutStep = { type: 'exercise' | 'rest'; exerciseId?: string; sour
   // Explicit direction authored on a new workout set, or synthesized for
   // an old unilateral workout that predates separate directional sets.
   direction?: ExecutionDirection;
+  // A 'holds' set is run as one countdown per hold: "Hold 2 of 5".
+  holdIndex?: number;
+  holdCount?: number;
   // Carried from the authored set for the presentation layer.
   warmup?: boolean;
   amrap?: boolean;
   // 'prep' is the leading "get in position" pause; 'switch' is the short
-  // changeover between the two sides of a unilateral set; 'rest' is an
-  // ordinary between-sets rest. Same countdown mechanics, different heading
-  // and announcement in the presentation layer.
-  kind?: 'prep' | 'rest' | 'switch';
+  // changeover between the two sides of a unilateral set; 'release' is the
+  // pause between two holds of a 'holds' set; 'rest' is an ordinary
+  // between-sets rest. Same countdown mechanics, different heading and
+  // announcement in the presentation layer.
+  kind?: 'prep' | 'rest' | 'switch' | 'release';
   // On a 'rest' step: true when the NEXT exercise differs from the one just
   // finished (a between-exercises transition), false when it's another set
   // of the same exercise. Drives the longer default rest, a distinct spoken
@@ -48,24 +55,37 @@ export const buildWorkoutSteps = (workout: WorkoutEntry, exercises: Exercise[] =
   workout.sets.forEach((set, sourceSetIndex) => {
     const setIndex = workout.sets.slice(0, sourceSetIndex + 1)
       .filter(candidate => candidate.exerciseId === set.exerciseId).length - 1;
-    const isReps = set.reps !== undefined;
     const exercise = exercises.find(item => item.id === set.exerciseId);
+    const isHolds = !!exercise && getLogType(exercise) === 'holds';
+    const isReps = !isHolds && set.reps !== undefined;
     const secondsPerRep = isReps ? getSecondsPerRep(exercise ?? {}) : undefined;
     const duration = isReps ? (secondsPerRep! * set.reps!) : set.duration;
+    // Timed repetitions: one countdown per hold with a release between them,
+    // so the app counts both the seconds and the holds. Every piece keeps
+    // the set's sourceSetIndex, so progress and results map to one set.
+    const pushExercise = (step: WorkoutStep) => {
+      if (!isHolds) { steps.push(step); return; }
+      const holdCount = Math.max(1, set.reps ?? DEFAULT_HOLDS);
+      const release = getSecondsBetweenHolds(exercise);
+      for (let holdIndex = 1; holdIndex <= holdCount; holdIndex += 1) {
+        if (holdIndex > 1 && release > 0) steps.push({ type: 'rest', kind: 'release', duration: release });
+        steps.push({ ...step, reps: undefined, duration: set.duration ?? DEFAULT_SECONDS_PER_HOLD, holdIndex, holdCount });
+      }
+    };
     const exerciseStep: WorkoutStep = { type: 'exercise', exerciseId: set.exerciseId, sourceSetIndex,
       setIndex, reps: set.reps, weight: set.weight, duration, distance: set.distance, secondsPerRep,
       warmup: set.warmup, amrap: set.amrap };
     if (isDirectional(set.direction)) {
-      steps.push({ ...exerciseStep, direction: set.direction });
+      pushExercise({ ...exerciseStep, direction: set.direction });
     } else if (set.direction === undefined && exercise?.unilateral) {
       // One authored set becomes: left side → switch pause → right side.
       // Both sides keep the same sourceSetIndex/setIndex so progress
       // counting and results logging still map back to the one authored set.
-      steps.push({ ...exerciseStep, direction: 'left' });
+      pushExercise({ ...exerciseStep, direction: 'left' });
       steps.push({ type: 'rest', kind: 'switch', duration: SWITCH_SIDES_DURATION_SECONDS });
-      steps.push({ ...exerciseStep, direction: 'right' });
+      pushExercise({ ...exerciseStep, direction: 'right' });
     } else {
-      steps.push(exerciseStep);
+      pushExercise(exerciseStep);
     }
     const next = workout.sets[sourceSetIndex + 1];
     if (next) {
@@ -122,6 +142,7 @@ export const isSelfPacedStep = (step: WorkoutStep | undefined): boolean =>
 export const restKindLabel = (step: WorkoutStep | undefined): string => {
   if (step?.kind === 'prep') return 'Get ready';
   if (step?.kind === 'switch') return 'Change side';
+  if (step?.kind === 'release') return 'Release';
   if (step?.changesExercise) return 'Rest — next exercise';
   return 'Rest';
 };
@@ -136,6 +157,8 @@ export const stepClockSeconds = (step: WorkoutStep | undefined): number =>
 // the cue also says what's coming up.
 export const stepStartAnnouncement = (step: WorkoutStep | undefined, nextExerciseName?: string): string => {
   if (step?.type === 'exercise') {
+    // Every hold after the first is announced as just "Hold".
+    if (step.holdIndex && step.holdIndex > 1) return 'Hold';
     if (!step.direction) return 'Begin';
     const spokenDirection = step.direction === 'left' || step.direction === 'right'
       ? `${step.direction} side`
@@ -145,6 +168,7 @@ export const stepStartAnnouncement = (step: WorkoutStep | undefined, nextExercis
   }
   if (step?.kind === 'prep') return 'Get ready';
   if (step?.kind === 'switch') return 'Change side';
+  if (step?.kind === 'release') return 'Release';
   if (step?.changesExercise) {
     return nextExerciseName ? `Rest, changing exercise. Next up: ${nextExerciseName}` : 'Rest, changing exercise';
   }

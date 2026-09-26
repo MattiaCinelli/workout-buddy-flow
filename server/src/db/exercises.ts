@@ -19,6 +19,7 @@ export interface SyncedExercise {
   defaultWeight?: number;
   defaultDistance?: number;
   secondsPerRep?: number;
+  secondsBetweenHolds?: number;
   unilateral?: boolean;
   warmup?: boolean;
   executionDirections?: string[];
@@ -54,6 +55,7 @@ interface ExerciseRow {
   default_weight: number | null;
   default_distance: number | null;
   seconds_per_rep: number | null;
+  seconds_between_holds: number | null;
   unilateral: number;
   warmup: number;
   execution_directions: string | null;
@@ -84,6 +86,7 @@ const fromRow = (row: ExerciseRow): SyncedExercise => ({
   defaultWeight: row.default_weight ?? undefined,
   defaultDistance: row.default_distance ?? undefined,
   secondsPerRep: row.seconds_per_rep ?? undefined,
+  secondsBetweenHolds: row.seconds_between_holds ?? undefined,
   unilateral: row.unilateral === 1,
   warmup: row.warmup === 1,
   executionDirections: row.execution_directions ? JSON.parse(row.execution_directions) : undefined,
@@ -130,12 +133,12 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
   db.prepare(`
     INSERT INTO exercises (
       id, user_id, name, aliases, category, muscle_groups, equipment, collection_id, collection_name, collection_order, difficulty,
-      log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, unilateral, warmup, execution_directions, progression,
+      log_type, default_sets, default_reps, default_duration, default_weight, default_distance, seconds_per_rep, seconds_between_holds, unilateral, warmup, execution_directions, progression,
       instructions, video_url, image_url, direction_image_urls, updated_at, deleted_at, synced_at
     )
     VALUES (
       @id, @userId, @name, @aliases, @category, @muscleGroups, @equipment, @collectionId, @collectionName, @collectionOrder, @difficulty,
-      @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @unilateral, @warmup, @executionDirections, @progression,
+      @logType, @defaultSets, @defaultReps, @defaultDuration, @defaultWeight, @defaultDistance, @secondsPerRep, @secondsBetweenHolds, @unilateral, @warmup, @executionDirections, @progression,
       @instructions, @videoUrl, @imageUrl, @directionImageUrls, @updatedAt, @deletedAt, @syncedAt
     )
     ON CONFLICT(id, user_id) DO UPDATE SET
@@ -155,6 +158,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
       default_weight = excluded.default_weight,
       default_distance = excluded.default_distance,
       seconds_per_rep = excluded.seconds_per_rep,
+      seconds_between_holds = excluded.seconds_between_holds,
       unilateral = excluded.unilateral,
       warmup = excluded.warmup,
       execution_directions = excluded.execution_directions,
@@ -186,6 +190,7 @@ export const upsertExercise = (db: Db, userId: string, exercise: SyncedExercise)
     defaultWeight: exercise.defaultWeight ?? null,
     defaultDistance: exercise.defaultDistance ?? null,
     secondsPerRep: exercise.secondsPerRep ?? null,
+    secondsBetweenHolds: exercise.secondsBetweenHolds ?? null,
     unilateral: exercise.unilateral ? 1 : 0,
     warmup: exercise.warmup ? 1 : 0,
     executionDirections: exercise.executionDirections?.length ? JSON.stringify(exercise.executionDirections) : null,

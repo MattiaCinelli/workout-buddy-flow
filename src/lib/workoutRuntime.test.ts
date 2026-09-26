@@ -249,3 +249,47 @@ describe('remainingSeconds', () => {
     expect(remainingSeconds(10_000, 12_000)).toBe(0);
   });
 });
+
+describe('holds (timed repetitions)', () => {
+  const holdsExercise: Exercise = {
+    id: 'e-holds', name: 'Pancake hinge', category: 'flexibility', muscleGroups: [], difficulty: 'beginner',
+    logType: 'holds', secondsBetweenHolds: 4,
+  };
+  const shape = (steps: WorkoutStep[]) => steps.map(step => step.type === 'rest'
+    ? `${step.kind}:${step.duration}`
+    : `hold${step.holdIndex}/${step.holdCount}:${step.duration}${step.direction ? `:${step.direction}` : ''}`);
+
+  it('runs a set as one countdown per hold with a release between them, and none after the last', () => {
+    const workout: WorkoutEntry = { ...baseWorkout, restBetweenSets: 20, sets: [
+      { exerciseId: 'e-holds', reps: 3, duration: 10 },
+      { exerciseId: 'e-holds', reps: 2, duration: 8 },
+    ] };
+    const steps = buildWorkoutSteps(workout, [holdsExercise]);
+    expect(shape(steps)).toEqual([
+      'prep:10', 'hold1/3:10', 'release:4', 'hold2/3:10', 'release:4', 'hold3/3:10',
+      'rest:20', 'hold1/2:8', 'release:4', 'hold2/2:8',
+    ]);
+    // Holds are real countdowns that auto-advance, not self-paced reps.
+    expect(steps.filter(step => step.type === 'exercise').every(step => !isSelfPacedStep(step) && step.reps === undefined)).toBe(true);
+    // Every piece maps back to its planned set.
+    expect(steps[3].sourceSetIndex).toBe(0);
+    expect(steps[7].sourceSetIndex).toBe(1);
+    expect(workoutDurationSeconds(workout, [holdsExercise])).toBe(30 + 8 + 20 + 16 + 4);
+  });
+
+  it('gives each side its own hold sequence', () => {
+    const unilateral = { ...holdsExercise, unilateral: true, secondsBetweenHolds: undefined };
+    const workout: WorkoutEntry = { ...baseWorkout, sets: [{ exerciseId: 'e-holds', reps: 2, duration: 5 }] };
+    expect(shape(buildWorkoutSteps(workout, [unilateral]))).toEqual([
+      'prep:10', 'hold1/2:5:left', 'release:5', 'hold2/2:5:left', 'switch:5', 'hold1/2:5:right', 'release:5', 'hold2/2:5:right',
+    ]);
+  });
+
+  it('labels and announces holds and releases', () => {
+    const release: WorkoutStep = { type: 'rest', kind: 'release', duration: 5 };
+    expect(restKindLabel(release)).toBe('Release');
+    expect(stepStartAnnouncement(release)).toBe('Release');
+    expect(stepStartAnnouncement({ type: 'exercise', holdIndex: 2, holdCount: 5, duration: 10 })).toBe('Hold');
+    expect(stepStartAnnouncement({ type: 'exercise', holdIndex: 1, holdCount: 5, duration: 10 })).toBe('Begin');
+  });
+});

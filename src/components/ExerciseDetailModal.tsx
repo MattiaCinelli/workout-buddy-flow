@@ -12,6 +12,7 @@ import { shareExercise } from '@/lib/backup';
 import { normalizeHttpsUrl } from '@/lib/url';
 import { useData } from '@/contexts/useData';
 import { describeMuscleTags } from '@/lib/muscleRegions';
+import { exerciseTargetText } from '@/lib/workoutSetSummary';
 import ExerciseImage from '@/components/ExerciseImage';
 
 interface ExerciseDetailModalProps {
@@ -74,10 +75,8 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: 
   const setSummary = () => {
     const sets = exercise.defaultSets ?? 1;
     const setLabel = `${sets} set${sets === 1 ? '' : 's'}`;
-    if (logType === 'time') {
-      return exercise.defaultDuration ? `${setLabel} × ${exercise.defaultDuration}s` : setLabel;
-    }
-    return exercise.defaultReps ? `${setLabel} × ${exercise.defaultReps} reps` : setLabel;
+    const target = exerciseTargetText(exercise);
+    return target ? `${setLabel} × ${target}` : setLabel;
   };
 
   return (
@@ -128,7 +127,7 @@ export function ExerciseDetailModal({ exercise, onClose, onEdit, onDuplicate }: 
         )}
 
         <div className="flex items-center gap-2 text-sm font-medium">
-          {logType === 'time' ? <Timer className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+          {logType === 'reps' ? <Repeat className="h-4 w-4" /> : <Timer className="h-4 w-4" />}
           {setSummary()}
           {exercise.defaultWeight ? <span className="text-muted-foreground font-normal">· {exercise.defaultWeight}kg</span> : null}
           {exercise.defaultDistance ? <span className="text-muted-foreground font-normal">· {exercise.defaultDistance}m</span> : null}

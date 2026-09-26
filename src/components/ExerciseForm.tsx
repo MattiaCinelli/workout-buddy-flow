@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Exercise, getLogType, DEFAULT_SECONDS_PER_REP, EXECUTION_DIRECTIONS,
+  DEFAULT_HOLDS, DEFAULT_SECONDS_PER_HOLD, DEFAULT_SECONDS_BETWEEN_HOLDS,
   EXECUTION_DIRECTION_LABELS, getExecutionDirections, type ExecutionDirection,
 } from '@/data/exercises';
 import { combineExecutionDirections } from '@/lib/workoutDirections';
@@ -59,7 +60,7 @@ const formSchema = z.object({
   collectionName: z.string().max(100).optional(),
   collectionOrder: optionalNumber('Collection level', 1, 100),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
-  logType: z.enum(['reps', 'time']),
+  logType: z.enum(['reps', 'time', 'holds']),
   executionDirections: z.array(z.enum(EXECUTION_DIRECTIONS)).default([]),
   defaultSets: optionalNumber('Sets', 1, 100),
   defaultReps: optionalNumber('Reps', 0, 1000),
@@ -67,6 +68,7 @@ const formSchema = z.object({
   defaultWeight: optionalNumber('Weight', 0, 1000),
   defaultDistance: optionalNumber('Distance', 0, 1000000),
   secondsPerRep: optionalNumber('Seconds per rep', 1, 60),
+  secondsBetweenHolds: optionalNumber('Seconds between holds', 0, 120),
   progressionMode: z.enum(['none', 'linear', 'double']).default('none'),
   progressionIncrement: optionalNumber('Increment', 0.25, 50),
   progressionRepMin: optionalNumber('Rep range min', 1, 100),
@@ -149,6 +151,7 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       defaultWeight: exercise?.defaultWeight?.toString() ?? '',
       defaultDistance: exercise?.defaultDistance?.toString() ?? '',
       secondsPerRep: exercise?.secondsPerRep?.toString() ?? '',
+      secondsBetweenHolds: exercise?.secondsBetweenHolds?.toString() ?? '',
       progressionMode: exercise?.progression?.mode ?? 'none',
       progressionIncrement: exercise?.progression?.incrementKg?.toString() ?? '',
       progressionRepMin: exercise?.progression?.repRangeMin?.toString() ?? '',
@@ -223,8 +226,11 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
       // encounter this exercise. New code uses executionDirections first.
       unilateral: values.executionDirections.includes('left') && values.executionDirections.includes('right') || undefined,
       defaultSets: toNumber(values.defaultSets),
-      defaultReps: values.logType === 'reps' ? toNumber(values.defaultReps) : undefined,
-      defaultDuration: values.logType === 'time' ? toNumber(values.defaultDuration) : undefined,
+      // Holds use both: defaultReps is the number of holds, defaultDuration
+      // the seconds each hold lasts.
+      defaultReps: values.logType !== 'time' ? toNumber(values.defaultReps) : undefined,
+      defaultDuration: values.logType !== 'reps' ? toNumber(values.defaultDuration) : undefined,
+      secondsBetweenHolds: values.logType === 'holds' ? toNumber(values.secondsBetweenHolds) : undefined,
       defaultWeight: toNumber(values.defaultWeight),
       defaultDistance: toNumber(values.defaultDistance),
       secondsPerRep: values.logType === 'reps' ? toNumber(values.secondsPerRep) : undefined,
@@ -503,12 +509,25 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
                 <ToggleGroup
                   type="single"
                   value={field.value}
-                  onValueChange={(value) => value && field.onChange(value)}
-                  className="justify-start"
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    // A brand-new exercise swaps the untouched starting values
+                    // for ones that suit holds (5 × 10 s), and back again.
+                    if (!exercise) {
+                      const swap = (name: 'defaultReps' | 'defaultDuration', from: string, to: string) => {
+                        if (form.getValues(name) === from) form.setValue(name, to);
+                      };
+                      if (value === 'holds') { swap('defaultReps', '13', String(DEFAULT_HOLDS)); swap('defaultDuration', '30', String(DEFAULT_SECONDS_PER_HOLD)); }
+                      else if (field.value === 'holds') { swap('defaultReps', String(DEFAULT_HOLDS), '13'); swap('defaultDuration', String(DEFAULT_SECONDS_PER_HOLD), '30'); }
+                    }
+                    field.onChange(value);
+                  }}
+                  className="flex-wrap justify-start"
                   disabled={isSubmitting}
                 >
                   <ToggleGroupItem value="reps" className="px-4">Reps (e.g. push-ups)</ToggleGroupItem>
                   <ToggleGroupItem value="time" className="px-4">Time (e.g. a plank hold)</ToggleGroupItem>
+                  <ToggleGroupItem value="holds" className="px-4">Holds (e.g. 5 × 10 s)</ToggleGroupItem>
                 </ToggleGroup>
               </FormControl>
             </FormItem>
@@ -559,7 +578,23 @@ const ExerciseForm: React.FC<ExerciseFormProps> = ({
             <label htmlFor="defaultSets" className="text-xs text-muted-foreground">Default sets</label>
             <Input id="defaultSets" type="number" min="1" max="100" className="bg-background" {...form.register("defaultSets")} disabled={isSubmitting} />
           </div>
-          {logType === 'reps' ? (
+          {logType === 'holds' ? (
+            <>
+              <div className="space-y-1">
+                <label htmlFor="defaultReps" className="text-xs text-muted-foreground">Holds per set</label>
+                <Input id="defaultReps" type="number" min="1" max="1000" className="bg-background" {...form.register("defaultReps")} disabled={isSubmitting} />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="defaultDuration" className="text-xs text-muted-foreground">Seconds per hold</label>
+                <Input id="defaultDuration" type="number" min="1" max="86400" className="bg-background" {...form.register("defaultDuration")} disabled={isSubmitting} />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="secondsBetweenHolds" className="text-xs text-muted-foreground">Seconds between holds</label>
+                <Input id="secondsBetweenHolds" type="number" min="0" max="120" className="bg-background"
+                  placeholder={String(DEFAULT_SECONDS_BETWEEN_HOLDS)} {...form.register("secondsBetweenHolds")} disabled={isSubmitting} />
+              </div>
+            </>
+          ) : logType === 'reps' ? (
             <div className="space-y-1">
               <label htmlFor="defaultReps" className="text-xs text-muted-foreground">Default reps</label>
               <Input id="defaultReps" type="number" min="0" max="1000" className="bg-background" {...form.register("defaultReps")} disabled={isSubmitting} />

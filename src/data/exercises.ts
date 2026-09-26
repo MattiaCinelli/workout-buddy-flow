@@ -1,4 +1,7 @@
-export type ExerciseLogType = 'reps' | 'time';
+// 'holds' is timed repetitions: a set is N holds of M seconds each, with a
+// short release between them (e.g. 5 × 10 s). It reuses defaultReps (number
+// of holds) and defaultDuration (seconds per hold).
+export type ExerciseLogType = 'reps' | 'time' | 'holds';
 export const DEFAULT_EQUIPMENT = ['Bodyweight', 'Dumbbells', 'Barbell', 'Bench', 'Resistance band', 'Cable machine', 'Kettlebell', 'Pull-up bar', 'Mat', 'Foam roller', 'Strap'] as const;
 export const EXECUTION_DIRECTIONS = [
   'left', 'right', 'alternate', 'forward', 'backward',
@@ -49,6 +52,9 @@ export interface Exercise {
   // rather than an open-ended "do 10 reps whenever." Defaults to 5 (see
   // DEFAULT_SECONDS_PER_REP) when unset.
   secondsPerRep?: number;
+  // 'holds' only: the pause between two holds of one set, to come up and
+  // reset. Defaults to DEFAULT_SECONDS_BETWEEN_HOLDS when unset.
+  secondsBetweenHolds?: number;
   defaultWeight?: number; // optional, e.g. a loaded exercise's usual working weight
   defaultDistance?: number; // optional, meters — e.g. a usual run/ride distance
   // Performed one limb at a time — the workout runtime splits every set of
@@ -96,12 +102,30 @@ export const getExecutionDirections = (
 // back to the old category-based guess so they keep behaving the same way
 // until someone edits them and picks one explicitly.
 export const getLogType = (exercise: Pick<Exercise, 'category' | 'logType'>): ExerciseLogType =>
-  exercise.logType ?? (exercise.category === 'cardio' || exercise.category === 'flexibility' ? 'time' : 'reps');
+  exercise.logType === 'reps' || exercise.logType === 'time' || exercise.logType === 'holds'
+    ? exercise.logType
+    : (exercise.category === 'cardio' || exercise.category === 'flexibility' ? 'time' : 'reps');
 
 export const DEFAULT_SECONDS_PER_REP = 5;
 
 export const getSecondsPerRep = (exercise: Pick<Exercise, 'secondsPerRep'>): number =>
   exercise.secondsPerRep ?? DEFAULT_SECONDS_PER_REP;
+
+export const DEFAULT_SECONDS_BETWEEN_HOLDS = 5;
+export const DEFAULT_HOLDS = 5;
+export const DEFAULT_SECONDS_PER_HOLD = 10;
+
+export const getSecondsBetweenHolds = (exercise: Pick<Exercise, 'secondsBetweenHolds'>): number =>
+  exercise.secondsBetweenHolds ?? DEFAULT_SECONDS_BETWEEN_HOLDS;
+
+/** Reps and/or seconds a new workout set of this exercise starts with. Holds get both. */
+export const defaultSetTargets = (exercise: Exercise): { reps?: number; duration?: number } => {
+  switch (getLogType(exercise)) {
+    case 'time': return { duration: exercise.defaultDuration ?? 30 };
+    case 'holds': return { reps: exercise.defaultReps ?? DEFAULT_HOLDS, duration: exercise.defaultDuration ?? DEFAULT_SECONDS_PER_HOLD };
+    default: return { reps: exercise.defaultReps ?? 12 };
+  }
+};
 
 export const exerciseList: Exercise[] = [
   {
@@ -901,6 +925,22 @@ export const exerciseList: Exercise[] = [
     defaultSets: 2,
     defaultDuration: 30,
     instructions: 'Stand with your feet in a wide straddle and point your toes forward or slightly inward. Keep your knees softly unlocked, brace gently and hinge forward from your hips with a long spine. Support your hands on blocks or the floor beneath your shoulders and stop at a comfortable stretch through your inner thighs and hamstrings.',
+    videoUrl: 'https://www.youtube.com/shorts/loOpwF1fkFc?feature=share',
+    imageUrl: 'private-exercise:mobility-standing-pancake-stretch.jpg'
+  },
+  {
+    id: 'mobility-standing-pancake-hinge-holds',
+    name: 'Standing Pancake Hinge Holds',
+    aliases: ['Pancake Hinge Holds'],
+    category: 'flexibility',
+    muscleGroups: ['Hamstrings', 'Inner Thighs', 'Hips', 'Back'],
+    difficulty: 'intermediate',
+    logType: 'holds',
+    defaultSets: 2,
+    defaultReps: 5,
+    defaultDuration: 10,
+    secondsBetweenHolds: 5,
+    instructions: 'Stand in a wide straddle with your toes pointing forward or slightly inward and your knees softly unlocked. Tilt your pelvis forward (an anterior tilt, as if pushing your tailbone back and up) and hinge from the hips, lowering your chest only as far as your back stays completely straight. Stop at the lowest point where you can still keep that flat back and hold it for the full count, breathing steadily. During each release, stand up with a neutral spine, then hinge down again, trying to reach a little lower without letting your back round.',
     videoUrl: 'https://www.youtube.com/shorts/loOpwF1fkFc?feature=share',
     imageUrl: 'private-exercise:mobility-standing-pancake-stretch.jpg'
   },

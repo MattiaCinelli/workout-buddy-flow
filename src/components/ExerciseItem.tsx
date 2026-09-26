@@ -6,6 +6,7 @@ import { Exercise, getLogType, getExecutionDirections, EXECUTION_DIRECTION_LABEL
 import { Image, Edit, Repeat, Timer } from 'lucide-react';
 import { useData } from '@/contexts/useData';
 import { describeMuscleTags } from '@/lib/muscleRegions';
+import { exerciseTargetText } from '@/lib/workoutSetSummary';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 import ExerciseImage from '@/components/ExerciseImage';
@@ -23,9 +24,8 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
 
   const logType = getLogType(exercise);
   const sets = exercise.defaultSets ?? 1;
-  const setSummary = logType === 'time'
-    ? (exercise.defaultDuration ? `${sets} × ${exercise.defaultDuration}s` : `${sets} set${sets === 1 ? '' : 's'}`)
-    : (exercise.defaultReps ? `${sets} × ${exercise.defaultReps} reps` : `${sets} set${sets === 1 ? '' : 's'}`);
+  const targetText = exerciseTargetText(exercise);
+  const setSummary = targetText ? `${sets} × ${targetText}` : `${sets} set${sets === 1 ? '' : 's'}`;
 
   const getCategoryColor = () => {
     switch (exercise.category) {
@@ -93,7 +93,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({ exercise, onSelect, onEdit 
               </p>
             )}
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              {logType === 'time' ? <Timer className="h-3 w-3" /> : <Repeat className="h-3 w-3" />}
+              {logType === 'reps' ? <Repeat className="h-3 w-3" /> : <Timer className="h-3 w-3" />}
               {setSummary}
               {getExecutionDirections(exercise).length > 0 && (
                 <span className="font-medium text-workout-green">

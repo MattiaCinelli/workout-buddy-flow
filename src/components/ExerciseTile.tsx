@@ -5,6 +5,7 @@ import ExerciseImage from '@/components/ExerciseImage';
 import { Exercise, getLogType } from '@/data/exercises';
 import { useData } from '@/contexts/useData';
 import { describeMuscleTags } from '@/lib/muscleRegions';
+import { exerciseTargetText } from '@/lib/workoutSetSummary';
 import { cn } from '@/lib/utils';
 import { exerciseCategoryTint } from '@/lib/exerciseCategory';
 
@@ -20,9 +21,8 @@ const ExerciseTile = ({ exercise, onSelect, onEdit }: ExerciseTileProps) => {
   const muscleNames = describeMuscleTags(exercise.muscleGroups, muscleGroups);
   const logType = getLogType(exercise);
   const sets = exercise.defaultSets ?? 1;
-  const target = logType === 'time'
-    ? exercise.defaultDuration ? `${sets} × ${exercise.defaultDuration}s` : `${sets} set${sets === 1 ? '' : 's'}`
-    : exercise.defaultReps ? `${sets} × ${exercise.defaultReps} reps` : `${sets} set${sets === 1 ? '' : 's'}`;
+  const targetText = exerciseTargetText(exercise);
+  const target = targetText ? `${sets} × ${targetText}` : `${sets} set${sets === 1 ? '' : 's'}`;
   const categoryAccent = {
     strength: 'border-t-workout-blue',
     cardio: 'border-t-workout-red',

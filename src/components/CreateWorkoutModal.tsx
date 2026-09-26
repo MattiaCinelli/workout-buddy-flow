@@ -12,7 +12,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Exercise, getLogType } from '@/data/exercises';
+import { Exercise, defaultSetTargets } from '@/data/exercises';
 import ExerciseItem from './ExerciseItem';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Loader2 } from 'lucide-react';
@@ -182,14 +182,14 @@ const CreateWorkoutModal: React.FC<CreateWorkoutModalProps> = ({ isOpen, onClose
     // category-based guess — e.g. a bodyweight exercise like "Wall Angel"
     // gets its own configured reps/sets instead of always defaulting to
     // 12 reps at 50kg regardless of what the exercise actually is.
-    const isTimeBased = getLogType(exercise) === 'time';
+    const { reps, duration } = defaultSetTargets(exercise);
     const setCount = exercise.defaultSets ?? 1;
     const defaultSets: WorkoutSet[] = Array.from({ length: setCount }, () => ({
       exerciseId: exercise.id,
       occurrenceId,
-      reps: isTimeBased ? undefined : (exercise.defaultReps ?? 12),
+      reps,
       weight: exercise.defaultWeight,
-      duration: isTimeBased ? (exercise.defaultDuration ?? 30) : undefined,
+      duration,
       distance: exercise.defaultDistance,
       // Left undefined rather than baked in here — the runtime picks
       // between restBetweenSets/restBetweenExercises dynamically based on

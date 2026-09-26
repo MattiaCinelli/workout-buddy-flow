@@ -67,7 +67,7 @@ const ExerciseProgress = () => {
   const exercise = exercises.find(item => item.id === id);
   const history = useMemo(() => exerciseSessionHistory(id, sessions), [id, sessions]);
   const summaries = useMemo(() => exerciseSessionSummaries(id, sessions), [id, sessions]);
-  const record = useMemo(() => computePersonalRecords(sessions).get(id), [sessions, id]);
+  const record = useMemo(() => computePersonalRecords(sessions, exercises).get(id), [sessions, exercises, id]);
   const suggestion = exercise
     ? suggestNextSet(exercise, { reps: exercise.defaultReps, weight: exercise.defaultWeight }, history)
     : null;

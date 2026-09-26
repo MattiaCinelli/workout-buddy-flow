@@ -44,6 +44,22 @@ describe('ExerciseForm', () => {
     await waitFor(() => expect(screen.getByLabelText('Default duration (sec)')).toHaveValue(30));
   });
 
+  it('offers Holds and swaps a new exercise to 5 holds of 10 s with a pause between them', async () => {
+    const onSubmit = vi.fn();
+    render(<ExerciseForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Exercise Name'), { target: { value: 'Pancake hinge' } });
+    fireEvent.click(screen.getByText(/^Holds/));
+    await waitFor(() => expect(screen.getByLabelText('Holds per set')).toHaveValue(5));
+    expect(screen.getByLabelText('Seconds per hold')).toHaveValue(10);
+    fireEvent.change(screen.getByLabelText('Seconds between holds'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      logType: 'holds', defaultReps: 5, defaultDuration: 10, secondsBetweenHolds: 4,
+    })));
+  });
+
   it('renders an existing exercise without crashing', () => {
     render(<ExerciseForm
       exercise={{

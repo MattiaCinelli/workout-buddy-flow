@@ -95,3 +95,23 @@ describe('detectNewPersonalRecords', () => {
     expect(prs).toEqual([{ exerciseId: 'squat', kind: 'weight', value: 70, previousValue: 60 }]);
   });
 });
+
+describe('holds exercises', () => {
+  const holds = [{ id: 'pancake', logType: 'holds' }];
+  const holdSession = (reps: number, duration: number, date: string) => session({
+    id: date, date, sets: [{ exerciseId: 'pancake', reps, duration }],
+  });
+
+  it('records the longest hold but never the number of holds as reps', () => {
+    const record = computePersonalRecords([holdSession(5, 10, '2026-01-01'), holdSession(8, 12, '2026-01-02')], holds).get('pancake');
+    expect(record?.maxDuration?.value).toBe(12);
+    expect(record?.maxReps).toBeUndefined();
+  });
+
+  it('reports a longer hold as a new record, and more holds as nothing', () => {
+    const prior = [holdSession(5, 10, '2026-01-01')];
+    expect(detectNewPersonalRecords([{ exerciseId: 'pancake', setIndex: 0, completed: true, reps: 9, duration: 10 }], prior, holds)).toEqual([]);
+    expect(detectNewPersonalRecords([{ exerciseId: 'pancake', setIndex: 0, completed: true, reps: 5, duration: 15 }], prior, holds))
+      .toEqual([{ exerciseId: 'pancake', kind: 'duration', value: 15, previousValue: 10 }]);
+  });
+});

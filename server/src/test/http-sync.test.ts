@@ -87,6 +87,21 @@ test('an exercise keeps its warm-up tag, and an untick, through push and pull', 
   assert.equal((await app.inject({ method: 'GET', url: '/sync/exercises', headers })).json().exercises[0].warmup, false);
 });
 
+test('a holds exercise keeps its type and the pause between holds through push and pull', async () => {
+  const { app, aliceToken } = await setup();
+  const headers = { authorization: `Bearer ${aliceToken}` };
+
+  await app.inject({
+    method: 'POST', url: '/sync/exercises', headers,
+    payload: { exercises: [exercise({ logType: 'holds', defaultReps: 5, defaultDuration: 10, secondsBetweenHolds: 4 })] },
+  });
+  const pulled = (await app.inject({ method: 'GET', url: '/sync/exercises', headers })).json().exercises[0];
+  assert.equal(pulled.logType, 'holds');
+  assert.equal(pulled.defaultReps, 5);
+  assert.equal(pulled.defaultDuration, 10);
+  assert.equal(pulled.secondsBetweenHolds, 4);
+});
+
 test('an exercise keeps direction-specific images through push and pull', async () => {
   const { app, aliceToken } = await setup();
   const headers = { authorization: `Bearer ${aliceToken}` };

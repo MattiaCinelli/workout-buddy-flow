@@ -23,12 +23,18 @@ const completedSetsOf = (session: WorkoutSession): WorkoutSetResult[] =>
   (session.actualSets ?? session.sets.map((set, setIndex) => ({ ...set, setIndex, completed: true })))
     .filter(set => set.completed && !set.warmup);
 
-const applySet = (records: Map<string, PersonalRecord>, exerciseId: string, date: string, set: WorkoutSetResult) => {
+// Exercises logged as holds (e.g. 5 × 10 s) store the number of holds in
+// `reps`; that is not a rep record, so for them only the hold length
+// (duration) counts. Callers pass their ids; omitted means none.
+const holdsIds = (exercises?: { id: string; logType?: string }[]) =>
+  new Set((exercises ?? []).filter(item => item.logType === 'holds').map(item => item.id));
+
+const applySet = (records: Map<string, PersonalRecord>, exerciseId: string, date: string, set: WorkoutSetResult, isHolds = false) => {
   const record = records.get(exerciseId) ?? { exerciseId };
   if (set.weight !== undefined && (!record.maxWeight || set.weight > record.maxWeight.value)) {
     record.maxWeight = { value: set.weight, date };
   }
-  if (set.reps !== undefined && (!record.maxReps || set.reps > record.maxReps.value)) {
+  if (!isHolds && set.reps !== undefined && (!record.maxReps || set.reps > record.maxReps.value)) {
     record.maxReps = { value: set.reps, date };
   }
   if (set.duration !== undefined && (!record.maxDuration || set.duration > record.maxDuration.value)) {
@@ -42,12 +48,16 @@ const applySet = (records: Map<string, PersonalRecord>, exerciseId: string, date
 
 // Chronological order matters for callers that want to know when a record
 // was set — sessions aren't assumed to already be sorted.
-export const computePersonalRecords = (sessions: WorkoutSession[]): Map<string, PersonalRecord> => {
+export const computePersonalRecords = (
+  sessions: WorkoutSession[],
+  exercises?: { id: string; logType?: string }[],
+): Map<string, PersonalRecord> => {
   const records = new Map<string, PersonalRecord>();
+  const holds = holdsIds(exercises);
   const byDateAscending = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   for (const session of byDateAscending) {
     for (const set of completedSetsOf(session)) {
-      applySet(records, set.exerciseId, session.date, set);
+      applySet(records, set.exerciseId, session.date, set, holds.has(set.exerciseId));
     }
   }
   return records;
@@ -68,9 +78,11 @@ export interface NewPersonalRecord {
 // brand-new exercise would otherwise trigger a "PR" on its very first set).
 export const detectNewPersonalRecords = (
   finishedSets: WorkoutSetResult[],
-  priorSessions: WorkoutSession[]
+  priorSessions: WorkoutSession[],
+  exercises?: { id: string; logType?: string }[],
 ): NewPersonalRecord[] => {
-  const priorRecords = computePersonalRecords(priorSessions);
+  const priorRecords = computePersonalRecords(priorSessions, exercises);
+  const holds = holdsIds(exercises);
   const newRecords = new Map<string, NewPersonalRecord>();
 
   const consider = (exerciseId: string, kind: PRKind, value: number | undefined, previous?: RecordEntry) => {
@@ -83,7 +95,7 @@ export const detectNewPersonalRecords = (
   for (const set of finishedSets.filter(item => item.completed && !item.warmup)) {
     const prior = priorRecords.get(set.exerciseId);
     consider(set.exerciseId, 'weight', set.weight, prior?.maxWeight);
-    consider(set.exerciseId, 'reps', set.reps, prior?.maxReps);
+    if (!holds.has(set.exerciseId)) consider(set.exerciseId, 'reps', set.reps, prior?.maxReps);
     consider(set.exerciseId, 'duration', set.duration, prior?.maxDuration);
     consider(set.exerciseId, 'distance', set.distance, prior?.maxDistance);
   }

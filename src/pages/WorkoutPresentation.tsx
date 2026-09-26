@@ -31,7 +31,7 @@ import { workoutDirectionLabel } from '@/lib/workoutDirections';
 import { normalizeHttpsUrl } from '@/lib/url';
 import { getNextSameDayWorkout, getSkippedCourseItemIds } from '@/lib/courseSchedule';
 import ExerciseImage from '@/components/ExerciseImage';
-import { getExerciseImageUrl } from '@/data/exercises';
+import { getExerciseImageUrl, getLogType } from '@/data/exercises';
 import { buildExerciseTrial } from '@/lib/exerciseTrial';
 
 // How long after a voice cue ends before the voice command listens again, so
@@ -555,7 +555,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
       // hook caps display at a single toast (TOAST_LIMIT = 1 in
       // use-toast.ts), so separate sequential calls would just have each
       // one instantly replace the last, silently dropping every PR.
-      const newRecords = detectNewPersonalRecords(actualSets, sessions);
+      const newRecords = detectNewPersonalRecords(actualSets, sessions, exercises);
       toast({
         title: newRecords.length > 0 ? 'Workout saved — new personal record!' : 'Workout saved',
         description: newRecords.length === 0 ? 'Your performance was added to history.' : (
@@ -614,9 +614,9 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
   const workingSetNumber = currentSourceIndex === undefined ? 0
     : workoutSets.slice(0, currentSourceIndex + 1).filter(item => !item.warmup).length;
   const upcomingLabel = upcoming?.type === 'rest'
-    ? (upcoming.kind === 'switch' ? 'Change side' : `Rest · ${formatTime(upcoming.duration || 0)}`)
+    ? (upcoming.kind === 'switch' ? 'Change side' : upcoming.kind === 'release' ? 'Release' : `Rest · ${formatTime(upcoming.duration || 0)}`)
     : upcoming?.exerciseId
-      ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.direction ? ` · ${workoutDirectionLabel(upcoming.direction)}` : ''}`
+      ? `${exercises.find(item => item.id === upcoming.exerciseId)?.name || 'Exercise'}${upcoming.direction ? ` · ${workoutDirectionLabel(upcoming.direction)}` : ''}${upcoming.holdIndex ? ` · Hold ${upcoming.holdIndex} of ${upcoming.holdCount}` : ''}`
       : trialMode ? 'Finish trial' : 'Finish workout';
   const activeStepDuration = current?.duration || 0;
   const countdownPercent = activeStepDuration > 0
@@ -667,7 +667,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
         Step {activeStep + 1} of {steps.length}. {current.type === 'exercise' ? exercise?.name : restKindLabel(current)}.
       </p>
       <div className="flex justify-between text-xs text-slate-400 sm:text-sm">
-        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Change side' : currentIsWarmup ? 'Warm-up set' : `Set ${workingSetNumber} of ${workingSetCount}`}</span>
+        <span>{current.kind === 'prep' ? 'Getting started' : current.kind === 'switch' ? 'Change side' : currentIsWarmup ? 'Warm-up set' : `Set ${workingSetNumber} of ${workingSetCount}`}{current.holdIndex ? ` · Hold ${current.holdIndex} of ${current.holdCount}` : ''}</span>
         <span>About {formatTime(remainingWorkoutSeconds)} remaining</span>
       </div>
       <Progress value={((activeStep + 1) / steps.length) * 100} className="h-1.5 bg-white/10 [&>div]:bg-workout-green" aria-label={`Step ${activeStep + 1} of ${steps.length}`} />
@@ -731,6 +731,9 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
             </div>
           )}
           <h2 className="text-2xl font-semibold leading-tight sm:text-3xl" aria-live="polite">{exercise.name}</h2>
+          {current.holdIndex && (
+            <p className="metric-number mt-2 text-4xl font-black leading-none sm:text-5xl">Hold {current.holdIndex} <span className="text-slate-400">of {current.holdCount}</span></p>
+          )}
           {current.amrap && current.reps ? (
             <p className="metric-number mt-2 text-5xl font-black leading-none sm:text-6xl">{current.reps} reps</p>
           ) : current.reps ? (
@@ -761,11 +764,11 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
           )}
         </div>
       </div> : <div key={activeStep} className="workout-step-enter flex w-full flex-1 flex-col items-center justify-center">
-        <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
+        <div className={`mb-3 flex items-center gap-2 rounded-full px-4 py-1.5 ${current.kind === 'switch' || current.kind === 'release' ? 'bg-workout-green/20 text-workout-green' : 'bg-workout-purple/20 text-workout-purple'}`}>
           {current.kind === 'switch' ? <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /> : <Timer className="h-4 w-4" aria-hidden="true" />}
           <span className="text-sm font-semibold">{restKindLabel(current)}</span>
         </div>
-        <div className="text-8xl font-black leading-none sm:text-9xl" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : current.kind === 'switch' ? 'until the other side' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
+        <div className="text-8xl font-black leading-none sm:text-9xl" role="timer" aria-label={`${timeLeft} seconds ${current.kind === 'prep' ? 'until start' : current.kind === 'switch' ? 'until the other side' : current.kind === 'release' ? 'until the next hold' : 'of rest remaining'}`}>{formatTime(timeLeft)}</div>
         <div className="mt-4 w-full"><CountdownBar percent={countdownPercent} tone="bg-workout-purple" /></div>
         <div className="mt-6 flex gap-3">
           <Button variant="outline" className="border-white/40 bg-transparent text-white" onClick={() => adjustRestTime(-15)} aria-label="Subtract 15 seconds">
@@ -796,7 +799,7 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
     <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-[3.5rem_3.5rem_minmax(0,1fr)] gap-2 border-t border-white/10 bg-[#070d18]/90 p-3 pb-[max(.75rem,var(--app-safe-area-bottom))] shadow-[0_-16px_40px_-28px_rgb(0_0_0/.9)] backdrop-blur-xl sm:grid-cols-3" aria-label={trialMode ? 'Exercise trial controls' : 'Workout controls'}>
       <Button size="lg" variant="outline" className="h-14 min-w-0 rounded-2xl border-white/20 bg-white/[.03] px-0 text-white hover:bg-white/10 hover:text-white sm:px-2" onClick={previousStep} disabled={activeStep === 0} aria-label="Previous"><ChevronLeft className="h-5 w-5 sm:mr-1" /><span className="hidden sm:inline">Previous</span></Button>
       <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-purple px-0 text-white hover:bg-workout-purple/90 sm:px-2" onClick={togglePause} aria-label={paused ? 'Resume' : 'Pause'}>{paused ? <Play className="h-5 w-5 sm:mr-1" /> : <Pause className="h-5 w-5 sm:mr-1" />}<span className="hidden sm:inline">{paused ? 'Resume' : 'Pause'}</span></Button>
-      <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-green px-4 text-base font-bold text-white shadow-lg shadow-emerald-950/30 hover:bg-green-600 sm:px-2" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-2 h-5 w-5" /></Button>
+      <Button size="lg" className="h-14 min-w-0 rounded-2xl bg-workout-green px-4 text-base font-bold text-white shadow-lg shadow-emerald-950/30 hover:bg-green-600 sm:px-2" onClick={nextStep}>{activeStep === steps.length - 1 ? 'Finish' : current.kind === 'prep' ? "I'm ready" : current.kind === 'switch' || current.kind === 'release' ? 'Skip' : current.type === 'rest' ? 'Skip rest' : 'Next'}<SkipForward className="ml-2 h-5 w-5" /></Button>
     </nav>
     {trialMode ? (
       <Dialog open={completionOpen} onOpenChange={open => { if (!open) finishTrial(); }}>
@@ -821,7 +824,9 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
         <summary className="cursor-pointer select-none px-4 py-3 font-medium">Adjust sets or mark any as skipped</summary>
         <div className="space-y-3 border-t p-3">{actualSets.map((result, index) => {
         const planned = workout.sets[index];
-        const name = exercises.find(item => item.id === result.exerciseId)?.name || 'Exercise';
+        const resultExercise = exercises.find(item => item.id === result.exerciseId);
+        const name = resultExercise?.name || 'Exercise';
+        const isHolds = !!resultExercise && getLogType(resultExercise) === 'holds';
         const tag = `${result.direction && result.direction !== 'none' ? ` · ${workoutDirectionLabel(result.direction)}` : ''}${result.warmup ? ' · Warm-up' : result.amrap ? ' · AMRAP' : ''}`;
         return <div key={index} className={`rounded-md border p-3 ${result.warmup ? 'border-amber-400/40' : ''}`}>
           <div className="flex items-center gap-2 mb-2">
@@ -830,9 +835,9 @@ const WorkoutPresentation = ({ trialMode = false }: WorkoutPresentationProps) =>
             <span className="text-xs text-muted-foreground">{result.completed ? 'Completed' : 'Skipped'}</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>{result.amrap ? 'Reps done' : 'Reps'}</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}
+            {planned.reps !== undefined && <div><Label htmlFor={`result-reps-${index}`}>{isHolds ? 'Holds' : result.amrap ? 'Reps done' : 'Reps'}</Label><Input id={`result-reps-${index}`} type="number" min="0" max="1000" value={result.reps ?? ''} onChange={e => updateResult(index, { reps: Number(e.target.value) })} /></div>}
             {planned.weight !== undefined && <div><Label htmlFor={`result-weight-${index}`}>Weight (kg)</Label><Input id={`result-weight-${index}`} type="number" min="0" max="1000" step="0.5" value={result.weight ?? ''} onChange={e => updateResult(index, { weight: Number(e.target.value) })} /></div>}
-            {planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>Seconds</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}
+            {planned.duration !== undefined && <div><Label htmlFor={`result-duration-${index}`}>{isHolds ? 'Seconds each' : 'Seconds'}</Label><Input id={`result-duration-${index}`} type="number" min="0" max="86400" value={result.duration ?? ''} onChange={e => updateResult(index, { duration: Number(e.target.value) })} /></div>}
             {planned.distance !== undefined && <div><Label htmlFor={`result-distance-${index}`}>Distance (m)</Label><Input id={`result-distance-${index}`} type="number" min="0" max="1000000" value={result.distance ?? ''} onChange={e => updateResult(index, { distance: Number(e.target.value) })} /></div>}
             {detailedRpe && !result.warmup && <div><Label htmlFor={`result-rpe-${index}`}>RPE (1–10)</Label><Input id={`result-rpe-${index}`} type="number" min="1" max="10" step="0.5" value={result.rpe ?? ''} onChange={e => updateResult(index, { rpe: e.target.value ? Number(e.target.value) : undefined })} /></div>}
           </div>

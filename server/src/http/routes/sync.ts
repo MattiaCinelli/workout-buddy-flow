@@ -47,6 +47,7 @@ const exerciseSchema = {
     defaultWeight: { type: 'number' },
     defaultDistance: { type: 'number' },
     secondsPerRep: { type: 'number' },
+    secondsBetweenHolds: { type: 'number' },
     unilateral: { type: 'boolean' },
     warmup: { type: 'boolean' },
     executionDirections: {

@@ -47,7 +47,8 @@ export const SelectedExerciseCard = ({
 }: SelectedExerciseCardProps) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { exercise, sets } = selected;
-  const isReps = getLogType(exercise) === 'reps';
+  const logType = getLogType(exercise);
+  const isReps = logType === 'reps';
   // Distance only matters for moves like a run or a ride; elsewhere it would
   // just add a line to every set. It stays visible wherever one was entered.
   const showDistance = exercise.category === 'cardio' || !!exercise.defaultDistance || sets.some(set => set.distance);
@@ -124,7 +125,22 @@ export const SelectedExerciseCard = ({
               set.warmup ? 'border border-amber-400/30 bg-amber-400/10' : 'bg-muted/40')}>
               <div className="flex items-end gap-1.5">
                 <span className="w-6 shrink-0 pb-2 text-sm font-semibold" aria-label={`Set ${setIndex + 1}`}>{setIndex + 1}</span>
-                {isReps ? (
+                {logType === 'holds' ? (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor={fieldId('reps', setIndex)} className="text-[11px] text-muted-foreground">Holds</Label>
+                      <Input id={fieldId('reps', setIndex)} type="number" min="1" max="1000" className="h-8 px-2"
+                        value={set.reps || ''} disabled={disabled}
+                        onChange={event => onPatchSet(setIndex, { reps: numberFrom(event.target.value) })} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor={fieldId('duration', setIndex)} className="text-[11px] text-muted-foreground">Sec each</Label>
+                      <Input id={fieldId('duration', setIndex)} type="number" min="1" max="86400" className="h-8 px-2"
+                        value={set.duration || ''} disabled={disabled}
+                        onChange={event => onPatchSet(setIndex, { duration: numberFrom(event.target.value) })} />
+                    </div>
+                  </>
+                ) : isReps ? (
                   <div className="min-w-0 flex-1">
                     <Label htmlFor={fieldId('reps', setIndex)} className="text-[11px] text-muted-foreground">Reps</Label>
                     <Input id={fieldId('reps', setIndex)} type="number" min="1" max="1000" className="h-8 px-2"

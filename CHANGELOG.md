@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Versioning covers the app in `src/` and the optional sync server in `server/`
 together — a single tag `vX.Y.Z` releases both.
 
-## [Unreleased][Unreleased]
+## [Unreleased]
+
+## [1.3.0] - 2026-09-26
 
 ### Added
 
@@ -15,6 +17,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Warm-up exercises** — an exercise can now be tagged as a warm-up with the new full-width **Warm-up exercise** button when adding or editing one. It is a tag rather than a fifth type, so neck rolls stay a flexibility exercise *and* show an orange "Warm-up" badge in the library and exercise details. Pick **Warm-up** in the library's type filter, or search "warm-up", to list them all. No exercise is tagged until you tag it. The sync server keeps the tag too (new `warmup` column, migration 031); update the server, or the tag is dropped on each sync.
 - **Muscle groups sorted into five body regions** — every muscle group now belongs to one region: Neck & Back, Chest & Shoulders, Arms & Hands, Core & Hips, or Legs & Feet. Tag an exercise with its muscles and it counts toward their region automatically (Quadriceps is Legs & Feet), or tick just the region when the exact muscle doesn't matter. The exercise form shows just the five regions: tap one to tag the whole region and open its muscles, tick muscles to be more specific, and tap an open region again to clear it (a closed region shows how many of its muscles are ticked, e.g. "Core & Hips · 2"); the library filter starts with the five regions and picking one shows its muscles to narrow it down; searching a region's name finds its exercises; exercise cards read "Legs & Feet · Quadriceps, Hamstrings". Progress → Muscle Groups can show sets **by region** or **by muscle** (a set counts once per region, however many of that region's muscles it works). A new built-in **Neck** group is added. Full Body still counts toward every region.
 - **Manage muscle groups by region, with Merge** — the Manage window lists groups under their regions; a new group needs a region, the pencil also moves a group to another region, and the new **Merge** button folds a group into another muscle or a whole region, re-tagging every exercise that used it (with Undo). Groups you made earlier get a region where the name makes it clear (Wrist and Hand → Arms & Hands, Foot → Legs & Feet, Piriformis → Core & Hips); the rest appear under **Unsorted** for you to place or merge. The sync server stores the region (migration 032); update the server, or regions are dropped on each sync.
+- **Holds: timed repetitions** — a third way to log an exercise, next to Reps and Time: **Holds (e.g. 5 × 10 s)**. A set is a number of holds of a set length, and the guided workout counts both for you: "Hold 1 of 5" counts down, then a short **Release** (5 s, adjustable per exercise under "Seconds between holds") gives you time to come up and reset, then "Hold 2 of 5" starts by itself, with spoken "Hold" and "Release" cues. Your "next" voice command and the Skip button work as usual, and one-sided exercises run the holds on each side. Workouts show holds as "2 sets · 5 × 10s holds", the completion window has Holds and Seconds each, and records count your longest hold (not the number of holds). New built-in **Standing Pancake Hinge Holds**: hinge down with a forward pelvic tilt only as far as your back stays straight, 2 sets of 5 × 10 s. The sync server stores the pause between holds (migration 033); update the server before syncing.
 
 ### Changed
 
@@ -29,7 +32,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Messages no longer cover the workout controls** — during a workout, messages now appear at the top of the screen instead of over the control bar at the bottom. Before, finishing a course workout that has another one the same day opened the next workout with the "Workout saved" message, and its **Undo** button, right where **I'm ready** sits, so tapping to start the next workout could delete the one just saved.
 - **Welcome message fits the screen** — the first-launch welcome no longer runs off the right edge (its three buttons were wider than the dialog) or below the bottom of short screens: the buttons are stacked with the main action on top, and the list scrolls between the heading and the buttons. Its text is also updated: 75 built-in exercises, both starter courses, and hands-free "next".
 
-## [1.2.0][1.2.0] - 2026-09-24
+## [1.2.0] - 2026-09-24
 
 ### Added
 
@@ -44,7 +47,7 @@ together — a single tag `vX.Y.Z` releases both.
 
 - **Workout Streak and Weekly Goal cards** — the dashboard now shows Today's Focus with the quick stats beside it (below it on a phone), then the week's calendar. The weekly goal is no longer saved in backups; older backups that contain it restore normally.
 
-## [1.1.1][1.1.1] - 2026-09-23
+## [1.1.1] - 2026-09-23
 
 ### Added
 
@@ -75,7 +78,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Authentication now happens before request bodies are read** — unauthenticated requests are refused with 401 before the server buffers or validates their payload (previously up to 50 MB), and the sign-in and account endpoints accept only small bodies (8 KB and 16 KB).
 - **Personal Tailscale hostname removed from the docs** — the sync guide now uses a placeholder address.
 
-## [1.1.0][1.1.0] - 2026-09-21
+## [1.1.0] - 2026-09-21
 
 ### Added
 
@@ -105,7 +108,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Directional image uploads on phones** — prevent an exercise from being saved while an uploaded image is still resizing, which previously made direction-specific images such as Forearm Stretch's Left–Backward variation appear to save and then disappear.
 - **Directional image completeness** — each configured direction now identifies a custom image, default-image fallback, or missing image, and saving provides a non-blocking coverage warning.
 
-## [1.0.10][1.0.10] - 2026-09-20
+## [1.0.10] - 2026-09-20
 
 ### Added
 
@@ -134,15 +137,15 @@ together — a single tag `vX.Y.Z` releases both.
 - **Rotational Hinge exercise** — added the two-position kettlebell strength movement with 10-repetition left/right sets, detailed technique cues and a private exercise image.
 - **Data-context Fast Refresh** — separated the shared `useData` hook from the React provider component so development updates no longer invalidate the entire context module.
 
-## [1.0.9][1.0.9] - 2026-09-20
+## [1.0.9] - 2026-09-20
 
-## [1.0.8][1.0.8] - 2026-09-18
+## [1.0.8] - 2026-09-18
 
 ### Changed
 
 - Folder containing workouts can be sync.
 
-## [1.0.7][1.0.7] - 2026-09-15
+## [1.0.7] - 2026-09-15
 
 ### Added
 
@@ -172,13 +175,13 @@ together — a single tag `vX.Y.Z` releases both.
 - **Exercise search clearing** — the Exercise Library search field now provides an accessible clear button whenever it contains text.
 - **Existing-install course seeding** — seed version 8 additively installs the new exercises, workouts and course without replacing user-created records.
 
-## [1.0.6][1.0.6] - 2026-09-14
+## [1.0.6] - 2026-09-14
 
 ### Changed
 
 - Increase max load for sync.
 
-## [1.0.5][1.0.5] - 2026-09-11
+## [1.0.5] - 2026-09-11
 
 ### Added
 
@@ -201,7 +204,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Phone system-bar spacing** — the top navigation now respects Capacitor and browser safe-area insets, keeping sync, account and menu controls below status-bar indicators; bottom workout controls and toasts use the matching navigation-bar inset.
 - **Exercise detail sizing** — exercise details use the full available phone height with scrollable content and a fixed action area, preventing Progress, Share, Edit or Try exercise from being clipped outside the popup.
 
-## [1.0.4][1.0.4] - 2026-09-10
+## [1.0.4] - 2026-09-10
 
 ### Added
 
@@ -221,7 +224,7 @@ together — a single tag `vX.Y.Z` releases both.
 
 - **Appearance startup and accessibility** — saved interface and color choices are applied on every route before the first render, avoiding reload flicker. Light-palette warning, muted and selected-control colors now meet WCAG AA contrast requirements, and interface fonts no longer require a network request.
 
-## [1.0.3][1.0.3] - 2026-09-10
+## [1.0.3] - 2026-09-10
 
 ### Added
 
@@ -238,7 +241,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Exercise demonstration-link sync** — video links now round-trip through the optional sync server instead of disappearing after a pull.
 - **Current Node.js server startup** — updated the server's SQLite driver so it starts reliably on supported Node.js 24 and newer installations.
 
-## [1.0.2][1.0.2] - 2026-09-06
+## [1.0.2] - 2026-09-06
 
 ### Added
 
@@ -252,7 +255,7 @@ together — a single tag `vX.Y.Z` releases both.
 - **Workout exercise selection flow** — adding an exercise while creating a workout now keeps the Exercise Library open so several exercises can be added without repeatedly switching tabs.
 - **One-limb exercise sync** — the sync server now persists the unilateral setting instead of dropping it and clearing the toggle on the next pull. Additive SQLite migrations preserve all existing exercises, workouts and history.
 
-## [1.0.0][1.0.0] - 2026-09-02
+## [1.0.0] - 2026-09-02
 
 First release. The app was usable and offline-capable throughout development; this is the point where the scope in `docs/overview.md` is complete, verified on the web and on a real Android device, and cut from a repeatable signed build.
 
@@ -295,7 +298,8 @@ First release. The app was usable and offline-capable throughout development; th
 - Sync conflict resolution is whole-record last-write-wins, not field-level merge: two devices editing the _same field_ of the _same record_ while both offline can lose one side's edit. The losing edit is surfaced for manual recovery rather than silently dropped. Field-level merge / CRDTs are deliberately out of scope for 1.0.
 - Plain-HTTP sync (a LAN server without TLS) is off by default in the Android build and must be enabled at build time WB_ALLOW_INSECURE_SYNC=1`); the token and data travel unencrypted on that network. Prefer an HTTPS sync server.
 
-[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/MattiaCinelli/workout-buddy-flow/compare/v1.0.10...v1.1.0
